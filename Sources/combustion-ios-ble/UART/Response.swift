@@ -3,7 +3,7 @@
 //  Needle
 //
 //  Created by Jesse Johnston on 10/19/20.
-//  Copyright © 2020 Jason Machacek. All rights reserved.
+//  Copyright © 2021 Combustion Inc. All rights reserved.
 //
 
 import Foundation

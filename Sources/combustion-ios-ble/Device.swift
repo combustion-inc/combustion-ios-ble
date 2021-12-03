@@ -3,7 +3,7 @@
 //  Representation of a Probe Device
 //
 //  Created by Jason Machacek on 2/5/20.
-//  Copyright © 2020 Jason Machacek. All rights reserved.
+//  Copyright © 2021 Combustion Inc. All rights reserved.
 //
 
 import Foundation

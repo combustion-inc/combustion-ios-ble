@@ -80,19 +80,19 @@ class DeviceManager : ObservableObject {
 
 extension DeviceManager : BleManagerDelegate {
     func didConnectTo(id: UUID) {
-        guard let device = devices[id.uuidString] else { return }
+        guard let _ = devices[id.uuidString] else { return }
         // print("Connected to : \(device.id)")
         devices[id.uuidString]?.updateConnectionState(.connected)
     }
     
     func didFailToConnectTo(id: UUID) {
-        guard let device = devices[id.uuidString] else { return }
+        guard let _ = devices[id.uuidString] else { return }
         // print("Failed to connect to : \(device.id)")
         devices[id.uuidString]?.updateConnectionState(.failed)
     }
     
     func didDisconnectFrom(id: UUID) {
-        guard let device = devices[id.uuidString] else { return }
+        guard let _ = devices[id.uuidString] else { return }
         // print("Disconnected from : \(device.id)")
         devices[id.uuidString]?.updateConnectionState(.disconnected)
     }

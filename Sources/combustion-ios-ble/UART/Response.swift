@@ -51,9 +51,11 @@ extension Response {
 
         // Payload Length
         let lengthByte = data.subdata(in: 6..<7)
+        _ = lengthByte // Suppress 'unused variable' warning
         let payloadLength = lengthByte.withUnsafeBytes {
             $0.load(as: UInt8.self)
         }
+        _ = payloadLength // Suppress 'unused variable' warning
         
         // print("Success: \(success), payloadLength: \(payloadLength)")
         

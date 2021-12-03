@@ -250,7 +250,7 @@ extension BleManager: CBPeripheralDelegate {
         
         // print("didDiscoverDescriptorsFor : \(characteristic.uuid)")
         
-        for descriptor in descriptors {
+        for _ in descriptors {
             // print("discovered descriptor : \(descriptor.uuid)")
             
             // Always enable notifications for UART TX characteristic

@@ -10,6 +10,7 @@ import Foundation
 
 /// Struct containing info about a thermometer device.
 struct Device {
+    
     /// Enumeration representing the various connection states of the device
     enum ConnectionState : CaseIterable {
         case disconnected, connecting, connected, failed
@@ -36,9 +37,17 @@ struct Device {
     
     private var lastUpdateTime = Date()
     
-    // TODO persist the name somewhere, and make it settable
-    var name: String { 
-        return String(format: "%4X", serialNumber)
+    var name: String {
+        return String(format: "%08X", serialNumber)
+    }
+    
+    var macAddress: UInt64 {
+        return (UInt64(serialNumber) * 10000 + 6912) | 0xC00000000000
+    }
+    
+    var macAddressString: String {
+        print("macAddress", macAddress)
+        return String(format: "%012llX", macAddress)
     }
        
     /// Stores historical values of probe temperatures
@@ -142,12 +151,13 @@ extension Device {
     }
     
     
-    // MARK: Current value functions
-    
+    ///////////////////////
+    // Current value functions
+    ///////////////////////
     
     /// Gets the current temperature of the sensor at the specified index.
-    /// - parameter index: Index of temperature value (0-7)
-    /// - parameter celsius: True for celsius, false for fahrenheit
+    /// - param index: Index of temperature value (0-7)
+    /// - param celsius: True for celsius, false for fahrenheit
     /// - returns: Requested temperature value
     func currentTemperature(index: Int, celsius: Bool) -> Double? {
         var result : Double?

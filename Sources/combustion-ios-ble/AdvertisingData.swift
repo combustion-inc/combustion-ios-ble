@@ -41,8 +41,14 @@ extension AdvertisingData {
         type = CombustionProductType(rawValue: typeByte[0]) ?? .UNKNOWN
         
         // Device Serial number (4 bytes)
+        // Reverse the byte order (this is a little-endian packed bitfield)
         let rawSerial = data.subdata(in: Constants.SERIAL_RANGE)
-        let serialArray = [UInt8](rawSerial)
+        var revSerial : [UInt8] = []
+        for byte in rawSerial {
+            revSerial.insert(byte as UInt8, at: 0)
+        }
+        
+        let serialArray = [UInt8](revSerial)
         var value: UInt32 = 0
         for byte in serialArray {
             value = value << 8

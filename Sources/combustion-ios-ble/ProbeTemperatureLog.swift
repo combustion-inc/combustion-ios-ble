@@ -40,8 +40,8 @@ class ProbeTemperatureLog : ObservableObject {
     }
     
     /// Finds the first missing sequence number in the specified range of sequence numbers.
-    /// - param sequenceRangeStart: First sequence number to search for
-    /// - param sequenceRangeEnd: Last sequence number to search for
+    /// - parameter sequenceRangeStart: First sequence number to search for
+    /// - parameter sequenceRangeEnd: Last sequence number to search for
     func firstMissingIndex(sequenceRangeStart: UInt32, sequenceRangeEnd: UInt32) -> UInt32? {
         var found : UInt32? = nil
         for search in sequenceRangeStart...sequenceRangeEnd {
@@ -83,7 +83,7 @@ class ProbeTemperatureLog : ObservableObject {
     
     /// Inserts a new data point. Places it in the accumulator so it can be inserted with additional
     /// records coming in.
-    /// - param newDataPoint: New data points to be added to the buffer
+    /// - parameter newDataPoint: New data points to be added to the buffer
     func insertDataPoint(newDataPoint: LoggedProbeDataPoint) {
         // Add the incoming data point to the accumulator
         let appendResult = dataPointAccumulator.append(newDataPoint)

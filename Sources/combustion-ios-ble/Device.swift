@@ -142,13 +142,12 @@ extension Device {
     }
     
     
-    ///////////////////////
-    // Current value functions
-    ///////////////////////
+    // MARK: Current value functions
+    
     
     /// Gets the current temperature of the sensor at the specified index.
-    /// - param index: Index of temperature value (0-7)
-    /// - param celsius: True for celsius, false for fahrenheit
+    /// - parameter index: Index of temperature value (0-7)
+    /// - parameter celsius: True for celsius, false for fahrenheit
     /// - returns: Requested temperature value
     func currentTemperature(index: Int, celsius: Bool) -> Double? {
         var result : Double?

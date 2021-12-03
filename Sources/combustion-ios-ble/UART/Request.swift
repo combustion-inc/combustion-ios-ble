@@ -17,8 +17,8 @@ class Request {
     var data: Data
     
     /// Constructor for Request object.
-    /// - param payloadLength: Length of payload of message
-    /// - param type: Type of message
+    /// - parameter payloadLength: Length of payload of message
+    /// - parameter type: Type of message
     init(payloadLength: UInt8, type: MessageType) {
         let messageSize = Request.HEADER_SIZE + Int(payloadLength)
         data = Data(repeating: 0, count: messageSize)

@@ -8,9 +8,13 @@
 
 import Foundation
 
+/// Message containing Probe status information.
 struct DeviceStatus {
+    /// Minimum sequence number of records in Probe's memory.
     let minSequenceNumber: UInt32
+    /// Maximum sequence number of records in Probe's memory.
     let maxSequenceNumber: UInt32
+    /// Current temperatures sent by Probe.
     let temperatures: ProbeTemperatures
 }
 

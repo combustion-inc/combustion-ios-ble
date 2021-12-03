@@ -1,7 +1,5 @@
 //
 //  DeviceManager.swift
-//  Needle
-//  Singleton that provides list of detected Devices (either via Bluetooth or from a list in the Cloud)
 //
 //  Created by Jason Machacek on 2/5/20.
 //  Copyright © 2021 Combustion Inc. All rights reserved.
@@ -11,6 +9,8 @@ import Foundation
 import SwiftUI
 
 
+/// Singleton that provides list of detected Devices
+/// (either via Bluetooth or from a list in the Cloud)
 class DeviceManager : ObservableObject {
     /// Singleton accessor for class
     static let shared = DeviceManager()
@@ -35,7 +35,7 @@ class DeviceManager : ObservableObject {
     
     
     /// Adds a device to the local list.
-    /// - param device: Add device to list of known devices.
+    /// - parameter device: Add device to list of known devices.
     private func addDevice(device: Device) {
         devices[device.id] = device
     }
@@ -46,13 +46,13 @@ class DeviceManager : ObservableObject {
     }
     
     /// Returns list of devices.
-    /// - return List of all known devices.
+    /// - returns: List of all known devices.
     func getDevices() -> [Device] {
         return Array(devices.values)
     }
     
     /// Returns the nearest device.
-    /// - return Nearest device, if any.
+    /// - returns: Nearest device, if any.
     func getNearestDevice() -> Device? {
         return getDevices().max{ $0.rssi < $1.rssi }
     }
@@ -68,9 +68,9 @@ class DeviceManager : ObservableObject {
     }
     
     /// Request log messages from the specified device.
-    /// - param device: Device from which to request messages
-    /// - param minSequence: Minimum sequence number to request
-    /// - param maxSequence: Maximum sequence number to request
+    /// - parameter device: Device from which to request messages
+    /// - parameter minSequence: Minimum sequence number to request
+    /// - parameter maxSequence: Maximum sequence number to request
     func requestLogsFrom(_ device: Device, minSequence: UInt32, maxSequence: UInt32) {
         let request = LogRequest(minSequence: minSequence,
                                  maxSequence: maxSequence)

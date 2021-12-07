@@ -70,7 +70,7 @@ extension AdvertisingData {
 
 extension AdvertisingData {
     // Fake data initializer for previews
-    init?(fakeSerial: UInt32) {
+    public init?(fakeSerial: UInt32) {
         type = .PROBE
         temperatures = ProbeTemperatures.withFakeData()
         serialNumber = fakeSerial

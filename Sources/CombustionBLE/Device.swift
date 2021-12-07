@@ -75,7 +75,7 @@ extension Device {
         static let STALE_TIMEOUT = 15.0
     }
     
-    init(_ advertising: AdvertisingData, RSSI: NSNumber, id: UUID) {
+    public init(_ advertising: AdvertisingData, RSSI: NSNumber, id: UUID) {
         self.serialNumber = advertising.serialNumber
         self.id = id.uuidString
         updateWithAdvertising(advertising, RSSI: RSSI)

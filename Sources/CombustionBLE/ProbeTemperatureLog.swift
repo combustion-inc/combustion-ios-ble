@@ -11,7 +11,7 @@ import OrderedCollections
 public class ProbeTemperatureLog : ObservableObject {
     
     /// Buffer of logged data points
-    private var dataPointsDict : OrderedDictionary<UInt32, LoggedProbeDataPoint>
+    public var dataPointsDict : OrderedDictionary<UInt32, LoggedProbeDataPoint>
     
     /// Ordered array of data points in the buffer
     public var dataPoints : [LoggedProbeDataPoint] {

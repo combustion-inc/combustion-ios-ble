@@ -8,7 +8,7 @@
 
 import Foundation
 
-enum CombustionProductType: UInt8 {
+public enum CombustionProductType: UInt8 {
     case UNKNOWN = 0x00
     case PROBE = 0x01
     case NODE = 0x02
@@ -17,10 +17,10 @@ enum CombustionProductType: UInt8 {
 // TODO: update this with device type when feature/ble-network brabch
 // is merged into probe firmware project
 
-struct AdvertisingData {
-    let type: CombustionProductType
-    let serialNumber: UInt32
-    let temperatures: ProbeTemperatures
+public struct AdvertisingData {
+    public let type: CombustionProductType
+    public let serialNumber: UInt32
+    public let temperatures: ProbeTemperatures
 
     private enum Constants {
         // Locations of data in advertising packets

@@ -9,7 +9,7 @@
 import Foundation
 
 /// Contains most recent probe temperatures, in Celcius.
-struct ProbeTemperatures: Equatable {
+public struct ProbeTemperatures: Equatable {
     /// Array of probe temperatures.
     let values: [Double]
 }

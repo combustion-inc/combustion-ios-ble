@@ -8,7 +8,7 @@
 import Foundation
 import OrderedCollections
 
-class ProbeTemperatureLog : ObservableObject {
+public class ProbeTemperatureLog : ObservableObject {
     
     /// Buffer of logged data points
     private var dataPointsDict : OrderedDictionary<UInt32, LoggedProbeDataPoint>

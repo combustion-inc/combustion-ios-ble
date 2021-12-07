@@ -8,9 +8,9 @@
 
 import Foundation
 
-struct LoggedProbeDataPoint: Equatable {
-    let sequenceNum: UInt32
-    let temperatures: ProbeTemperatures
+public struct LoggedProbeDataPoint: Equatable {
+    public let sequenceNum: UInt32
+    public let temperatures: ProbeTemperatures
 }
 
 /// Record representing a logged temperature data point retrieved from a probe
@@ -53,11 +53,11 @@ extension LoggedProbeDataPoint {
 }
 
 extension LoggedProbeDataPoint: Hashable {
-    static func == (lhs: LoggedProbeDataPoint, rhs: LoggedProbeDataPoint) -> Bool {
+    public static func == (lhs: LoggedProbeDataPoint, rhs: LoggedProbeDataPoint) -> Bool {
         return lhs.sequenceNum == rhs.sequenceNum
     }
 
-    func hash(into hasher: inout Hasher) {
+    public func hash(into hasher: inout Hasher) {
         hasher.combine(sequenceNum)
     }
 }

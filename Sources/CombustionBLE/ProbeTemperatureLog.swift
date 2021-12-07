@@ -14,7 +14,7 @@ public class ProbeTemperatureLog : ObservableObject {
     private var dataPointsDict : OrderedDictionary<UInt32, LoggedProbeDataPoint>
     
     /// Ordered array of data points in the buffer
-    var dataPoints : [LoggedProbeDataPoint] {
+    public var dataPoints : [LoggedProbeDataPoint] {
         get {
             return Array(dataPointsDict.values)
         }

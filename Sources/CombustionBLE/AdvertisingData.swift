@@ -8,18 +8,21 @@
 
 import Foundation
 
+/// Enumeration of Combustion, Inc. product types.
 public enum CombustionProductType: UInt8 {
     case UNKNOWN = 0x00
     case PROBE = 0x01
     case NODE = 0x02
 }
 
-// TODO: update this with device type when feature/ble-network brabch
-// is merged into probe firmware project
 
+/// Struct containing advertising data received from device.
 public struct AdvertisingData {
+    /// Type of Combustion product
     public let type: CombustionProductType
+    /// Product serial number
     public let serialNumber: UInt32
+    /// Latest temperatures read by device
     public let temperatures: ProbeTemperatures
 
     private enum Constants {

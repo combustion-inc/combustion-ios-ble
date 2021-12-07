@@ -9,7 +9,7 @@
 import Foundation
 
 /// Struct containing info about a thermometer device.
-struct Device {
+public struct Device {
     
     /// Enumeration representing the various connection states of the device
     enum ConnectionState : CaseIterable {
@@ -171,12 +171,12 @@ extension Device {
     }
 }
 
-extension Device: Hashable {    
-    static func == (lhs: Device, rhs: Device) -> Bool {
+extension Device: Hashable {
+    public static func == (lhs: Device, rhs: Device) -> Bool {
         return lhs.id == rhs.id
     }
 
-    func hash(into hasher: inout Hasher) {
+    public func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
 }

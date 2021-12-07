@@ -11,7 +11,7 @@ import SwiftUI
 
 /// Singleton that provides list of detected Devices
 /// (either via Bluetooth or from a list in the Cloud)
-class DeviceManager : ObservableObject {
+public class DeviceManager : ObservableObject {
     /// Singleton accessor for class
     static let shared = DeviceManager()
     

@@ -13,11 +13,11 @@ import SwiftUI
 /// (either via Bluetooth or from a list in the Cloud)
 public class DeviceManager : ObservableObject {
     /// Singleton accessor for class
-    static let shared = DeviceManager()
+    public static let shared = DeviceManager()
     
     /// Dictionary of discovered devices.
     /// key = string representation of device identifier (UUID)
-    @Published var devices : [String: Device] = [String: Device]()
+    @Published public var devices : [String: Device] = [String: Device]()
     
     /// Private initializer to enforce singleton
     private init() {

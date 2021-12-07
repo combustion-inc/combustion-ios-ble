@@ -12,46 +12,60 @@ import Foundation
 public struct Device {
     
     /// Enumeration representing the various connection states of the device
-    enum ConnectionState : CaseIterable {
-        case disconnected, connecting, connected, failed
+    public enum ConnectionState : CaseIterable {
+        /// App is currently disconnected from device
+        case disconnected
+        /// App is attempting to connect via BLE to device
+        case connecting
+        /// App is currently connected via BLE to device
+        case connected
+        /// Attempt to connect to device failed
+        case failed
     }
     
-    // String representation of device identifier (UUID)
-    private(set) var id: String
+    /// String representation of device identifier (UUID)
+    public private(set) var id: String
     
-    private(set) var serialNumber: UInt32
-    private(set) var connectionState: ConnectionState = .disconnected
-    private(set) var rssi : Int = Int.min
-    private(set) var batteryLevel : Float = 0.0
-    private(set) var currentTemperatures: ProbeTemperatures?
-    private(set) var status: DeviceStatus?
+    /// Device serial number
+    public private(set) var serialNumber: UInt32
+    /// Current connection state of device
+    public private(set) var connectionState: ConnectionState = .disconnected
+    /// Signal strength to device
+    public private(set) var rssi : Int = Int.min
+    public private(set) var batteryLevel : Float = 0.0
+    public private(set) var currentTemperatures: ProbeTemperatures?
+    public private(set) var status: DeviceStatus?
     
     /// Tracks whether the app should attempt to maintain a connection to the probe.
-    private(set) var maintainingConnection = false
+    public private(set) var maintainingConnection = false
     
     /// Tracks whether the data has gone stale (no new data in some time)
-    private(set) var stale = false
+    public private(set) var stale = false
     
     /// Tracks whether all logs on probe have been synced to the app
-    private(set) var logsUpToDate = false
+    public private(set) var logsUpToDate = false
     
+    /// Time at which
     private var lastUpdateTime = Date()
     
-    var name: String {
+    /// Pretty-formatted device name
+    public var name: String {
         return String(format: "%08X", serialNumber)
     }
     
-    var macAddress: UInt64 {
+    /// Integer representation of device MAC address
+    public var macAddress: UInt64 {
         return (UInt64(serialNumber) * 10000 + 6912) | 0xC00000000000
     }
     
-    var macAddressString: String {
+    /// String representation of device MAC address
+    public var macAddressString: String {
         print("macAddress", macAddress)
         return String(format: "%012llX", macAddress)
     }
        
     /// Stores historical values of probe temperatures
-    private(set) var temperatureLog : ProbeTemperatureLog = ProbeTemperatureLog()
+    public private(set) var temperatureLog : ProbeTemperatureLog = ProbeTemperatureLog()
 }
     
 extension Device {
@@ -68,7 +82,7 @@ extension Device {
     }
     
     /// Attempt to connect to the device.
-    mutating func connect() {
+    public mutating func connect() {
         // Mark that we should maintain a connection to this device.
         // TODO - this doesn't seem to be propagating back to the UI??
         maintainingConnection = true
@@ -82,7 +96,7 @@ extension Device {
     }
     
     /// Mark that app should no longer attempt to maintain a connection to this device.
-    mutating func disconnect() {
+    public mutating func disconnect() {
         // No longer attempt to maintain a connection to this device
         maintainingConnection = false
         
@@ -159,7 +173,7 @@ extension Device {
     /// - param index: Index of temperature value (0-7)
     /// - param celsius: True for celsius, false for fahrenheit
     /// - returns: Requested temperature value
-    func currentTemperature(index: Int, celsius: Bool) -> Double? {
+    public func currentTemperature(index: Int, celsius: Bool) -> Double? {
         var result : Double?
         result = currentTemperatures?.values[index]
         if result != nil && celsius == false {

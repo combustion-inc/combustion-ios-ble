@@ -47,13 +47,13 @@ public class DeviceManager : ObservableObject {
     
     /// Returns list of devices.
     /// - returns: List of all known devices.
-    func getDevices() -> [Device] {
+    public func getDevices() -> [Device] {
         return Array(devices.values)
     }
     
     /// Returns the nearest device.
     /// - returns: Nearest device, if any.
-    func getNearestDevice() -> Device? {
+    public func getNearestDevice() -> Device? {
         return getDevices().max{ $0.rssi < $1.rssi }
     }
     

@@ -11,7 +11,7 @@ import Foundation
 /// Contains most recent probe temperatures, in Celcius.
 public struct ProbeTemperatures: Equatable {
     /// Array of probe temperatures.
-    let values: [Double]
+    public let values: [Double]
 }
 
 extension ProbeTemperatures {

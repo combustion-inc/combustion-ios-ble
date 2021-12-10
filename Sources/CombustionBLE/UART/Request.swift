@@ -1,3 +1,6 @@
+//  Request.swift
+
+/*--
 MIT License
 
 Copyright (c) 2021 Combustion Inc.
@@ -19,3 +22,35 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+--*/
+
+import Foundation
+
+/// Class representing a Combustion BLE UART request.
+class Request {
+    /// Length of header component of message.
+    static let HEADER_SIZE = 6
+    
+    /// Contains message data.
+    var data: Data
+    
+    /// Constructor for Request object.
+    /// - parameter payloadLength: Length of payload of message
+    /// - parameter type: Type of message
+    init(payloadLength: UInt8, type: MessageType) {
+        let messageSize = Request.HEADER_SIZE + Int(payloadLength)
+        data = Data(repeating: 0, count: messageSize)
+        
+        // Sync Bytes { 0xCA, 0xFE }
+        data[0] = 0xCA
+        data[1] = 0xFE
+        
+        // CRC : TODO
+        
+        // Message type
+        data[4] = type.rawValue
+        
+        // Payload length
+        data[5] = payloadLength
+    }
+}

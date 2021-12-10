@@ -4,6 +4,8 @@
 
 This package enables communication with Combustion Inc. temperature probes probes. It uses Apple's Combine framework, subclassing `ObservableObject` to enable reactive UI development in SwiftUI (and is compatible with Storyboard approaches as well).
 
+Discovered probes show up as instances of the `Probe` class in the `DeviceManager.shared.probes` dictionary, and their temperatures and other data are continually updated by incoming BLE advertising messages. Additionally, calling `connect()` on an individual `Probe` object will cause the framework to maintain a connection to that device, and will automatically download all logged temperature records on the device.
+
 ## Example project
 
 An example iOS app illustrating the use of this framework is available in the [combustion-ios-example](https://github.com/combustion-inc/combustion-ios-example) repository.
@@ -143,3 +145,7 @@ The framework will provide functions allowing a Probe's numeric ID (1-8) to be c
 ### Firmware update
 
 The framework will provide methods for updating a Probe's firmware with a signed firmware image.
+
+### Instant Read
+
+The framework will include additional features for differentiating Instant Read messages from logged temperatures.

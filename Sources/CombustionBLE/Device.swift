@@ -58,7 +58,7 @@ public class Device : ObservableObject {
     @Published public internal(set) var stale = false
     
     /// Time at which device was last updated
-    private var lastUpdateTime = Date()
+    internal var lastUpdateTime = Date()
     
     public init(id: UUID) {
         self.id = id.uuidString

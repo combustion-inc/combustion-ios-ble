@@ -39,9 +39,6 @@ public class Probe : Device {
     /// Tracks whether all logs on probe have been synced to the app
     @Published public private(set) var logsUpToDate = false
     
-    /// Time at which
-    private var lastUpdateTime = Date()
-    
     /// Pretty-formatted device name
     public var name: String {
         return String(format: "%08X", serialNumber)
@@ -54,7 +51,6 @@ public class Probe : Device {
     
     /// String representation of device MAC address
     public var macAddressString: String {
-        print("macAddress", macAddress)
         return String(format: "%012llX", macAddress)
     }
        

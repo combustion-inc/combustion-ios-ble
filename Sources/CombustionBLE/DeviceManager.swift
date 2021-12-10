@@ -42,7 +42,12 @@ public class DeviceManager : ObservableObject {
     /// Dictionary of discovered probes (subset of devices).
     /// key = string representation of device identifier (UUID)
     public var probes : [String: Probe] {
-        return devices.filter { $0.value is Probe }.mapValues { $0 as! Probe }
+        get {
+            devices.filter { $0.value is Probe }.mapValues { $0 as! Probe }
+        }
+        set {
+            devices = newValue
+        }
     }
     
     /// Private initializer to enforce singleton

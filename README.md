@@ -6,6 +6,16 @@ This package enables communication with Combustion Inc. temperature probes. It u
 
 Discovered probes show up as instances of the `Probe` class in the `DeviceManager.shared.probes` dictionary, and their temperatures and other data are continually updated by incoming BLE advertising messages. Additionally, calling `connect()` on an individual `Probe` object will cause the framework to maintain a connection to that device, and will automatically download all logged temperature records on the device.
 
+## About Combustion Inc.
+
+We build nice things that make cooking more enjoyable. Like a thermometer that's wireless and oven-safe. And a kitchen timer that has an easy-to-read display.
+
+<img src="https://combustion.inc/assets/img/hero/ribs-narrow-medium.jp2" alt="Probe and Timer" width="400"/>
+
+Visit [www.combustion.inc](https://www.combustion.inc) to sign up and get probes when they're available in 2022.
+
+Please email [hello@combustion.inc](mailto:hello@combustion.inc) for OEM partnership opportunities or other questions.
+
 ## Example project
 
 An example iOS app illustrating the use of this framework is available in the [combustion-ios-example](https://github.com/combustion-inc/combustion-ios-example) repository.

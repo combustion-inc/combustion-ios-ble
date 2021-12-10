@@ -38,6 +38,13 @@ public class DeviceManager : ObservableObject {
     /// key = string representation of device identifier (UUID)
     @Published public var devices : [String: Device] = [String: Device]()
     
+    
+    /// Dictionary of discovered probes (subset of devices).
+    /// key = string representation of device identifier (UUID)
+    public var probes : [String: Probe] {
+        return devices.filter { $0.value is Probe }.mapValues { $0 as! Probe }
+    }
+    
     /// Private initializer to enforce singleton
     private init() {
         // Force instantiation of BleManager
@@ -62,6 +69,18 @@ public class DeviceManager : ObservableObject {
     /// Removes all found devices from the list.
     func clearDevices() {
         devices.removeAll(keepingCapacity: false)
+    }
+    
+    /// Returns list of probes
+    /// - returns: List of all known probes.
+    public func getProbes() -> [Probe] {
+        return Array(probes.values)
+    }
+    
+    /// Returns the nearest probe.
+    /// - returns: Nearest probe, if any.
+    public func getNearestProbe() -> Probe? {
+        return getProbes().max{ $0.rssi < $1.rssi }
     }
     
     /// Returns list of devices.
@@ -118,21 +137,27 @@ extension DeviceManager : BleManagerDelegate {
     
     func updateDeviceWithStatus(id: UUID, status: DeviceStatus) {
         // print("New device status ", status)
-        devices[id.uuidString]?.updateDeviceStatus(deviceStatus: status)
+        if let probe = devices[id.uuidString] as? Probe {
+            probe.updateProbeStatus(deviceStatus: status)
+        }
     }
     
     func updateDeviceWithLogResponse(id: UUID, logResponse: LogResponse) {
-        devices[id.uuidString]?.processLogResponse(logResponse: logResponse)
+        if let probe = devices[id.uuidString] as? Probe {
+            probe.processLogResponse(logResponse: logResponse)
+        }
     }
     
     func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, id: UUID) {
         if devices[id.uuidString] != nil {
-            devices[id.uuidString]?.updateWithAdvertising(advertising, RSSI: rssi)
+            if let probe = devices[id.uuidString] as? Probe {
+                probe.updateWithAdvertising(advertising, RSSI: rssi)
             // print("Updated device: \(devices[id.uuidString]?.serialNumber) : rssi = \(rssi)")
+            }
         }
         else {
             // print("Adding New Device: \(advertising.serialNumber)")
-            let device = Device(advertising, RSSI: rssi, id: id)
+            let device = Probe(advertising, RSSI: rssi, id: id)
             addDevice(device: device)
         }
     }

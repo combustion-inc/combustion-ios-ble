@@ -1,5 +1,5 @@
 //  Device.swift
-//  Representation of a Probe Device
+//  Representation of a Combustion BLE Device
 
 /*--
 MIT License
@@ -28,7 +28,7 @@ SOFTWARE.
 import Foundation
 
 /// Struct containing info about a thermometer device.
-public struct Device {
+public class Device : ObservableObject {
     
     /// Enumeration representing the various connection states of the device
     public enum ConnectionState : CaseIterable {
@@ -45,46 +45,24 @@ public struct Device {
     /// String representation of device identifier (UUID)
     public private(set) var id: String
     
-    /// Device serial number
-    public private(set) var serialNumber: UInt32
     /// Current connection state of device
-    public private(set) var connectionState: ConnectionState = .disconnected
-    /// Signal strength to device
-    public private(set) var rssi : Int = Int.min
-    public private(set) var batteryLevel : Float = 0.0
-    public private(set) var currentTemperatures: ProbeTemperatures?
-    public private(set) var status: DeviceStatus?
+    public internal(set) var connectionState: ConnectionState = .disconnected
     
-    /// Tracks whether the app should attempt to maintain a connection to the probe.
-    public private(set) var maintainingConnection = false
+    /// Signal strength to device
+    public internal(set) var rssi : Int = Int.min
+    
+    /// Tracks whether the app should attempt to maintain a connection to the device.
+    public internal(set) var maintainingConnection = false
     
     /// Tracks whether the data has gone stale (no new data in some time)
-    public private(set) var stale = false
+    public internal(set) var stale = false
     
-    /// Tracks whether all logs on probe have been synced to the app
-    public private(set) var logsUpToDate = false
-    
-    /// Time at which
+    /// Time at which device was last updated
     private var lastUpdateTime = Date()
     
-    /// Pretty-formatted device name
-    public var name: String {
-        return String(format: "%08X", serialNumber)
+    public init(id: UUID) {
+        self.id = id.uuidString
     }
-    
-    /// Integer representation of device MAC address
-    public var macAddress: UInt64 {
-        return (UInt64(serialNumber) * 10000 + 6912) | 0xC00000000000
-    }
-    
-    /// String representation of device MAC address
-    public var macAddressString: String {
-        print("macAddress", macAddress)
-        return String(format: "%012llX", macAddress)
-    }
-       
-    /// Stores historical values of probe temperatures
-    public private(set) var temperatureLog : ProbeTemperatureLog = ProbeTemperatureLog()
 }
     
 extension Device {
@@ -94,14 +72,8 @@ extension Device {
         static let STALE_TIMEOUT = 15.0
     }
     
-    public init(_ advertising: AdvertisingData, RSSI: NSNumber, id: UUID) {
-        self.serialNumber = advertising.serialNumber
-        self.id = id.uuidString
-        updateWithAdvertising(advertising, RSSI: RSSI)
-    }
-    
     /// Attempt to connect to the device.
-    public mutating func connect() {
+    public func connect() {
         // Mark that we should maintain a connection to this device.
         // TODO - this doesn't seem to be propagating back to the UI??
         maintainingConnection = true
@@ -115,7 +87,7 @@ extension Device {
     }
     
     /// Mark that app should no longer attempt to maintain a connection to this device.
-    public mutating func disconnect() {
+    public func disconnect() {
         // No longer attempt to maintain a connection to this device
         maintainingConnection = false
         
@@ -126,7 +98,7 @@ extension Device {
         DeviceManager.shared.devices[self.id] = self
     }
     
-    mutating func updateConnectionState(_ state: ConnectionState) {
+    func updateConnectionState(_ state: ConnectionState) {
         connectionState = state
         
         // If we were disconnected and we should be maintaining a connection, attempt to reconnect.
@@ -135,74 +107,12 @@ extension Device {
         }
     }
     
-    mutating func updateWithAdvertising(_ advertising: AdvertisingData, RSSI: NSNumber) {
-        currentTemperatures = advertising.temperatures
-        rssi = RSSI.intValue
-        
-        lastUpdateTime = Date()
-    }
-    
-    mutating func updateDeviceStale() {
+    func updateDeviceStale() {
         stale = Date().timeIntervalSince(lastUpdateTime) > Constants.STALE_TIMEOUT
     }
     
-    /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.
-    mutating func updateDeviceStatus(deviceStatus: DeviceStatus) {
-        status = deviceStatus
-        
-        // Log the temperature data point
-        temperatureLog.appendDataPoint(dataPoint:
-                                        LoggedProbeDataPoint.fromDeviceStatus(deviceStatus:
-                                                                                deviceStatus))
-        
-        // Check for missing records
-        if let missingSequence = temperatureLog.firstMissingIndex(sequenceRangeStart: deviceStatus.minSequenceNumber,
-                                                                  sequenceRangeEnd: deviceStatus.maxSequenceNumber) {
-            // Track that the app is not up to date with the probe
-            logsUpToDate = false
-            
-            // Request missing records
-            DeviceManager.shared.requestLogsFrom(self,
-                                                 minSequence: missingSequence,
-                                                 maxSequence: deviceStatus.maxSequenceNumber)
-            print("Requesting missing records starting with \(missingSequence)")
-        } else {
-            // If there were no gaps, mark that the logs are up to date
-            logsUpToDate = true
-        }
-        
-        print("Updating status! Temperature log size: \(temperatureLog.dataPoints.count)")
-        
-        lastUpdateTime = Date()
-    }
-    
-    /// Processes an incoming log response (response to a manual request for prior messages)
-    mutating func processLogResponse(logResponse: LogResponse) {
-        temperatureLog.insertDataPoint(newDataPoint:
-                                        LoggedProbeDataPoint.fromLogResponse(logResponse:
-                                                                                logResponse))
-    }
-    
-    
-    ///////////////////////
-    // Current value functions
-    ///////////////////////
-    
-    /// Gets the current temperature of the sensor at the specified index.
-    /// - param index: Index of temperature value (0-7)
-    /// - param celsius: True for celsius, false for fahrenheit
-    /// - returns: Requested temperature value
-    public func currentTemperature(index: Int, celsius: Bool) -> Double? {
-        var result : Double?
-        result = currentTemperatures?.values[index]
-        if result != nil && celsius == false {
-            // Convert to fahrenheit
-            result = fahrenheit(celsius: result!)
-        }
-                    
-        return result
-    }
 }
+
 
 extension Device: Hashable {
     public static func == (lhs: Device, rhs: Device) -> Bool {

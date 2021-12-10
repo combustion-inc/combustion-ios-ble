@@ -46,16 +46,16 @@ public class Device : ObservableObject {
     public private(set) var id: String
     
     /// Current connection state of device
-    public internal(set) var connectionState: ConnectionState = .disconnected
+    @Published public internal(set) var connectionState: ConnectionState = .disconnected
     
     /// Signal strength to device
-    public internal(set) var rssi : Int = Int.min
+    @Published public internal(set) var rssi : Int = Int.min
     
     /// Tracks whether the app should attempt to maintain a connection to the device.
-    public internal(set) var maintainingConnection = false
+    @Published public internal(set) var maintainingConnection = false
     
     /// Tracks whether the data has gone stale (no new data in some time)
-    public internal(set) var stale = false
+    @Published public internal(set) var stale = false
     
     /// Time at which device was last updated
     private var lastUpdateTime = Date()

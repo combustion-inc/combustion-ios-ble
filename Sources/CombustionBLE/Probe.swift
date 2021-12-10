@@ -31,13 +31,13 @@ import Foundation
 public class Probe : Device {
     
     /// Probe serial number
-    public private(set) var serialNumber: UInt32
-    public private(set) var batteryLevel : Float = 0.0
-    public private(set) var currentTemperatures: ProbeTemperatures?
-    public private(set) var status: DeviceStatus?
+    @Published public private(set) var serialNumber: UInt32
+    @Published public private(set) var batteryLevel : Float = 0.0
+    @Published public private(set) var currentTemperatures: ProbeTemperatures?
+    @Published public private(set) var status: DeviceStatus?
     
     /// Tracks whether all logs on probe have been synced to the app
-    public private(set) var logsUpToDate = false
+    @Published public private(set) var logsUpToDate = false
     
     /// Time at which
     private var lastUpdateTime = Date()

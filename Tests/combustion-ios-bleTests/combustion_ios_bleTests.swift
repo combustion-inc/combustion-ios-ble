@@ -1,3 +1,4 @@
+/*--
 MIT License
 
 Copyright (c) 2021 Combustion Inc.
@@ -19,3 +20,16 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+--*/
+
+import XCTest
+@testable import combustion_ios_ble
+
+final class combustion_ios_bleTests: XCTestCase {
+    func testExample() throws {
+        // This is an example of a functional test case.
+        // Use XCTAssert and related functions to verify your tests produce the correct
+        // results.
+        XCTAssertEqual(combustion_ios_ble().text, "Hello, World!")
+    }
+}

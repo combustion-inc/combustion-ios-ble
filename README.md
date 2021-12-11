@@ -1,20 +1,30 @@
-# Combustion Inc. Temperature Probe BLE Library
+# Combustion Inc. Predictive Thermometer BLE Library
 
 ## Overview
 
-This package enables communication with Combustion Inc. temperature probes. It uses Apple's Combine framework, subclassing `ObservableObject` to enable reactive UI development in SwiftUI (and is compatible with Storyboard approaches as well).
+This package enables communication with Combustion Inc. Predictive Thermometers. It uses Apple's Combine framework, subclassing `ObservableObject` to enable reactive UI development in SwiftUI (and is compatible with Storyboard approaches as well).
 
 Discovered probes show up as instances of the `Probe` class in the `DeviceManager.shared.probes` dictionary, and their temperatures and other data are continually updated by incoming BLE advertising messages. Additionally, calling `connect()` on an individual `Probe` object will cause the framework to maintain a connection to that device, and will automatically download all logged temperature records on the device.
 
 ## About Combustion Inc.
 
-We build nice things that make cooking more enjoyable. Like a thermometer that's wireless and oven-safe. And a kitchen timer that has an easy-to-read display.
+We build nice things that make cooking more enjoyable. Like a thermometer that's wireless, oven-safe, and uses machine-learning to do what no other thermometer can: predict your food’s cooking and resting times with uncanny accuracy. 
+
+Its eight temperature sensors measure the temp outside and inside the food, in the center and at the surface, and nearly everywhere in between. So you know what’s really happening in and around your food. There's a display Timer that's big and bold—legible even through tears of joy and chopped onions—and a mobile app. 
+
+Or you can create your own mobile app to work with the Predictive Thermometer using this open source library.
 
 <img src="https://combustion.inc/assets/img/product_rendering/probe-and-timer-large.jp2" alt="Probe and Timer" width="400"/>
 
-Visit [www.combustion.inc](https://www.combustion.inc) to sign up and get probes when they're available in 2022.
+Visit [www.combustion.inc](https://www.combustion.inc) to sign up to be notified when they're available to order in early 2022.
 
-Please email [hello@combustion.inc](mailto:hello@combustion.inc) for OEM partnership opportunities or other questions.
+Head on over to our [FAQ] (https://combustion.inc/faq.html) for more product details.
+
+Ask us a quick question on [Twitter] (https://twitter.com/intent/tweet?screen_name=inccombustion).
+
+Email [hello@combustion.inc](mailto:hello@combustion.inc) for OEM partnership information.
+
+
 
 ## Example project
 

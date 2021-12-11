@@ -10,7 +10,7 @@ Discovered probes show up as instances of the `Probe` class in the `DeviceManage
 
 We build nice things that make cooking more enjoyable. Like a thermometer that's wireless and oven-safe. And a kitchen timer that has an easy-to-read display.
 
-<img src="https://combustion.inc/assets/img/hero/ribs-narrow-medium.jp2" alt="Probe and Timer" width="400"/>
+<img src="https://combustion.inc/assets/img/product_rendering/probe-and-timer-large.jp2" alt="Probe and Timer" width="400"/>
 
 Visit [www.combustion.inc](https://www.combustion.inc) to sign up and get probes when they're available in 2022.
 

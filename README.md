@@ -1,4 +1,4 @@
-# Combustion Inc. Predictive Thermometer BLE Library
+# BLE Communication Library for Combustion Inc.
 
 ## Overview
 

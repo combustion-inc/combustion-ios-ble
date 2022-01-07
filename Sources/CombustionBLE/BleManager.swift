@@ -35,6 +35,7 @@ protocol BleManagerDelegate: AnyObject {
     func updateDeviceWithStatus(id: UUID, status: DeviceStatus)
     func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, id: UUID)
     func updateDeviceWithLogResponse(id: UUID, logResponse: LogResponse)
+    func updateDeviceFwVersion(id: UUID, fwVersion: String)
 }
 
 /// Manages Core Bluetooth interface with the rest of the app.
@@ -57,6 +58,7 @@ class BleManager : NSObject {
         static let NEEDLE_SERVICE       = CBUUID(string: "00000100-CAAB-3792-3D44-97AE51C1407A")
         static let UART_SERVICE         = CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
         
+        static let FW_VERSION_CHAR      = CBUUID(string: "2a26")
         static let DEVICE_STATUS_CHAR   = CBUUID(string: "00000101-CAAB-3792-3D44-97AE51C1407A")
         static let UART_RX_CHAR         = CBUUID(string: "6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
         static let UART_TX_CHAR         = CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
@@ -85,8 +87,6 @@ class BleManager : NSObject {
     }
     
     func sendRequest(id: String, request: Request) {
-        let hexString = request.data.reduce("") {$0 + String(format: "%02x", $1)}
-        print("send request", hexString)
         if let connectionPeripheral = getConnectedPeripheral(id: id) {
             connectionPeripheral.writeValue(request.data, for: uartCharacteristic, type: .withoutResponse)
         }
@@ -205,7 +205,6 @@ extension BleManager: CBPeripheralDelegate {
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
-        // print("\(#function)")
         guard let characteristics = service.characteristics else { return }
         
         for characteristic in characteristics {
@@ -214,8 +213,9 @@ extension BleManager: CBPeripheralDelegate {
             if(characteristic.uuid == Constants.UART_RX_CHAR) {
                 uartCharacteristic = characteristic
             } else if(characteristic.uuid == Constants.DEVICE_STATUS_CHAR) {
-                // print("Discovered Device status characteristic")
                 deviceStatusCharacteristic = characteristic
+            } else if(characteristic.uuid == Constants.FW_VERSION_CHAR) {
+                peripheral.readValue(for: characteristic)
             }
             
             peripheral.discoverDescriptors(for: characteristic)
@@ -228,6 +228,7 @@ extension BleManager: CBPeripheralDelegate {
     
     public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
         // print("\(#function): \(characteristic)")
+        
         // Always enable notifications for Device status characteristic
         if(characteristic.uuid == Constants.UART_TX_CHAR) {
             peripheral.setNotifyValue(true, for: deviceStatusCharacteristic)
@@ -236,12 +237,9 @@ extension BleManager: CBPeripheralDelegate {
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        guard let data = characteristic.value else {
-            // print("didUpdateValueFor: \(characteristic): data is nil")
-            return
-        }
+        guard let data = characteristic.value else { return }
         
-        // print("didUpdateValueFor: \(characteristic): data size = \(data.count)")
+//         print("didUpdateValueFor: \(characteristic): data size = \(data.count)")
         
         if characteristic.uuid == Constants.UART_TX_CHAR {
             if let logResponse = Response.fromData(data) as? LogResponse {
@@ -257,6 +255,10 @@ extension BleManager: CBPeripheralDelegate {
             if let status = DeviceStatus(fromData: data) {
                 delegate?.updateDeviceWithStatus(id: peripheral.identifier, status: status)
             }
+        }
+        else if characteristic.uuid == Constants.FW_VERSION_CHAR {
+            let fwVersion = String(decoding: data, as: UTF8.self)
+            delegate?.updateDeviceFwVersion(id: peripheral.identifier, fwVersion: fwVersion)
         }
         else {
             // print("didUpdateValueFor: \(characteristic): unknown service")

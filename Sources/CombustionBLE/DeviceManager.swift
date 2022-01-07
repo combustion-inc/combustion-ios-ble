@@ -166,4 +166,10 @@ extension DeviceManager : BleManagerDelegate {
             addDevice(device: device)
         }
     }
+    
+    func updateDeviceFwVersion(id: UUID, fwVersion: String) {
+        if let device = devices[id.uuidString]  {
+            device.firmareVersion = fwVersion
+        }
+    }
 }

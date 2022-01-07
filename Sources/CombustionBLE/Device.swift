@@ -45,6 +45,9 @@ public class Device : ObservableObject {
     /// String representation of device identifier (UUID)
     public private(set) var id: String
     
+    /// Device firmware version
+    public internal(set) var firmareVersion: String?
+    
     /// Current connection state of device
     @Published public internal(set) var connectionState: ConnectionState = .disconnected
     

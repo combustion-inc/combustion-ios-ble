@@ -120,11 +120,10 @@ extension Probe {
     /// - param celsius: True for celsius, false for fahrenheit
     /// - returns: Requested temperature value
     public func currentTemperature(index: Int, celsius: Bool) -> Double? {
-        var result : Double?
-        result = currentTemperatures?.values[index]
-        if result != nil && celsius == false {
+        let result = currentTemperatures?.values[index]
+        if let result = result, celsius == false {
             // Convert to fahrenheit
-            result = fahrenheit(celsius: result!)
+            return fahrenheit(celsius: result)
         }
                     
         return result

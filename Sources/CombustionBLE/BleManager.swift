@@ -47,9 +47,8 @@ class BleManager : NSObject {
     
     private(set) var peripherals = Set<CBPeripheral>()
     
-    // TODO - handle connection with multiple peripherals.
-    private var uartCharacteristic: CBCharacteristic!
-    private var deviceStatusCharacteristic: CBCharacteristic!
+    private var uartCharacteristics: [String: CBCharacteristic] = [:]
+    private var deviceStatusCharacteristics: [String: CBCharacteristic] = [:]
     
     private var manager: CBCentralManager!
     
@@ -64,31 +63,21 @@ class BleManager : NSObject {
         static let UART_TX_CHAR         = CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
     }
     
-    
-    /// Called by the app to force instantiation of the singleton.
-    func begin() {
-    }
-    
-    
     /// Private initializer to enforce singleton
     private override init() {
         super.init()
-        
-        print("BleManager initialized.")
         
         manager = CBCentralManager(delegate: self, queue: nil)
     }
     
     private func startScanning() {
-        // print("\(#function)")
-        
         manager.scanForPeripherals(withServices: [Constants.NEEDLE_SERVICE],
                                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
     }
     
     func sendRequest(id: String, request: Request) {
-        if let connectionPeripheral = getConnectedPeripheral(id: id) {
-            connectionPeripheral.writeValue(request.data, for: uartCharacteristic, type: .withoutResponse)
+        if let connectionPeripheral = getConnectedPeripheral(id: id), let uartChar = uartCharacteristics[id] {
+            connectionPeripheral.writeValue(request.data, for: uartChar, type: .withoutResponse)
         }
     }
     
@@ -211,9 +200,9 @@ extension BleManager: CBPeripheralDelegate {
             // print("discovered characteristic : \(characteristic.uuid) : \(characteristic.uuid.uuidString) :\(characteristic.descriptors)")
             
             if(characteristic.uuid == Constants.UART_RX_CHAR) {
-                uartCharacteristic = characteristic
+                uartCharacteristics[peripheral.identifier.uuidString] = characteristic
             } else if(characteristic.uuid == Constants.DEVICE_STATUS_CHAR) {
-                deviceStatusCharacteristic = characteristic
+                deviceStatusCharacteristics[peripheral.identifier.uuidString] = characteristic
             } else if(characteristic.uuid == Constants.FW_VERSION_CHAR) {
                 peripheral.readValue(for: characteristic)
             }
@@ -230,8 +219,9 @@ extension BleManager: CBPeripheralDelegate {
         // print("\(#function): \(characteristic)")
         
         // Always enable notifications for Device status characteristic
-        if(characteristic.uuid == Constants.UART_TX_CHAR) {
-            peripheral.setNotifyValue(true, for: deviceStatusCharacteristic)
+        if(characteristic.uuid == Constants.UART_TX_CHAR),
+            let statusChar = deviceStatusCharacteristics[peripheral.identifier.uuidString]  {
+            peripheral.setNotifyValue(true, for: statusChar)
         }
         
     }

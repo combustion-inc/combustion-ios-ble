@@ -52,8 +52,6 @@ public class DeviceManager : ObservableObject {
     
     /// Private initializer to enforce singleton
     private init() {
-        // Force instantiation of BleManager
-        BleManager.shared.begin()
         BleManager.shared.delegate = self
         
         // Start a timer to set stale flag on devices

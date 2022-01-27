@@ -84,9 +84,6 @@ extension Device {
         if(connectionState != .connected) {
             DeviceManager.shared.connectToDevice(self)
         }
-        
-        // Update the DeviceManager's record for this device
-        DeviceManager.shared.devices[self.id] = self
     }
     
     /// Mark that app should no longer attempt to maintain a connection to this device.
@@ -96,9 +93,6 @@ extension Device {
         
         // Disconnect if connected
         DeviceManager.shared.disconnectFromDevice(self)
-        
-        // Update the DeviceManager's record for this device
-        DeviceManager.shared.devices[self.id] = self
     }
     
     func updateConnectionState(_ state: ConnectionState) {

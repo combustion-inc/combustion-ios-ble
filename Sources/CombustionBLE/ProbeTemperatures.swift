@@ -83,4 +83,19 @@ extension ProbeTemperatures {
         ]
         return ProbeTemperatures(values: temperatures)
     }
+    
+    // Generates randome data for Simulated Probe
+    static func withRandomData() -> ProbeTemperatures {
+        let temperatures : [Double] = [
+            Double.random(in: 45.0 ..< 60.0),
+            Double.random(in: 45.0 ..< 60.0),
+            Double.random(in: 45.0 ..< 60.0),
+            Double.random(in: 45.0 ..< 60.0),
+            Double.random(in: 45.0 ..< 60.0),
+            Double.random(in: 45.0 ..< 60.0),
+            Double.random(in: 45.0 ..< 60.0),
+            Double.random(in: 45.0 ..< 60.0),
+        ]
+        return ProbeTemperatures(values: temperatures)
+    }
 }

@@ -98,7 +98,7 @@ extension Probe {
             logsUpToDate = true
         }
         
-        print("Updating status! Temperature log size: \(temperatureLog.dataPoints.count)")
+//        print("Updating status! Temperature log size: \(temperatureLog.dataPoints.count)")
         
         lastUpdateTime = Date()
     }

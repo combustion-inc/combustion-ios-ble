@@ -78,7 +78,6 @@ extension AdvertisingData {
         
         serialNumber = value
         
-        
         // Temperatures (8 13-bit) values
         let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
         temperatures = ProbeTemperatures.fromRawData(data: tempData)
@@ -88,9 +87,16 @@ extension AdvertisingData {
 
 extension AdvertisingData {
     // Fake data initializer for previews
-    public init?(fakeSerial: UInt32) {
+    public init(fakeSerial: UInt32) {
         type = .PROBE
         temperatures = ProbeTemperatures.withFakeData()
+        serialNumber = fakeSerial
+    }
+    
+    // Fake data initializer for Simulated Probe
+    public init(fakeSerial: UInt32, fakeTemperatures: ProbeTemperatures) {
+        type = .PROBE
+        temperatures = fakeTemperatures
         serialNumber = fakeSerial
     }
 }

@@ -36,7 +36,7 @@ public class DeviceManager : ObservableObject {
     
     /// Dictionary of discovered devices.
     /// key = string representation of device identifier (UUID)
-    @Published public var devices : [String: Device] = [String: Device]()
+    @Published public private(set) var devices : [String: Device] = [String: Device]()
     
     
     /// Dictionary of discovered probes (subset of devices).
@@ -50,6 +50,10 @@ public class DeviceManager : ObservableObject {
         }
     }
     
+    public func addSimulatedProbe() {
+        addDevice(device: SimulatedProbe())
+    }
+    
     /// Private initializer to enforce singleton
     private init() {
         BleManager.shared.delegate = self
@@ -61,7 +65,6 @@ public class DeviceManager : ObservableObject {
             }
         }
     }
-    
     
     /// Adds a device to the local list.
     /// - parameter device: Add device to list of known devices.
@@ -99,13 +102,21 @@ public class DeviceManager : ObservableObject {
     }
     
     func connectToDevice(_ device: Device) {
-        // print("Connect to : \(device.serialNumber)")
-        BleManager.shared.connect(id: device.id)
+        if let _ = device as? SimulatedProbe, let uuid = UUID(uuidString: device.id) {
+            didConnectTo(id: uuid)
+        }
+        else {
+            BleManager.shared.connect(id: device.id)
+        }
     }
     
     func disconnectFromDevice(_ device: Device) {
-        // print("Disconnect from : \(device.serialNumber)")
-        BleManager.shared.disconnect(id: device.id)
+        if let _ = device as? SimulatedProbe, let uuid = UUID(uuidString: device.id) {
+            didDisconnectFrom(id: uuid)
+        }
+        else {
+            BleManager.shared.disconnect(id: device.id)
+        }
     }
     
     /// Request log messages from the specified device.

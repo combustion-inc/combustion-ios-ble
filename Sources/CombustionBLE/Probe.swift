@@ -57,9 +57,9 @@ public class Probe : Device {
     /// Stores historical values of probe temperatures
     public private(set) var temperatureLog : ProbeTemperatureLog = ProbeTemperatureLog()
     
-    public init(_ advertising: AdvertisingData, RSSI: NSNumber, id: UUID) {
+    public init(_ advertising: AdvertisingData, RSSI: NSNumber, identifier: UUID) {
         self.serialNumber = advertising.serialNumber
-        super.init(id: id)
+        super.init(identifier: identifier)
         updateWithAdvertising(advertising, RSSI: RSSI)
     }
 }

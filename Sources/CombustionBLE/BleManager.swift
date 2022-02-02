@@ -29,13 +29,13 @@ import Foundation
 import CoreBluetooth
 
 protocol BleManagerDelegate: AnyObject {
-    func didConnectTo(id: UUID)
-    func didFailToConnectTo(id: UUID)
-    func didDisconnectFrom(id: UUID)
-    func updateDeviceWithStatus(id: UUID, status: DeviceStatus)
-    func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, id: UUID)
-    func updateDeviceWithLogResponse(id: UUID, logResponse: LogResponse)
-    func updateDeviceFwVersion(id: UUID, fwVersion: String)
+    func didConnectTo(identifier: UUID)
+    func didFailToConnectTo(identifier: UUID)
+    func didDisconnectFrom(identifier: UUID)
+    func updateDeviceWithStatus(identifier: UUID, status: DeviceStatus)
+    func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, identifier: UUID)
+    func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse)
+    func updateDeviceFwVersion(identifier: UUID, fwVersion: String)
 }
 
 /// Manages Core Bluetooth interface with the rest of the app.
@@ -75,14 +75,15 @@ class BleManager : NSObject {
                                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
     }
     
-    func sendRequest(id: String, request: Request) {
-        if let connectionPeripheral = getConnectedPeripheral(id: id), let uartChar = uartCharacteristics[id] {
+    func sendRequest(identifier: String, request: Request) {
+        if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
+            let uartChar = uartCharacteristics[identifier] {
             connectionPeripheral.writeValue(request.data, for: uartChar, type: .withoutResponse)
         }
     }
     
-    private func getConnectedPeripheral(id: String) -> CBPeripheral? {
-        let uuid = UUID(uuidString: id)
+    private func getConnectedPeripheral(identifier: String) -> CBPeripheral? {
+        let uuid = UUID(uuidString: identifier)
         let devicePeripherals = peripherals.filter { $0.identifier == uuid }
         guard !devicePeripherals.isEmpty else {
             // print("Failed to find peripherals")
@@ -125,7 +126,7 @@ extension BleManager: CBCentralManagerDelegate{
                 // Store peripheral reference for later use
                 peripherals.insert(peripheral)
 
-                delegate?.updateDeviceWithAdvertising(advertising: advData, rssi: RSSI, id: peripheral.identifier)
+                delegate?.updateDeviceWithAdvertising(advertising: advData, rssi: RSSI, identifier: peripheral.identifier)
             } else {
                 // print("Ignoring device with type \(advData.type)")
             }
@@ -133,8 +134,8 @@ extension BleManager: CBCentralManagerDelegate{
     }
     
     /// Connect to device with the specified name.
-    public func connect(id: String) {
-        let uuid = UUID(uuidString: id)
+    public func connect(identifier: String) {
+        let uuid = UUID(uuidString: identifier)
         let devicePeripherals = peripherals.filter { $0.identifier == uuid }
         guard !devicePeripherals.isEmpty else {
             print("Failed to find peripheral")
@@ -148,8 +149,8 @@ extension BleManager: CBCentralManagerDelegate{
     }
     
     /// Disconnect from device with the specified name.
-    public func disconnect(id: String) {
-        if let connectedPeripheral = getConnectedPeripheral(id: id) {
+    public func disconnect(identifier: String) {
+        if let connectedPeripheral = getConnectedPeripheral(identifier: identifier) {
             manager.cancelPeripheralConnection(connectedPeripheral)
         }
     }
@@ -160,20 +161,20 @@ extension BleManager: CBCentralManagerDelegate{
         peripheral.delegate = self
         peripheral.discoverServices(nil)
         
-        delegate?.didConnectTo(id: peripheral.identifier)
+        delegate?.didConnectTo(identifier: peripheral.identifier)
     }
     
     
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         // print("\(#function)")
         
-        delegate?.didFailToConnectTo(id: peripheral.identifier)
+        delegate?.didFailToConnectTo(identifier: peripheral.identifier)
     }
     
     public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         // print("\(#function)")
         
-        delegate?.didDisconnectFrom(id: peripheral.identifier)
+        delegate?.didDisconnectFrom(identifier: peripheral.identifier)
     }
     
 }
@@ -235,7 +236,7 @@ extension BleManager: CBPeripheralDelegate {
             if let logResponse = Response.fromData(data) as? LogResponse {
                 // print("Got log response: \(logResponse.success), sequence: \(logResponse.sequenceNumber)")
                 if(logResponse.success) {
-                    delegate?.updateDeviceWithLogResponse(id: peripheral.identifier, logResponse: logResponse)
+                    delegate?.updateDeviceWithLogResponse(identifier: peripheral.identifier, logResponse: logResponse)
                 } else {
                     // print("Ignoring unsuccessful log response")
                 }
@@ -243,12 +244,12 @@ extension BleManager: CBPeripheralDelegate {
         }
         else if characteristic.uuid == Constants.DEVICE_STATUS_CHAR {
             if let status = DeviceStatus(fromData: data) {
-                delegate?.updateDeviceWithStatus(id: peripheral.identifier, status: status)
+                delegate?.updateDeviceWithStatus(identifier: peripheral.identifier, status: status)
             }
         }
         else if characteristic.uuid == Constants.FW_VERSION_CHAR {
             let fwVersion = String(decoding: data, as: UTF8.self)
-            delegate?.updateDeviceFwVersion(id: peripheral.identifier, fwVersion: fwVersion)
+            delegate?.updateDeviceFwVersion(identifier: peripheral.identifier, fwVersion: fwVersion)
         }
         else {
             // print("didUpdateValueFor: \(characteristic): unknown service")

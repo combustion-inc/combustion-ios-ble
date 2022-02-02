@@ -31,7 +31,7 @@ class SimulatedProbe: Probe {
     init() {
         let advertising = AdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
                                           fakeTemperatures: ProbeTemperatures.withRandomData())
-        super.init(advertising, RSSI: SimulatedProbe.randomeRSSI(), id: UUID())
+        super.init(advertising, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())
         
         firmareVersion = "v1.2.3"
         

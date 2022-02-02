@@ -43,7 +43,7 @@ public class Device : ObservableObject {
     }
     
     /// String representation of device identifier (UUID)
-    public private(set) var id: String
+    internal var identifier: String
     
     /// Device firmware version
     public internal(set) var firmareVersion: String?
@@ -63,8 +63,8 @@ public class Device : ObservableObject {
     /// Time at which device was last updated
     internal var lastUpdateTime = Date()
     
-    public init(id: UUID) {
-        self.id = id.uuidString
+    public init(identifier: UUID) {
+        self.identifier = identifier.uuidString
     }
 }
     
@@ -113,10 +113,10 @@ extension Device {
 
 extension Device: Hashable {
     public static func == (lhs: Device, rhs: Device) -> Bool {
-        return lhs.id == rhs.id
+        return lhs.identifier == rhs.identifier
     }
 
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
+        hasher.combine(identifier)
     }
 }

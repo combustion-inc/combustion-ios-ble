@@ -69,7 +69,7 @@ public class DeviceManager : ObservableObject {
     /// Adds a device to the local list.
     /// - parameter device: Add device to list of known devices.
     private func addDevice(device: Device) {
-        devices[device.id] = device
+        devices[device.identifier] = device
     }
     
     /// Removes all found devices from the list.
@@ -102,20 +102,20 @@ public class DeviceManager : ObservableObject {
     }
     
     func connectToDevice(_ device: Device) {
-        if let _ = device as? SimulatedProbe, let uuid = UUID(uuidString: device.id) {
-            didConnectTo(id: uuid)
+        if let _ = device as? SimulatedProbe, let uuid = UUID(uuidString: device.identifier) {
+            didConnectTo(identifier: uuid)
         }
         else {
-            BleManager.shared.connect(id: device.id)
+            BleManager.shared.connect(identifier: device.identifier)
         }
     }
     
     func disconnectFromDevice(_ device: Device) {
-        if let _ = device as? SimulatedProbe, let uuid = UUID(uuidString: device.id) {
-            didDisconnectFrom(id: uuid)
+        if let _ = device as? SimulatedProbe, let uuid = UUID(uuidString: device.identifier) {
+            didDisconnectFrom(identifier: uuid)
         }
         else {
-            BleManager.shared.disconnect(id: device.id)
+            BleManager.shared.disconnect(identifier: device.identifier)
         }
     }
     
@@ -126,58 +126,52 @@ public class DeviceManager : ObservableObject {
     func requestLogsFrom(_ device: Device, minSequence: UInt32, maxSequence: UInt32) {
         let request = LogRequest(minSequence: minSequence,
                                  maxSequence: maxSequence)
-        BleManager.shared.sendRequest(id: device.id, request: request)
+        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
     }
 }
 
 extension DeviceManager : BleManagerDelegate {
-    func didConnectTo(id: UUID) {
-        guard let _ = devices[id.uuidString] else { return }
-        // print("Connected to : \(device.id)")
-        devices[id.uuidString]?.updateConnectionState(.connected)
+    func didConnectTo(identifier: UUID) {
+        guard let _ = devices[identifier.uuidString] else { return }
+        devices[identifier.uuidString]?.updateConnectionState(.connected)
     }
     
-    func didFailToConnectTo(id: UUID) {
-        guard let _ = devices[id.uuidString] else { return }
-        // print("Failed to connect to : \(device.id)")
-        devices[id.uuidString]?.updateConnectionState(.failed)
+    func didFailToConnectTo(identifier: UUID) {
+        guard let _ = devices[identifier.uuidString] else { return }
+        devices[identifier.uuidString]?.updateConnectionState(.failed)
     }
     
-    func didDisconnectFrom(id: UUID) {
-        guard let _ = devices[id.uuidString] else { return }
-        // print("Disconnected from : \(device.id)")
-        devices[id.uuidString]?.updateConnectionState(.disconnected)
+    func didDisconnectFrom(identifier: UUID) {
+        guard let _ = devices[identifier.uuidString] else { return }
+        devices[identifier.uuidString]?.updateConnectionState(.disconnected)
     }
     
-    func updateDeviceWithStatus(id: UUID, status: DeviceStatus) {
-        // print("New device status ", status)
-        if let probe = devices[id.uuidString] as? Probe {
+    func updateDeviceWithStatus(identifier: UUID, status: DeviceStatus) {
+        if let probe = devices[identifier.uuidString] as? Probe {
             probe.updateProbeStatus(deviceStatus: status)
         }
     }
     
-    func updateDeviceWithLogResponse(id: UUID, logResponse: LogResponse) {
-        if let probe = devices[id.uuidString] as? Probe {
+    func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse) {
+        if let probe = devices[identifier.uuidString] as? Probe {
             probe.processLogResponse(logResponse: logResponse)
         }
     }
     
-    func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, id: UUID) {
-        if devices[id.uuidString] != nil {
-            if let probe = devices[id.uuidString] as? Probe {
+    func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, identifier: UUID) {
+        if devices[identifier.uuidString] != nil {
+            if let probe = devices[identifier.uuidString] as? Probe {
                 probe.updateWithAdvertising(advertising, RSSI: rssi)
-            // print("Updated device: \(devices[id.uuidString]?.serialNumber) : rssi = \(rssi)")
             }
         }
         else {
-            // print("Adding New Device: \(advertising.serialNumber)")
-            let device = Probe(advertising, RSSI: rssi, id: id)
+            let device = Probe(advertising, RSSI: rssi, identifier: identifier)
             addDevice(device: device)
         }
     }
     
-    func updateDeviceFwVersion(id: UUID, fwVersion: String) {
-        if let device = devices[id.uuidString]  {
+    func updateDeviceFwVersion(identifier: UUID, fwVersion: String) {
+        if let device = devices[identifier.uuidString]  {
             device.firmareVersion = fwVersion
         }
     }

@@ -32,9 +32,13 @@ public class Probe : Device {
     
     /// Probe serial number
     @Published public private(set) var serialNumber: UInt32
-    @Published public private(set) var batteryLevel : Float = 0.0
-    @Published public private(set) var currentTemperatures: ProbeTemperatures?
-    @Published public private(set) var status: DeviceStatus?
+    
+    @Published public private(set) var currentTemperatures: ProbeTemperatures
+    @Published public private(set) var minSequenceNumber: UInt32?
+    @Published public private(set) var maxSequenceNumber: UInt32?
+    
+    @Published public private(set) var id: ProbeID
+    @Published public private(set) var color: ProbeColor
     
     /// Tracks whether all logs on probe have been synced to the app
     @Published public private(set) var logsUpToDate = false
@@ -58,8 +62,13 @@ public class Probe : Device {
     public private(set) var temperatureLog : ProbeTemperatureLog = ProbeTemperatureLog()
     
     public init(_ advertising: AdvertisingData, RSSI: NSNumber, identifier: UUID) {
-        self.serialNumber = advertising.serialNumber
+        serialNumber = advertising.serialNumber
+        id = advertising.id
+        color = advertising.color
+        currentTemperatures = advertising.temperatures
+        
         super.init(identifier: identifier)
+        
         updateWithAdvertising(advertising, RSSI: RSSI)
     }
 }
@@ -75,7 +84,11 @@ extension Probe {
     
     /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.
     func updateProbeStatus(deviceStatus: DeviceStatus) {
-        status = deviceStatus
+        
+        minSequenceNumber = deviceStatus.minSequenceNumber
+        maxSequenceNumber = deviceStatus.maxSequenceNumber
+        id = deviceStatus.id
+        color = deviceStatus.color
         
         // Log the temperature data point
         temperatureLog.appendDataPoint(dataPoint:
@@ -120,8 +133,8 @@ extension Probe {
     /// - param celsius: True for celsius, false for fahrenheit
     /// - returns: Requested temperature value
     public func currentTemperature(index: Int, celsius: Bool) -> Double? {
-        let result = currentTemperatures?.values[index]
-        if let result = result, celsius == false {
+        let result = currentTemperatures.values[index]
+        if !celsius {
             // Convert to fahrenheit
             return fahrenheit(celsius: result)
         }

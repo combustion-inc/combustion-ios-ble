@@ -33,6 +33,49 @@ public enum CombustionProductType: UInt8 {
     case NODE = 0x02
 }
 
+/// Probe colors
+public enum ProbeColor: UInt8 {
+    case yellow = 0x00
+    case grey   = 0x01
+    // TODO : define other colors
+    
+    private enum Constants {
+        static let PRODE_COLOR_MASK: UInt8 = 0x3
+        static let PRODE_COLOR_SHIFT: UInt8 = 2
+    }
+    
+    static func fromRawData(data: Data) -> ProbeColor {
+        let modeIdColorBytes = [UInt8](data)
+        
+        let rawProbeColor = (modeIdColorBytes[0] & (Constants.PRODE_COLOR_MASK << Constants.PRODE_COLOR_SHIFT)) >> Constants.PRODE_COLOR_SHIFT
+        return ProbeColor(rawValue: rawProbeColor) ?? .yellow
+    }
+}
+
+/// Probe IDs
+public enum ProbeID: UInt8 {
+    case ID1 = 0x00
+    case ID2 = 0x01
+    case ID3 = 0x02
+    case ID4 = 0x03
+    case ID5 = 0x04
+    case ID6 = 0x05
+    case ID7 = 0x06
+    case ID8 = 0x07
+    
+    private enum Constants {
+        static let PRODE_ID_MASK: UInt8 = 0x3
+        static let PRODE_ID_SHIFT: UInt8 = 5
+    }
+    
+    static func fromRawData(data: Data) -> ProbeID {
+        let modeIdColorBytes = [UInt8](data)
+        
+        let rawProbeID = (modeIdColorBytes[0] & (Constants.PRODE_ID_MASK << Constants.PRODE_ID_SHIFT)) >> Constants.PRODE_ID_SHIFT
+        return ProbeID(rawValue: rawProbeID) ?? .ID1
+    }
+}
+
 
 /// Struct containing advertising data received from device.
 public struct AdvertisingData {
@@ -42,19 +85,24 @@ public struct AdvertisingData {
     public let serialNumber: UInt32
     /// Latest temperatures read by device
     public let temperatures: ProbeTemperatures
+    /// Prode ID
+    public let id: ProbeID
+    /// Probe Color
+    public let color: ProbeColor
 
     private enum Constants {
         // Locations of data in advertising packets
         static let PRODUCT_TYPE_RANGE = 2..<3
         static let SERIAL_RANGE = 3..<7
         static let TEMPERATURE_RANGE = 7..<20
+        static let MODE_COLOR_ID_RANGE = 20..<21
     }
 }
 
 extension AdvertisingData {
     init?(fromData : Data?) {
         guard let data = fromData else { return nil }
-        guard data.count >= 19 else { return nil }
+        guard data.count >= 20 else { return nil }
         
         // Product type (1 byte)
         let rawType = data.subdata(in: Constants.PRODUCT_TYPE_RANGE)
@@ -81,6 +129,19 @@ extension AdvertisingData {
         // Temperatures (8 13-bit) values
         let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
         temperatures = ProbeTemperatures.fromRawData(data: tempData)
+        
+        // Decode Probe ID and Color if its present in the advertising packet
+        if(data.count >= 21) {
+            let modeIdColorData  = data.subdata(in: Constants.MODE_COLOR_ID_RANGE)
+            id = ProbeID.fromRawData(data: modeIdColorData)
+            color = ProbeColor.fromRawData(data: modeIdColorData)
+        }
+        else {
+            id = .ID1
+            color = .yellow
+        }
+        
+        print("ADV: Probe Color : \(color)  - Probe ID: \(id)")
     }
 }
 
@@ -91,6 +152,8 @@ extension AdvertisingData {
         type = .PROBE
         temperatures = ProbeTemperatures.withFakeData()
         serialNumber = fakeSerial
+        id = .ID1
+        color = .yellow
     }
     
     // Fake data initializer for Simulated Probe
@@ -98,5 +161,7 @@ extension AdvertisingData {
         type = .PROBE
         temperatures = fakeTemperatures
         serialNumber = fakeSerial
+        id = .ID1
+        color = .yellow
     }
 }

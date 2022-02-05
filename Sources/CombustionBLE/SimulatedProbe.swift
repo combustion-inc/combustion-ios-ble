@@ -77,7 +77,9 @@ class SimulatedProbe: Probe {
         
         let deviceStatus = DeviceStatus(minSequenceNumber: firstSeq,
                                         maxSequenceNumber: lastSequence,
-                                        temperatures: ProbeTemperatures.withRandomData())
+                                        temperatures: ProbeTemperatures.withRandomData(),
+                                        id: .ID1,
+                                        color: .yellow)
         
         updateProbeStatus(deviceStatus: deviceStatus)
     }

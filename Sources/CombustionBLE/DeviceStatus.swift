@@ -74,9 +74,7 @@ extension DeviceStatus {
         }
         else {
             id = .ID1
-            color = .yellow
+            color = .COLOR1
         }
-        
-        print("STA: Probe Color : \(color)  - Probe ID: \(id)")
     }
 }

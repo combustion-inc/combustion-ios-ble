@@ -105,13 +105,10 @@ extension Probe {
             DeviceManager.shared.requestLogsFrom(self,
                                                  minSequence: missingSequence,
                                                  maxSequence: deviceStatus.maxSequenceNumber)
-            print("Requesting missing records starting with \(missingSequence)")
         } else {
             // If there were no gaps, mark that the logs are up to date
             logsUpToDate = true
         }
-        
-//        print("Updating status! Temperature log size: \(temperatureLog.dataPoints.count)")
         
         lastUpdateTime = Date()
     }

@@ -128,6 +128,22 @@ public class DeviceManager : ObservableObject {
                                  maxSequence: maxSequence)
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
     }
+    
+    /// Set Probe ID on specified device.
+    /// - parameter device: Device to set ID on
+    /// - parameter ProbeID: New Probe ID
+    public func setProbeID(_ device: Device, id: ProbeID) {
+        let request = SetIDRequest(id: id)
+        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+    }
+    
+    /// Set Probe Color on specified device.
+    /// - parameter device: Device to set Color on
+    /// - parameter ProbeColor: New Probe color
+    public func setProbeColor(_ device: Device, color: ProbeColor) {
+        let request = SetColorRequest(color: color)
+        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+    }
 }
 
 extension DeviceManager : BleManagerDelegate {

@@ -34,13 +34,18 @@ public enum CombustionProductType: UInt8 {
 }
 
 /// Probe colors
-public enum ProbeColor: UInt8 {
-    case yellow = 0x00
-    case grey   = 0x01
-    // TODO : define other colors
+public enum ProbeColor: UInt8, CaseIterable {
+    case COLOR1 = 0x00
+    case COLOR2 = 0x01
+    case COLOR3 = 0x02
+    case COLOR4 = 0x03
+    case COLOR5 = 0x04
+    case COLOR6 = 0x05
+    case COLOR7 = 0x06
+    case COLOR8 = 0x07
     
     private enum Constants {
-        static let PRODE_COLOR_MASK: UInt8 = 0x3
+        static let PRODE_COLOR_MASK: UInt8 = 0x7
         static let PRODE_COLOR_SHIFT: UInt8 = 2
     }
     
@@ -48,12 +53,12 @@ public enum ProbeColor: UInt8 {
         let modeIdColorBytes = [UInt8](data)
         
         let rawProbeColor = (modeIdColorBytes[0] & (Constants.PRODE_COLOR_MASK << Constants.PRODE_COLOR_SHIFT)) >> Constants.PRODE_COLOR_SHIFT
-        return ProbeColor(rawValue: rawProbeColor) ?? .yellow
+        return ProbeColor(rawValue: rawProbeColor) ?? .COLOR1
     }
 }
 
 /// Probe IDs
-public enum ProbeID: UInt8 {
+public enum ProbeID: UInt8, CaseIterable {
     case ID1 = 0x00
     case ID2 = 0x01
     case ID3 = 0x02
@@ -64,7 +69,7 @@ public enum ProbeID: UInt8 {
     case ID8 = 0x07
     
     private enum Constants {
-        static let PRODE_ID_MASK: UInt8 = 0x3
+        static let PRODE_ID_MASK: UInt8 = 0x7
         static let PRODE_ID_SHIFT: UInt8 = 5
     }
     
@@ -138,10 +143,8 @@ extension AdvertisingData {
         }
         else {
             id = .ID1
-            color = .yellow
+            color = .COLOR1
         }
-        
-        print("ADV: Probe Color : \(color)  - Probe ID: \(id)")
     }
 }
 
@@ -153,7 +156,7 @@ extension AdvertisingData {
         temperatures = ProbeTemperatures.withFakeData()
         serialNumber = fakeSerial
         id = .ID1
-        color = .yellow
+        color = .COLOR1
     }
     
     // Fake data initializer for Simulated Probe
@@ -162,6 +165,6 @@ extension AdvertisingData {
         temperatures = fakeTemperatures
         serialNumber = fakeSerial
         id = .ID1
-        color = .yellow
+        color = .COLOR1
     }
 }

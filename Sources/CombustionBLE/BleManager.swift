@@ -201,6 +201,7 @@ extension BleManager: CBPeripheralDelegate {
             // print("discovered characteristic : \(characteristic.uuid) : \(characteristic.uuid.uuidString) :\(characteristic.descriptors)")
             
             if(characteristic.uuid == Constants.UART_RX_CHAR) {
+                print("Found UART characteristic")
                 uartCharacteristics[peripheral.identifier.uuidString] = characteristic
             } else if(characteristic.uuid == Constants.DEVICE_STATUS_CHAR) {
                 deviceStatusCharacteristics[peripheral.identifier.uuidString] = characteristic
@@ -213,15 +214,15 @@ extension BleManager: CBPeripheralDelegate {
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
-        // print("\(#function)")
+
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
-        // print("\(#function): \(characteristic)")
         
         // Always enable notifications for Device status characteristic
         if(characteristic.uuid == Constants.UART_TX_CHAR),
             let statusChar = deviceStatusCharacteristics[peripheral.identifier.uuidString]  {
+            print("UART_TX_CHAR was enabled")
             peripheral.setNotifyValue(true, for: statusChar)
         }
         
@@ -229,8 +230,6 @@ extension BleManager: CBPeripheralDelegate {
     
     public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         guard let data = characteristic.value else { return }
-        
-//         print("didUpdateValueFor: \(characteristic): data size = \(data.count)")
         
         if characteristic.uuid == Constants.UART_TX_CHAR {
             if let logResponse = Response.fromData(data) as? LogResponse {
@@ -259,13 +258,10 @@ extension BleManager: CBPeripheralDelegate {
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverDescriptorsFor characteristic: CBCharacteristic, error: Error?) {
         guard let descriptors = characteristic.descriptors, !descriptors.isEmpty else { return }
         
-        // print("didDiscoverDescriptorsFor : \(characteristic.uuid)")
-        
         for _ in descriptors {
-            // print("discovered descriptor : \(descriptor.uuid)")
-            
             // Always enable notifications for UART TX characteristic
             if(characteristic.uuid == Constants.UART_TX_CHAR) {
+                print("Enabling UART_TX_CHAR")
                 peripheral.setNotifyValue(true, for: characteristic)
             }
         }

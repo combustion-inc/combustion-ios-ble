@@ -18,7 +18,7 @@ Or you can create your own mobile app to work with the Predictive Thermometer us
 
 Visit [www.combustion.inc](https://www.combustion.inc) to sign up to be notified when they're available to order in early 2022.
 
-Head on over to our [FAQ](https://combustion.inc/faq.html) for more product details.
+Head on over to our [FAQ](https://combustion.inc/pages/faq) for more product details.
 
 Ask us a quick question on [Twitter](https://twitter.com/intent/tweet?screen_name=inccombustion).
 

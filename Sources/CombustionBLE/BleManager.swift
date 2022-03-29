@@ -32,6 +32,8 @@ protocol BleManagerDelegate: AnyObject {
     func didConnectTo(identifier: UUID)
     func didFailToConnectTo(identifier: UUID)
     func didDisconnectFrom(identifier: UUID)
+    func handleSetIDResponse(identifier: UUID, success: Bool)
+    func handleSetColorResponse(identifier: UUID, success: Bool)
     func updateDeviceWithStatus(identifier: UUID, status: DeviceStatus)
     func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, identifier: UUID)
     func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse)
@@ -222,7 +224,6 @@ extension BleManager: CBPeripheralDelegate {
         // Always enable notifications for Device status characteristic
         if(characteristic.uuid == Constants.UART_TX_CHAR),
             let statusChar = deviceStatusCharacteristics[peripheral.identifier.uuidString]  {
-            print("UART_TX_CHAR was enabled")
             peripheral.setNotifyValue(true, for: statusChar)
         }
         
@@ -233,12 +234,15 @@ extension BleManager: CBPeripheralDelegate {
         
         if characteristic.uuid == Constants.UART_TX_CHAR {
             if let logResponse = Response.fromData(data) as? LogResponse {
-                // print("Got log response: \(logResponse.success), sequence: \(logResponse.sequenceNumber)")
                 if(logResponse.success) {
                     delegate?.updateDeviceWithLogResponse(identifier: peripheral.identifier, logResponse: logResponse)
-                } else {
-                    // print("Ignoring unsuccessful log response")
                 }
+            }
+            else if let setIDResponse = Response.fromData(data) as? SetIDResponse {
+                delegate?.handleSetIDResponse(identifier: peripheral.identifier, success: setIDResponse.success)
+            }
+            else if let setColorResponse = Response.fromData(data) as? SetColorResponse {
+                delegate?.handleSetColorResponse(identifier: peripheral.identifier, success: setColorResponse.success)
             }
         }
         else if characteristic.uuid == Constants.DEVICE_STATUS_CHAR {
@@ -261,7 +265,6 @@ extension BleManager: CBPeripheralDelegate {
         for _ in descriptors {
             // Always enable notifications for UART TX characteristic
             if(characteristic.uuid == Constants.UART_TX_CHAR) {
-                print("Enabling UART_TX_CHAR")
                 peripheral.setNotifyValue(true, for: characteristic)
             }
         }

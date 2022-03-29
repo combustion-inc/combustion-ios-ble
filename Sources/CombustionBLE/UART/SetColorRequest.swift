@@ -34,3 +34,5 @@ class SetColorRequest: Request {
         self.data[Request.HEADER_SIZE] = color.rawValue
     }
 }
+
+class SetColorResponse : Response { }

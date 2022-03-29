@@ -81,9 +81,9 @@ extension Response {
         case .Log:
             return LogResponse(data: data, success: success)
         case .SetID:
-            return Response(success: success)
+            return SetIDResponse(success: success)
         case .SetColor:
-            return Response(success: success)
+            return SetColorResponse(success: success)
         }
     }
 }

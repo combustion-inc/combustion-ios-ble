@@ -49,6 +49,18 @@ public class DeviceManager : ObservableObject {
             devices = newValue
         }
     }
+
+    // Struct to store when BLE message was send and the completion handler for message
+    private struct MessageHandler {
+        let timeSent: Date
+        let handler: (Bool) -> Void
+    }
+    
+    // Completion handlers for Set ID BLE message
+    private var setIDCompetionHandlers : [String: MessageHandler] = [:]
+    
+    // Completion handlers for Set Color BLE message
+    private var setColorCompetionHandlers : [String: MessageHandler] = [:]
     
     public func addSimulatedProbe() {
         addDevice(device: SimulatedProbe())
@@ -63,6 +75,12 @@ public class DeviceManager : ObservableObject {
             for key in devices.keys {
                 devices[key]?.updateDeviceStale()
             }
+        }
+        
+        // Start a timer to check for BLE message timeouts
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
+            checkForMessageTimeout(messageHandlers: &setIDCompetionHandlers)
+            checkForMessageTimeout(messageHandlers: &setColorCompetionHandlers)
         }
     }
     
@@ -132,7 +150,9 @@ public class DeviceManager : ObservableObject {
     /// Set Probe ID on specified device.
     /// - parameter device: Device to set ID on
     /// - parameter ProbeID: New Probe ID
-    public func setProbeID(_ device: Device, id: ProbeID) {
+    public func setProbeID(_ device: Device, id: ProbeID, completionHandler: @escaping (Bool) -> Void ) {
+        setIDCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
+        
         let request = SetIDRequest(id: id)
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
     }
@@ -140,9 +160,34 @@ public class DeviceManager : ObservableObject {
     /// Set Probe Color on specified device.
     /// - parameter device: Device to set Color on
     /// - parameter ProbeColor: New Probe color
-    public func setProbeColor(_ device: Device, color: ProbeColor) {
+    public func setProbeColor(_ device: Device, color: ProbeColor, completionHandler: @escaping (Bool) -> Void) {
+        setColorCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
+        
         let request = SetColorRequest(color: color)
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+    }
+    
+    private func checkForMessageTimeout(messageHandlers: inout [String: MessageHandler]) {
+        let currentTime = Date()
+        
+        var keysToRemove = [String]()
+        
+        for key in messageHandlers.keys {
+            if let messageHandler = messageHandlers[key],
+               Int(currentTime.timeIntervalSince(messageHandler.timeSent)) > 3 {
+                
+                // More than three seconds have elapsed, therefore call handler with failure
+                messageHandler.handler(false)
+                
+                // Save key to remove
+                keysToRemove.append(key)
+            }
+        }
+        
+        // Remove keys that timed out
+        for key in keysToRemove {
+            messageHandlers.removeValue(forKey: key)
+        }
     }
 }
 
@@ -160,6 +205,10 @@ extension DeviceManager : BleManagerDelegate {
     func didDisconnectFrom(identifier: UUID) {
         guard let _ = devices[identifier.uuidString] else { return }
         devices[identifier.uuidString]?.updateConnectionState(.disconnected)
+        
+        // Clear any pending completion handlers
+        setColorCompetionHandlers.removeValue(forKey: identifier.uuidString)
+        setIDCompetionHandlers.removeValue(forKey: identifier.uuidString)
     }
     
     func updateDeviceWithStatus(identifier: UUID, status: DeviceStatus) {
@@ -190,5 +239,17 @@ extension DeviceManager : BleManagerDelegate {
         if let device = devices[identifier.uuidString]  {
             device.firmareVersion = fwVersion
         }
+    }
+    
+    func handleSetIDResponse(identifier: UUID, success: Bool) {
+        setIDCompetionHandlers[identifier.uuidString]?.handler(success)
+        
+        setIDCompetionHandlers.removeValue(forKey: identifier.uuidString)
+    }
+    
+    func handleSetColorResponse(identifier: UUID, success: Bool) {
+        setColorCompetionHandlers[identifier.uuidString]?.handler(success)
+        
+        setColorCompetionHandlers.removeValue(forKey: identifier.uuidString)
     }
 }

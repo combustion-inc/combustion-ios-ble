@@ -34,3 +34,5 @@ class SetIDRequest: Request {
         self.data[Request.HEADER_SIZE] = id.rawValue
     }
 }
+
+class SetIDResponse : Response { }

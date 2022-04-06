@@ -1,4 +1,4 @@
-//  MessageType.swift
+//  SetIDRequest.swift
 
 /*--
 MIT License
@@ -26,8 +26,13 @@ SOFTWARE.
 
 import Foundation
 
-enum MessageType: UInt8  {
-    case SetID = 1
-    case SetColor = 2
-    case Log = 4
+class SetIDRequest: Request {
+    static let PAYLOAD_LENGTH: UInt8 = 1
+    
+    init(id: ProbeID) {
+        super.init(payloadLength: LogRequest.PAYLOAD_LENGTH, type: .SetID)
+        self.data[Request.HEADER_SIZE] = id.rawValue
+    }
 }
+
+class SetIDResponse : Response { }

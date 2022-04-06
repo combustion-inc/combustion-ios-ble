@@ -34,24 +34,47 @@ public struct DeviceStatus {
     public let maxSequenceNumber: UInt32
     /// Current temperatures sent by Probe.
     public let temperatures: ProbeTemperatures
+    /// Prode ID
+    public let id: ProbeID
+    /// Probe Color
+    public let color: ProbeColor
+    
+    private enum Constants {
+        // Locations of data in status packet
+        static let MIN_SEQ_RANGE = 0..<4
+        static let MAX_SEQ_RANGE = 4..<8
+        static let TEMPERATURE_RANGE = 8..<21
+        static let MODE_COLOR_ID_RANGE = 21..<22
+    }
 }
 
 extension DeviceStatus {
     init?(fromData data: Data) {
         guard data.count >= 21 else { return nil }
         
-        let minRaw = data.subdata(in: 0..<4)
+        let minRaw = data.subdata(in: Constants.MIN_SEQ_RANGE)
         minSequenceNumber = minRaw.withUnsafeBytes {
             $0.load(as: UInt32.self)
         }
         
-        let maxRaw = data.subdata(in: 4..<8)
+        let maxRaw = data.subdata(in: Constants.MAX_SEQ_RANGE)
         maxSequenceNumber = maxRaw.withUnsafeBytes {
             $0.load(as: UInt32.self)
         }
         
         // Temperatures (8 13-bit) values
-        let tempData = data.subdata(in: 8..<21)
+        let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
         temperatures = ProbeTemperatures.fromRawData(data: tempData)
+        
+        // Decode Probe ID and Color if its present in the advertising packet
+        if(data.count >= 22) {
+            let modeIdColorData  = data.subdata(in: Constants.MODE_COLOR_ID_RANGE)
+            id = ProbeID.fromRawData(data: modeIdColorData)
+            color = ProbeColor.fromRawData(data: modeIdColorData)
+        }
+        else {
+            id = .ID1
+            color = .COLOR1
+        }
     }
 }

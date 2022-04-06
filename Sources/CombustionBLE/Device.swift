@@ -43,7 +43,7 @@ public class Device : ObservableObject {
     }
     
     /// String representation of device identifier (UUID)
-    internal var identifier: String
+    public var identifier: String
     
     /// Device firmware version
     public internal(set) var firmareVersion: String?

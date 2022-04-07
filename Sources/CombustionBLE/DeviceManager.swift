@@ -241,6 +241,12 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
+    func updateDeviceHwRevision(identifier: UUID, hwRevision: String) {
+        if let device = devices[identifier.uuidString]  {
+            device.hardwareRevision = hwRevision
+        }
+    }
+    
     func handleSetIDResponse(identifier: UUID, success: Bool) {
         setIDCompetionHandlers[identifier.uuidString]?.handler(success)
         

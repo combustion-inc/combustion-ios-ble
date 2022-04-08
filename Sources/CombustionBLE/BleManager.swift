@@ -38,6 +38,7 @@ protocol BleManagerDelegate: AnyObject {
     func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, identifier: UUID)
     func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse)
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String)
+    func updateDeviceHwRevision(identifier: UUID, hwRevision: String)
 }
 
 /// Manages Core Bluetooth interface with the rest of the app.
@@ -60,6 +61,7 @@ class BleManager : NSObject {
         static let UART_SERVICE         = CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
         
         static let FW_VERSION_CHAR      = CBUUID(string: "2a26")
+        static let HW_REVISION_CHAR     = CBUUID(string: "2a27")
         static let DEVICE_STATUS_CHAR   = CBUUID(string: "00000101-CAAB-3792-3D44-97AE51C1407A")
         static let UART_RX_CHAR         = CBUUID(string: "6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
         static let UART_TX_CHAR         = CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
@@ -200,14 +202,13 @@ extension BleManager: CBPeripheralDelegate {
         guard let characteristics = service.characteristics else { return }
         
         for characteristic in characteristics {
-            // print("discovered characteristic : \(characteristic.uuid) : \(characteristic.uuid.uuidString) :\(characteristic.descriptors)")
-            
             if(characteristic.uuid == Constants.UART_RX_CHAR) {
-                print("Found UART characteristic")
                 uartCharacteristics[peripheral.identifier.uuidString] = characteristic
             } else if(characteristic.uuid == Constants.DEVICE_STATUS_CHAR) {
                 deviceStatusCharacteristics[peripheral.identifier.uuidString] = characteristic
-            } else if(characteristic.uuid == Constants.FW_VERSION_CHAR) {
+            } else if(characteristic.uuid == Constants.FW_VERSION_CHAR ||
+                      characteristic.uuid == Constants.HW_REVISION_CHAR) {
+                // Read FW version and HW revision when the characteristics are discovered
                 peripheral.readValue(for: characteristic)
             }
             
@@ -253,6 +254,10 @@ extension BleManager: CBPeripheralDelegate {
         else if characteristic.uuid == Constants.FW_VERSION_CHAR {
             let fwVersion = String(decoding: data, as: UTF8.self)
             delegate?.updateDeviceFwVersion(identifier: peripheral.identifier, fwVersion: fwVersion)
+        }
+        else if characteristic.uuid == Constants.HW_REVISION_CHAR {
+            let hwRevision = String(decoding: data, as: UTF8.self)
+            delegate?.updateDeviceHwRevision(identifier: peripheral.identifier, hwRevision: hwRevision)
         }
         else {
             // print("didUpdateValueFor: \(characteristic): unknown service")

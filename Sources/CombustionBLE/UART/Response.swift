@@ -80,6 +80,10 @@ extension Response {
         switch messageType {
         case .Log:
             return LogResponse(data: data, success: success)
+        case .SetID:
+            return SetIDResponse(success: success)
+        case .SetColor:
+            return SetColorResponse(success: success)
         }
     }
 }

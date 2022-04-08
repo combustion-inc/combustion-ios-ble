@@ -78,6 +78,8 @@ An instance of the `Probe` class representes an individual temperature probe tha
 - `name` - String format of probe serial number
 - `macAddress` - Probe's MAC address
 - `macAddressString` - String representation of Probe's MAC address
+- `id` - Probe's numeric ID (1-8)
+- `color` - Probe's silicone ring color
 - `batteryLevel` - Battery level as reported by probe *NOTE: This is not yet implemented in probe firmware and will likely change to a boolean 'battery low' flag in the near future.*
 - `currentTemperatures` - `ProbeTemperatures` struct containing the most recent temperatures read by the Probe. 
   - `currentTemperatures.values` - Array of these temperatures, in celsius, where `values[0]` is temperature sensor T1, and `values[7]` is temperature sensor T8.
@@ -90,7 +92,7 @@ An instance of the `Probe` class representes an individual temperature probe tha
     - T7 - High-temperature thermistor
     - T8 - High-temperature thermistor on handle tip measuring ambient
 
-- `id` - iOS-provided UUID for the device
+- `identifier` - iOS-provided UUID for the device
 
 - `rssi` - Signal strength between Probe and iOS device
 
@@ -102,9 +104,8 @@ An instance of the `Probe` class representes an individual temperature probe tha
 
 - `stale` - `true` if no advertising data or notifications have been received from the Probe within the "staleness timeout" (15 seconds), or `false` if recent data has been received.
 
-- `status` - `DeviceStatus` struct containing device status information.
-  - `minSequenceNumber` - Minimum sequence number of log records stored on the probe
-  - `maxSequenceNumber` - Maximum sequence number of log records stored on the probe
+- `minSequenceNumber` - Minimum sequence number of log records stored on the probe
+- `maxSequenceNumber` - Maximum sequence number of log records stored on the probe
 
 - `logsUpToDate` - Boolean value that indicates whether all log sequence numbers contained in the probe (determined by the `status` sequence number range) have been successfully retrieved and stored in the app's memory.
 
@@ -153,14 +154,6 @@ struct EngineeringProbeList: View {
 ## Framework features coming soon
 
 The following features are planned for near-term development but are not yet implemented in this version of the Combustion BLE Framework.
-
-### Set ring color
-
-The framework will provide functions allowing a probe's identifying silicone ring color to be configured by the user (colors TBA).
-
-### Set numeric ID
-
-The framework will provide functions allowing a Probe's numeric ID (1-8) to be configured by the user.
 
 ### Firmware update
 

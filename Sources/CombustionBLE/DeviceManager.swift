@@ -49,6 +49,18 @@ public class DeviceManager : ObservableObject {
             devices = newValue
         }
     }
+
+    // Struct to store when BLE message was send and the completion handler for message
+    private struct MessageHandler {
+        let timeSent: Date
+        let handler: (Bool) -> Void
+    }
+    
+    // Completion handlers for Set ID BLE message
+    private var setIDCompetionHandlers : [String: MessageHandler] = [:]
+    
+    // Completion handlers for Set Color BLE message
+    private var setColorCompetionHandlers : [String: MessageHandler] = [:]
     
     public func addSimulatedProbe() {
         addDevice(device: SimulatedProbe())
@@ -64,12 +76,18 @@ public class DeviceManager : ObservableObject {
                 devices[key]?.updateDeviceStale()
             }
         }
+        
+        // Start a timer to check for BLE message timeouts
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
+            checkForMessageTimeout(messageHandlers: &setIDCompetionHandlers)
+            checkForMessageTimeout(messageHandlers: &setColorCompetionHandlers)
+        }
     }
     
     /// Adds a device to the local list.
     /// - parameter device: Add device to list of known devices.
     private func addDevice(device: Device) {
-        devices[device.id] = device
+        devices[device.identifier] = device
     }
     
     /// Removes all found devices from the list.
@@ -102,20 +120,20 @@ public class DeviceManager : ObservableObject {
     }
     
     func connectToDevice(_ device: Device) {
-        if let _ = device as? SimulatedProbe, let uuid = UUID(uuidString: device.id) {
-            didConnectTo(id: uuid)
+        if let _ = device as? SimulatedProbe, let uuid = UUID(uuidString: device.identifier) {
+            didConnectTo(identifier: uuid)
         }
         else {
-            BleManager.shared.connect(id: device.id)
+            BleManager.shared.connect(identifier: device.identifier)
         }
     }
     
     func disconnectFromDevice(_ device: Device) {
-        if let _ = device as? SimulatedProbe, let uuid = UUID(uuidString: device.id) {
-            didDisconnectFrom(id: uuid)
+        if let _ = device as? SimulatedProbe, let uuid = UUID(uuidString: device.identifier) {
+            didDisconnectFrom(identifier: uuid)
         }
         else {
-            BleManager.shared.disconnect(id: device.id)
+            BleManager.shared.disconnect(identifier: device.identifier)
         }
     }
     
@@ -126,59 +144,118 @@ public class DeviceManager : ObservableObject {
     func requestLogsFrom(_ device: Device, minSequence: UInt32, maxSequence: UInt32) {
         let request = LogRequest(minSequence: minSequence,
                                  maxSequence: maxSequence)
-        BleManager.shared.sendRequest(id: device.id, request: request)
+        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+    }
+    
+    /// Set Probe ID on specified device.
+    /// - parameter device: Device to set ID on
+    /// - parameter ProbeID: New Probe ID
+    public func setProbeID(_ device: Device, id: ProbeID, completionHandler: @escaping (Bool) -> Void ) {
+        setIDCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
+        
+        let request = SetIDRequest(id: id)
+        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+    }
+    
+    /// Set Probe Color on specified device.
+    /// - parameter device: Device to set Color on
+    /// - parameter ProbeColor: New Probe color
+    public func setProbeColor(_ device: Device, color: ProbeColor, completionHandler: @escaping (Bool) -> Void) {
+        setColorCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
+        
+        let request = SetColorRequest(color: color)
+        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+    }
+    
+    private func checkForMessageTimeout(messageHandlers: inout [String: MessageHandler]) {
+        let currentTime = Date()
+        
+        var keysToRemove = [String]()
+        
+        for key in messageHandlers.keys {
+            if let messageHandler = messageHandlers[key],
+               Int(currentTime.timeIntervalSince(messageHandler.timeSent)) > 3 {
+                
+                // More than three seconds have elapsed, therefore call handler with failure
+                messageHandler.handler(false)
+                
+                // Save key to remove
+                keysToRemove.append(key)
+            }
+        }
+        
+        // Remove keys that timed out
+        for key in keysToRemove {
+            messageHandlers.removeValue(forKey: key)
+        }
     }
 }
 
 extension DeviceManager : BleManagerDelegate {
-    func didConnectTo(id: UUID) {
-        guard let _ = devices[id.uuidString] else { return }
-        // print("Connected to : \(device.id)")
-        devices[id.uuidString]?.updateConnectionState(.connected)
+    func didConnectTo(identifier: UUID) {
+        guard let _ = devices[identifier.uuidString] else { return }
+        devices[identifier.uuidString]?.updateConnectionState(.connected)
     }
     
-    func didFailToConnectTo(id: UUID) {
-        guard let _ = devices[id.uuidString] else { return }
-        // print("Failed to connect to : \(device.id)")
-        devices[id.uuidString]?.updateConnectionState(.failed)
+    func didFailToConnectTo(identifier: UUID) {
+        guard let _ = devices[identifier.uuidString] else { return }
+        devices[identifier.uuidString]?.updateConnectionState(.failed)
     }
     
-    func didDisconnectFrom(id: UUID) {
-        guard let _ = devices[id.uuidString] else { return }
-        // print("Disconnected from : \(device.id)")
-        devices[id.uuidString]?.updateConnectionState(.disconnected)
+    func didDisconnectFrom(identifier: UUID) {
+        guard let _ = devices[identifier.uuidString] else { return }
+        devices[identifier.uuidString]?.updateConnectionState(.disconnected)
+        
+        // Clear any pending completion handlers
+        setColorCompetionHandlers.removeValue(forKey: identifier.uuidString)
+        setIDCompetionHandlers.removeValue(forKey: identifier.uuidString)
     }
     
-    func updateDeviceWithStatus(id: UUID, status: DeviceStatus) {
-        // print("New device status ", status)
-        if let probe = devices[id.uuidString] as? Probe {
+    func updateDeviceWithStatus(identifier: UUID, status: DeviceStatus) {
+        if let probe = devices[identifier.uuidString] as? Probe {
             probe.updateProbeStatus(deviceStatus: status)
         }
     }
     
-    func updateDeviceWithLogResponse(id: UUID, logResponse: LogResponse) {
-        if let probe = devices[id.uuidString] as? Probe {
+    func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse) {
+        if let probe = devices[identifier.uuidString] as? Probe {
             probe.processLogResponse(logResponse: logResponse)
         }
     }
     
-    func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, id: UUID) {
-        if devices[id.uuidString] != nil {
-            if let probe = devices[id.uuidString] as? Probe {
+    func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, identifier: UUID) {
+        if devices[identifier.uuidString] != nil {
+            if let probe = devices[identifier.uuidString] as? Probe {
                 probe.updateWithAdvertising(advertising, RSSI: rssi)
-            // print("Updated device: \(devices[id.uuidString]?.serialNumber) : rssi = \(rssi)")
             }
         }
         else {
-            // print("Adding New Device: \(advertising.serialNumber)")
-            let device = Probe(advertising, RSSI: rssi, id: id)
+            let device = Probe(advertising, RSSI: rssi, identifier: identifier)
             addDevice(device: device)
         }
     }
     
-    func updateDeviceFwVersion(id: UUID, fwVersion: String) {
-        if let device = devices[id.uuidString]  {
+    func updateDeviceFwVersion(identifier: UUID, fwVersion: String) {
+        if let device = devices[identifier.uuidString]  {
             device.firmareVersion = fwVersion
         }
+    }
+    
+    func updateDeviceHwRevision(identifier: UUID, hwRevision: String) {
+        if let device = devices[identifier.uuidString]  {
+            device.hardwareRevision = hwRevision
+        }
+    }
+    
+    func handleSetIDResponse(identifier: UUID, success: Bool) {
+        setIDCompetionHandlers[identifier.uuidString]?.handler(success)
+        
+        setIDCompetionHandlers.removeValue(forKey: identifier.uuidString)
+    }
+    
+    func handleSetColorResponse(identifier: UUID, success: Bool) {
+        setColorCompetionHandlers[identifier.uuidString]?.handler(success)
+        
+        setColorCompetionHandlers.removeValue(forKey: identifier.uuidString)
     }
 }

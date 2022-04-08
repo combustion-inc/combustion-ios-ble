@@ -32,9 +32,13 @@ public class Probe : Device {
     
     /// Probe serial number
     @Published public private(set) var serialNumber: UInt32
-    @Published public private(set) var batteryLevel : Float = 0.0
-    @Published public private(set) var currentTemperatures: ProbeTemperatures?
-    @Published public private(set) var status: DeviceStatus?
+    
+    @Published public private(set) var currentTemperatures: ProbeTemperatures
+    @Published public private(set) var minSequenceNumber: UInt32?
+    @Published public private(set) var maxSequenceNumber: UInt32?
+    
+    @Published public private(set) var id: ProbeID
+    @Published public private(set) var color: ProbeColor
     
     /// Tracks whether all logs on probe have been synced to the app
     @Published public private(set) var logsUpToDate = false
@@ -57,9 +61,14 @@ public class Probe : Device {
     /// Stores historical values of probe temperatures
     public private(set) var temperatureLog : ProbeTemperatureLog = ProbeTemperatureLog()
     
-    public init(_ advertising: AdvertisingData, RSSI: NSNumber, id: UUID) {
-        self.serialNumber = advertising.serialNumber
-        super.init(id: id)
+    public init(_ advertising: AdvertisingData, RSSI: NSNumber, identifier: UUID) {
+        serialNumber = advertising.serialNumber
+        id = advertising.id
+        color = advertising.color
+        currentTemperatures = advertising.temperatures
+        
+        super.init(identifier: identifier)
+        
         updateWithAdvertising(advertising, RSSI: RSSI)
     }
 }
@@ -75,7 +84,11 @@ extension Probe {
     
     /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.
     func updateProbeStatus(deviceStatus: DeviceStatus) {
-        status = deviceStatus
+        
+        minSequenceNumber = deviceStatus.minSequenceNumber
+        maxSequenceNumber = deviceStatus.maxSequenceNumber
+        id = deviceStatus.id
+        color = deviceStatus.color
         
         // Log the temperature data point
         temperatureLog.appendDataPoint(dataPoint:
@@ -92,13 +105,10 @@ extension Probe {
             DeviceManager.shared.requestLogsFrom(self,
                                                  minSequence: missingSequence,
                                                  maxSequence: deviceStatus.maxSequenceNumber)
-            print("Requesting missing records starting with \(missingSequence)")
         } else {
             // If there were no gaps, mark that the logs are up to date
             logsUpToDate = true
         }
-        
-//        print("Updating status! Temperature log size: \(temperatureLog.dataPoints.count)")
         
         lastUpdateTime = Date()
     }
@@ -120,8 +130,8 @@ extension Probe {
     /// - param celsius: True for celsius, false for fahrenheit
     /// - returns: Requested temperature value
     public func currentTemperature(index: Int, celsius: Bool) -> Double? {
-        let result = currentTemperatures?.values[index]
-        if let result = result, celsius == false {
+        let result = currentTemperatures.values[index]
+        if !celsius {
             // Convert to fahrenheit
             return fahrenheit(celsius: result)
         }

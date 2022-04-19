@@ -1,9 +1,9 @@
-//  SetIDRequest.swift
+//  SessionInfo.swift
 
 /*--
 MIT License
 
-Copyright (c) 2021 Combustion Inc.
+Copyright (c) 2022 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,13 +26,30 @@ SOFTWARE.
 
 import Foundation
 
-class SetColorRequest: Request {
-    static let PAYLOAD_LENGTH: UInt8 = 1
+class SessionInfoRequest: Request {
+    static let PAYLOAD_LENGTH: UInt8 = 0
     
-    init(color: ProbeColor) {
-        super.init(payloadLength: LogRequest.PAYLOAD_LENGTH, type: .SetColor)
-        self.data[Request.HEADER_SIZE] = color.rawValue
+    init() {
+        super.init(payloadLength: LogRequest.PAYLOAD_LENGTH, type: .SessionInfo)
     }
 }
 
-class SetColorResponse : Response { }
+class SessionInfoResponse: Response {
+    let sessionID: UInt16
+    let samplePeriod: UInt16
+    
+    init(data: Data, success: Bool) {
+        let sequenceByteIndex = Response.HEADER_LENGTH
+        let sessionIDRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 2))
+        sessionID = sessionIDRaw.withUnsafeBytes {
+            $0.load(as: UInt16.self)
+        }
+        
+        let samplePeriodRaw = data.subdata(in: (sequenceByteIndex + 2)..<(sequenceByteIndex + 4))
+        samplePeriod = samplePeriodRaw.withUnsafeBytes {
+            $0.load(as: UInt16.self)
+        }
+
+        super.init(success: success)
+    }
+}

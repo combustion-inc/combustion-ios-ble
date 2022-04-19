@@ -221,13 +221,15 @@ extension BleManager: CBPeripheralDelegate {
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
-        
-        // Always enable notifications for Device status characteristic
         if(characteristic.uuid == Constants.UART_TX_CHAR),
             let statusChar = deviceStatusCharacteristics[peripheral.identifier.uuidString]  {
+            // After enabling UART notification
+            // Enable notifications for Device status characteristic
             peripheral.setNotifyValue(true, for: statusChar)
+            
+            // Send request the session ID from device
+            sendRequest(identifier: peripheral.identifier.uuidString, request: SessionInfoRequest())
         }
-        
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
@@ -244,6 +246,11 @@ extension BleManager: CBPeripheralDelegate {
             }
             else if let setColorResponse = Response.fromData(data) as? SetColorResponse {
                 delegate?.handleSetColorResponse(identifier: peripheral.identifier, success: setColorResponse.success)
+            }
+            else if let sessionResponse = Response.fromData(data) as? SessionInfoResponse {
+                // TODO JDJ do something with this response
+                print("JDJ session ID : \(sessionResponse.sessionID)")
+                print("JDJ sample rate : \(sessionResponse.samplePeriod)")
             }
         }
         else if characteristic.uuid == Constants.DEVICE_STATUS_CHAR {

@@ -1,4 +1,4 @@
-//  SetIDRequest.swift
+//  SetColor.swift
 
 /*--
 MIT License
@@ -26,13 +26,13 @@ SOFTWARE.
 
 import Foundation
 
-class SetIDRequest: Request {
+class SetColorRequest: Request {
     static let PAYLOAD_LENGTH: UInt8 = 1
     
-    init(id: ProbeID) {
-        super.init(payloadLength: LogRequest.PAYLOAD_LENGTH, type: .SetID)
-        self.data[Request.HEADER_SIZE] = id.rawValue
+    init(color: ProbeColor) {
+        super.init(payloadLength: LogRequest.PAYLOAD_LENGTH, type: .SetColor)
+        self.data[Request.HEADER_SIZE] = color.rawValue
     }
 }
 
-class SetIDResponse : Response { }
+class SetColorResponse : Response { }

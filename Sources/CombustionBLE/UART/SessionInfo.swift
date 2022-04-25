@@ -26,6 +26,11 @@ SOFTWARE.
 
 import Foundation
 
+struct SessionInformation {
+    let sessionID: UInt16
+    let samplePeriod: UInt16
+}
+
 class SessionInfoRequest: Request {
     static let PAYLOAD_LENGTH: UInt8 = 0
     
@@ -35,20 +40,21 @@ class SessionInfoRequest: Request {
 }
 
 class SessionInfoResponse: Response {
-    let sessionID: UInt16
-    let samplePeriod: UInt16
+    let info: SessionInformation
     
     init(data: Data, success: Bool) {
         let sequenceByteIndex = Response.HEADER_LENGTH
         let sessionIDRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 2))
-        sessionID = sessionIDRaw.withUnsafeBytes {
+        let sessionID = sessionIDRaw.withUnsafeBytes {
             $0.load(as: UInt16.self)
         }
         
         let samplePeriodRaw = data.subdata(in: (sequenceByteIndex + 2)..<(sequenceByteIndex + 4))
-        samplePeriod = samplePeriodRaw.withUnsafeBytes {
+        let samplePeriod = samplePeriodRaw.withUnsafeBytes {
             $0.load(as: UInt16.self)
         }
+        
+        info = SessionInformation(sessionID: sessionID, samplePeriod: samplePeriod)
 
         super.init(success: success)
     }

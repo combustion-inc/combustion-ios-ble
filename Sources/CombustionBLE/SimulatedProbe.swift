@@ -65,10 +65,12 @@ class SimulatedProbe: Probe {
     private func updateFakeStatus() {
         guard connectionState == .connected else { return }
         
-        let firstSeq = temperatureLog.dataPoints.first?.sequenceNum ?? 0
+        // TODO JDJ
+        let firstSeq = temperatureLogs.first?.dataPoints.first?.sequenceNum ?? 0
         
         let lastSequence: UInt32
-        if let last = temperatureLog.dataPoints.last?.sequenceNum {
+        // TODO JDJ
+        if let last = temperatureLogs.first?.dataPoints.last?.sequenceNum {
             lastSequence = last + 1
         }
         else {

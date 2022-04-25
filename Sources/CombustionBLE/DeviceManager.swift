@@ -235,6 +235,12 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
+    func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation) {
+        if let probe = devices[identifier.uuidString] as? Probe {
+            probe.updateWithSessionInformation(sessionInformation)
+        }
+    }
+    
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String) {
         if let device = devices[identifier.uuidString]  {
             device.firmareVersion = fwVersion

@@ -29,6 +29,8 @@ import OrderedCollections
 
 public class ProbeTemperatureLog : ObservableObject {
     
+    let sessionInformation: SessionInformation
+    
     /// Buffer of logged data points
     public var dataPointsDict : OrderedDictionary<UInt32, LoggedProbeDataPoint>
     
@@ -52,10 +54,11 @@ public class ProbeTemperatureLog : ObservableObject {
     /// data point dictionary. This prevents unnecesary re-sorting of the overall dictionary.
     private var dataPointAccumulator : OrderedSet<LoggedProbeDataPoint>
     
-    init() {
+    init(sessionInfo: SessionInformation) {
         accumulatorTimer = nil
         dataPointsDict = OrderedDictionary<UInt32, LoggedProbeDataPoint>()
         dataPointAccumulator = OrderedSet<LoggedProbeDataPoint>()
+        sessionInformation = sessionInfo
     }
     
     /// Finds the first missing sequence number in the specified range of sequence numbers.
@@ -103,7 +106,7 @@ public class ProbeTemperatureLog : ObservableObject {
     /// Inserts a new data point. Places it in the accumulator so it can be inserted with additional
     /// records coming in.
     /// - parameter newDataPoint: New data points to be added to the buffer
-    func insertDataPoint(newDataPoint: LoggedProbeDataPoint) {
+    private func insertDataPoint(newDataPoint: LoggedProbeDataPoint) {
         // Add the incoming data point to the accumulator
         let appendResult = dataPointAccumulator.append(newDataPoint)
         if appendResult.inserted {
@@ -129,7 +132,7 @@ public class ProbeTemperatureLog : ObservableObject {
     
     /// Appends data point to the logged probe data.
     func appendDataPoint(dataPoint: LoggedProbeDataPoint) {
-        // Ensure new point's sequence number belongs at the end
+        // Check if new point's sequence number belongs at the end
         if let lastPoint = dataPointsDict.values.last {
             if(dataPoint.sequenceNum == (lastPoint.sequenceNum + 1)) {
                 // If it does, simply add it and it will appear at the end of the ordered collection
@@ -146,3 +149,6 @@ public class ProbeTemperatureLog : ObservableObject {
     }
 }
 
+extension ProbeTemperatureLog: Identifiable {
+    public var id: UInt16 { return sessionInformation.sessionID }
+}

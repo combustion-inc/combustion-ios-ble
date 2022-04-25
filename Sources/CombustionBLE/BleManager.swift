@@ -34,9 +34,10 @@ protocol BleManagerDelegate: AnyObject {
     func didDisconnectFrom(identifier: UUID)
     func handleSetIDResponse(identifier: UUID, success: Bool)
     func handleSetColorResponse(identifier: UUID, success: Bool)
-    func updateDeviceWithStatus(identifier: UUID, status: DeviceStatus)
     func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, identifier: UUID)
     func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse)
+    func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation)
+    func updateDeviceWithStatus(identifier: UUID, status: DeviceStatus)
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String)
     func updateDeviceHwRevision(identifier: UUID, hwRevision: String)
 }
@@ -248,9 +249,10 @@ extension BleManager: CBPeripheralDelegate {
                 delegate?.handleSetColorResponse(identifier: peripheral.identifier, success: setColorResponse.success)
             }
             else if let sessionResponse = Response.fromData(data) as? SessionInfoResponse {
-                // TODO JDJ do something with this response
-                print("JDJ session ID : \(sessionResponse.sessionID)")
-                print("JDJ sample rate : \(sessionResponse.samplePeriod)")
+                if(sessionResponse.success) {
+                    delegate?.updateDeviceWithSessionInformation(identifier: peripheral.identifier,
+                                                                 sessionInformation: sessionResponse.info)
+                }
             }
         }
         else if characteristic.uuid == Constants.DEVICE_STATUS_CHAR {

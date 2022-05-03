@@ -26,9 +26,9 @@ SOFTWARE.
 
 import Foundation
 
-struct SessionInformation {
+public struct SessionInformation {
     let sessionID: UInt16
-    let samplePeriod: UInt16
+    public let samplePeriod: UInt16
 }
 
 class SessionInfoRequest: Request {

@@ -34,6 +34,7 @@ class SimulatedProbe: Probe {
         super.init(advertising, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())
         
         firmareVersion = "v1.2.3"
+        hardwareRevision = "v2.3.4"
         
         // Create timer to update probe with fake advertising packets
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
@@ -44,6 +45,10 @@ class SimulatedProbe: Probe {
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.updateFakeStatus()
         }
+        
+        // Set fake session information
+        let fakeSessionInfo = SessionInformation(sessionID: UInt16.random(in: 0..<UInt16.max), samplePeriod: 1000)
+        updateWithSessionInformation(fakeSessionInfo)
     }
     
     public override var name: String {
@@ -65,11 +70,10 @@ class SimulatedProbe: Probe {
     private func updateFakeStatus() {
         guard connectionState == .connected else { return }
         
-        // TODO JDJ
         let firstSeq = temperatureLogs.first?.dataPoints.first?.sequenceNum ?? 0
-        
+
         let lastSequence: UInt32
-        // TODO JDJ
+
         if let last = temperatureLogs.first?.dataPoints.last?.sequenceNum {
             lastSequence = last + 1
         }

@@ -30,7 +30,7 @@ class SetIDRequest: Request {
     static let PAYLOAD_LENGTH: UInt8 = 1
     
     init(id: ProbeID) {
-        super.init(payloadLength: LogRequest.PAYLOAD_LENGTH, type: .SetID)
+        super.init(payloadLength: SetIDRequest.PAYLOAD_LENGTH, type: .SetID)
         self.data[Request.HEADER_SIZE] = id.rawValue
     }
 }

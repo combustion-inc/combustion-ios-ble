@@ -165,7 +165,7 @@ public class ProbeTemperatureLog : ObservableObject {
 extension ProbeTemperatureLog: Identifiable {
     
     // Use the Session ID for `Identifiable` protocol
-    public var id: UInt16 {
+    public var id: UInt32 {
         return sessionInformation.sessionID
     }
 }

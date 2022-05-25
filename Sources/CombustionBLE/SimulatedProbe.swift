@@ -47,7 +47,7 @@ class SimulatedProbe: Probe {
         }
         
         // Set fake session information
-        let fakeSessionInfo = SessionInformation(sessionID: UInt16.random(in: 0..<UInt16.max), samplePeriod: 1000)
+        let fakeSessionInfo = SessionInformation(sessionID: UInt32.random(in: 0..<UInt32.max), samplePeriod: 1000)
         updateWithSessionInformation(fakeSessionInfo)
     }
     

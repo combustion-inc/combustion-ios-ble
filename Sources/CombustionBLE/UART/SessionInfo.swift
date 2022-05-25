@@ -27,7 +27,7 @@ SOFTWARE.
 import Foundation
 
 public struct SessionInformation {
-    let sessionID: UInt16
+    let sessionID: UInt32
     public let samplePeriod: UInt16
 }
 
@@ -44,12 +44,12 @@ class SessionInfoResponse: Response {
     
     init(data: Data, success: Bool) {
         let sequenceByteIndex = Response.HEADER_LENGTH
-        let sessionIDRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 2))
+        let sessionIDRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 4))
         let sessionID = sessionIDRaw.withUnsafeBytes {
-            $0.load(as: UInt16.self)
+            $0.load(as: UInt32.self)
         }
         
-        let samplePeriodRaw = data.subdata(in: (sequenceByteIndex + 2)..<(sequenceByteIndex + 4))
+        let samplePeriodRaw = data.subdata(in: (sequenceByteIndex + 4)..<(sequenceByteIndex + 6))
         let samplePeriod = samplePeriodRaw.withUnsafeBytes {
             $0.load(as: UInt16.self)
         }

@@ -33,54 +33,6 @@ public enum CombustionProductType: UInt8 {
     case NODE = 0x02
 }
 
-/// Probe colors
-public enum ProbeColor: UInt8, CaseIterable {
-    case COLOR1 = 0x00
-    case COLOR2 = 0x01
-    case COLOR3 = 0x02
-    case COLOR4 = 0x03
-    case COLOR5 = 0x04
-    case COLOR6 = 0x05
-    case COLOR7 = 0x06
-    case COLOR8 = 0x07
-    
-    private enum Constants {
-        static let PRODE_COLOR_MASK: UInt8 = 0x7
-        static let PRODE_COLOR_SHIFT: UInt8 = 2
-    }
-    
-    static func fromRawData(data: Data) -> ProbeColor {
-        let modeIdColorBytes = [UInt8](data)
-        
-        let rawProbeColor = (modeIdColorBytes[0] & (Constants.PRODE_COLOR_MASK << Constants.PRODE_COLOR_SHIFT)) >> Constants.PRODE_COLOR_SHIFT
-        return ProbeColor(rawValue: rawProbeColor) ?? .COLOR1
-    }
-}
-
-/// Probe IDs
-public enum ProbeID: UInt8, CaseIterable {
-    case ID1 = 0x00
-    case ID2 = 0x01
-    case ID3 = 0x02
-    case ID4 = 0x03
-    case ID5 = 0x04
-    case ID6 = 0x05
-    case ID7 = 0x06
-    case ID8 = 0x07
-    
-    private enum Constants {
-        static let PRODE_ID_MASK: UInt8 = 0x7
-        static let PRODE_ID_SHIFT: UInt8 = 5
-    }
-    
-    static func fromRawData(data: Data) -> ProbeID {
-        let modeIdColorBytes = [UInt8](data)
-        
-        let rawProbeID = (modeIdColorBytes[0] & (Constants.PRODE_ID_MASK << Constants.PRODE_ID_SHIFT)) >> Constants.PRODE_ID_SHIFT
-        return ProbeID(rawValue: rawProbeID) ?? .ID1
-    }
-}
-
 
 /// Struct containing advertising data received from device.
 public struct AdvertisingData {
@@ -94,6 +46,8 @@ public struct AdvertisingData {
     public let id: ProbeID
     /// Probe Color
     public let color: ProbeColor
+    /// Probe mode
+    public let mode: ProbeMode
 
     private enum Constants {
         // Locations of data in advertising packets
@@ -140,10 +94,12 @@ extension AdvertisingData {
             let modeIdColorData  = data.subdata(in: Constants.MODE_COLOR_ID_RANGE)
             id = ProbeID.fromRawData(data: modeIdColorData)
             color = ProbeColor.fromRawData(data: modeIdColorData)
+            mode = ProbeMode.fromRawData(data: modeIdColorData)
         }
         else {
             id = .ID1
             color = .COLOR1
+            mode = .Normal
         }
     }
 }
@@ -157,6 +113,7 @@ extension AdvertisingData {
         serialNumber = fakeSerial
         id = .ID1
         color = .COLOR1
+        mode = .Normal
     }
     
     // Fake data initializer for Simulated Probe
@@ -166,5 +123,6 @@ extension AdvertisingData {
         serialNumber = fakeSerial
         id = .ID1
         color = .COLOR1
+        mode = .Normal
     }
 }

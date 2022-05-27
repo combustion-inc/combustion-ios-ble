@@ -31,6 +31,10 @@ public struct ProbeTemperatures: Equatable {
     /// Array of probe temperatures.
     /// Index 0 is the tip sensor, 7 is the handle (ambient) sensor.
     public let values: [Double]
+    
+    public init(values: [Double]) {
+        self.values = values
+    }
 }
 
 extension ProbeTemperatures {

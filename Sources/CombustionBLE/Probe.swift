@@ -85,15 +85,18 @@ extension Probe {
     /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.
     func updateProbeStatus(deviceStatus: DeviceStatus) {
         
+        currentTemperatures = deviceStatus.temperatures
         minSequenceNumber = deviceStatus.minSequenceNumber
         maxSequenceNumber = deviceStatus.maxSequenceNumber
         id = deviceStatus.id
         color = deviceStatus.color
         
-        // Log the temperature data point
-        temperatureLog.appendDataPoint(dataPoint:
-                                        LoggedProbeDataPoint.fromDeviceStatus(deviceStatus:
-                                                                                deviceStatus))
+        // Log the temperature data point for "Normal" status updates
+        if(deviceStatus.mode == .Normal) {
+            temperatureLog.appendDataPoint(dataPoint:
+                                            LoggedProbeDataPoint.fromDeviceStatus(deviceStatus:
+                                                                                    deviceStatus))
+        }
         
         // Check for missing records
         if let missingSequence = temperatureLog.firstMissingIndex(sequenceRangeStart: deviceStatus.minSequenceNumber,

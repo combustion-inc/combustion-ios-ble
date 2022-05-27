@@ -69,6 +69,10 @@ public class Device : ObservableObject {
     public init(identifier: UUID) {
         self.identifier = identifier.uuidString
     }
+    
+    func updateDeviceStale() {
+        stale = Date().timeIntervalSince(lastUpdateTime) > Constants.STALE_TIMEOUT
+    }
 }
     
 extension Device {
@@ -106,11 +110,6 @@ extension Device {
             DeviceManager.shared.connectToDevice(self)
         }
     }
-    
-    func updateDeviceStale() {
-        stale = Date().timeIntervalSince(lastUpdateTime) > Constants.STALE_TIMEOUT
-    }
-    
 }
 
 

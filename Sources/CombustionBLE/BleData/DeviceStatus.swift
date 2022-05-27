@@ -38,6 +38,8 @@ public struct DeviceStatus {
     public let id: ProbeID
     /// Probe Color
     public let color: ProbeColor
+    /// Probe mode
+    public let mode: ProbeMode
     
     private enum Constants {
         // Locations of data in status packet
@@ -71,10 +73,12 @@ extension DeviceStatus {
             let modeIdColorData  = data.subdata(in: Constants.MODE_COLOR_ID_RANGE)
             id = ProbeID.fromRawData(data: modeIdColorData)
             color = ProbeColor.fromRawData(data: modeIdColorData)
+            mode = ProbeMode.fromRawData(data: modeIdColorData)
         }
         else {
             id = .ID1
             color = .COLOR1
+            mode = .Normal
         }
     }
 }

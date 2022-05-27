@@ -33,7 +33,9 @@ public class Probe : Device {
     /// Probe serial number
     @Published public private(set) var serialNumber: UInt32
     
-    @Published public private(set) var currentTemperatures: ProbeTemperatures
+    @Published public private(set) var currentTemperatures: ProbeTemperatures?
+    @Published public private(set) var instantReadTemperature: Double?
+    
     @Published public private(set) var minSequenceNumber: UInt32?
     @Published public private(set) var maxSequenceNumber: UInt32?
     
@@ -61,22 +63,46 @@ public class Probe : Device {
     /// Stores historical values of probe temperatures
     public private(set) var temperatureLog : ProbeTemperatureLog = ProbeTemperatureLog()
     
+    /// Time at which probe instant read was last updated
+    internal var lastInstantRead: Date?
+    
     public init(_ advertising: AdvertisingData, RSSI: NSNumber, identifier: UUID) {
         serialNumber = advertising.serialNumber
         id = advertising.id
         color = advertising.color
-        currentTemperatures = advertising.temperatures
         
         super.init(identifier: identifier)
         
         updateWithAdvertising(advertising, RSSI: RSSI)
     }
+    
+    override func updateDeviceStale() {
+        // Clear instantReadTemperature if its been longer than timeout since last update
+        if let lastInstantRead = lastInstantRead,
+           Date().timeIntervalSince(lastInstantRead) > Constants.INSTANT_READ_STALE_TIMEOUT {
+            instantReadTemperature = nil
+        }
+        
+        super.updateDeviceStale()
+    }
 }
     
 extension Probe {
     
+    private enum Constants {
+        /// Instant read is considered stale after 5 seconds
+        static let INSTANT_READ_STALE_TIMEOUT = 5.0
+    }
+    
+    
     func updateWithAdvertising(_ advertising: AdvertisingData, RSSI: NSNumber) {
-        currentTemperatures = advertising.temperatures
+        if(advertising.mode == .Normal) {
+            currentTemperatures = advertising.temperatures
+        }
+        else if(advertising.mode == .InstantRead ){
+            updateInstantRead(advertising.temperatures.values[0])
+        }
+        
         rssi = RSSI.intValue
         
         lastUpdateTime = Date()
@@ -84,18 +110,21 @@ extension Probe {
     
     /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.
     func updateProbeStatus(deviceStatus: DeviceStatus) {
-        
-        currentTemperatures = deviceStatus.temperatures
         minSequenceNumber = deviceStatus.minSequenceNumber
         maxSequenceNumber = deviceStatus.maxSequenceNumber
         id = deviceStatus.id
         color = deviceStatus.color
         
-        // Log the temperature data point for "Normal" status updates
         if(deviceStatus.mode == .Normal) {
+            currentTemperatures = deviceStatus.temperatures
+            
+            // Log the temperature data point for "Normal" status updates
             temperatureLog.appendDataPoint(dataPoint:
                                             LoggedProbeDataPoint.fromDeviceStatus(deviceStatus:
                                                                                     deviceStatus))
+        }
+        else if(deviceStatus.mode == .InstantRead ){
+            updateInstantRead(deviceStatus.temperatures.values[0])
         }
         
         // Check for missing records
@@ -123,22 +152,27 @@ extension Probe {
                                                                                 logResponse))
     }
     
+    private func updateInstantRead(_ instantReadValue: Double) {
+        lastInstantRead = Date()
+        instantReadTemperature = instantReadValue
+    }
+    
     
     ///////////////////////
     // Current value functions
     ///////////////////////
     
-    /// Gets the current temperature of the sensor at the specified index.
-    /// - param index: Index of temperature value (0-7)
+    /// Converts the specified temperature to Celsius or Fahrenheit
     /// - param celsius: True for celsius, false for fahrenheit
     /// - returns: Requested temperature value
-    public func currentTemperature(index: Int, celsius: Bool) -> Double? {
-        let result = currentTemperatures.values[index]
+    static public func temperatureInCelsius(_ temperature: Double?, celsius: Bool) -> Double? {
+        guard let temperature = temperature else { return nil }
+        
         if !celsius {
             // Convert to fahrenheit
-            return fahrenheit(celsius: result)
+            return fahrenheit(celsius: temperature)
         }
                     
-        return result
+        return temperature
     }
 }

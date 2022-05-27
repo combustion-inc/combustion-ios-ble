@@ -85,6 +85,7 @@ extension Probe {
     /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.
     func updateProbeStatus(deviceStatus: DeviceStatus) {
         
+        currentTemperatures = deviceStatus.temperatures
         minSequenceNumber = deviceStatus.minSequenceNumber
         maxSequenceNumber = deviceStatus.maxSequenceNumber
         id = deviceStatus.id

@@ -78,6 +78,10 @@ public class Device : ObservableObject {
             DeviceManager.shared.connectToDevice(self)
         }
     }
+    
+    func updateDeviceStale() {
+        stale = Date().timeIntervalSince(lastUpdateTime) > Constants.STALE_TIMEOUT
+    }
 }
     
 extension Device {
@@ -106,11 +110,6 @@ extension Device {
         // Disconnect if connected
         DeviceManager.shared.disconnectFromDevice(self)
     }
-    
-    func updateDeviceStale() {
-        stale = Date().timeIntervalSince(lastUpdateTime) > Constants.STALE_TIMEOUT
-    }
-    
 }
 
 

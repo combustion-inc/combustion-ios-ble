@@ -85,7 +85,8 @@ class SimulatedProbe: Probe {
                                         maxSequenceNumber: lastSequence,
                                         temperatures: ProbeTemperatures.withRandomData(),
                                         id: .ID1,
-                                        color: .COLOR1)
+                                        color: .COLOR1,
+                                        mode: .Normal)
         
         updateProbeStatus(deviceStatus: deviceStatus)
     }

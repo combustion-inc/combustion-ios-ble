@@ -29,6 +29,8 @@ import OrderedCollections
 
 public class ProbeTemperatureLog : ObservableObject {
     
+    public let sessionInformation: SessionInformation
+    
     /// Buffer of logged data points
     public var dataPointsDict : OrderedDictionary<UInt32, LoggedProbeDataPoint>
     
@@ -38,6 +40,9 @@ public class ProbeTemperatureLog : ObservableObject {
             return Array(dataPointsDict.values)
         }
     }
+    
+    /// Approximate start time of the session
+    public var startTime: Date? = nil
     
     /// Number of MS to wait for new log data to flow in before inserting it into the data buffer.
     private let ACCUMULATOR_STABILIIZATION_TIME = 0.2
@@ -52,10 +57,10 @@ public class ProbeTemperatureLog : ObservableObject {
     /// data point dictionary. This prevents unnecesary re-sorting of the overall dictionary.
     private var dataPointAccumulator : OrderedSet<LoggedProbeDataPoint>
     
-    init() {
-        accumulatorTimer = nil
+    init(sessionInfo: SessionInformation) {
         dataPointsDict = OrderedDictionary<UInt32, LoggedProbeDataPoint>()
         dataPointAccumulator = OrderedSet<LoggedProbeDataPoint>()
+        sessionInformation = sessionInfo
     }
     
     /// Finds the first missing sequence number in the specified range of sequence numbers.
@@ -103,7 +108,7 @@ public class ProbeTemperatureLog : ObservableObject {
     /// Inserts a new data point. Places it in the accumulator so it can be inserted with additional
     /// records coming in.
     /// - parameter newDataPoint: New data points to be added to the buffer
-    func insertDataPoint(newDataPoint: LoggedProbeDataPoint) {
+    private func insertDataPoint(newDataPoint: LoggedProbeDataPoint) {
         // Add the incoming data point to the accumulator
         let appendResult = dataPointAccumulator.append(newDataPoint)
         if appendResult.inserted {
@@ -129,7 +134,7 @@ public class ProbeTemperatureLog : ObservableObject {
     
     /// Appends data point to the logged probe data.
     func appendDataPoint(dataPoint: LoggedProbeDataPoint) {
-        // Ensure new point's sequence number belongs at the end
+        // Check if new point's sequence number belongs at the end
         if let lastPoint = dataPointsDict.values.last {
             if(dataPoint.sequenceNum == (lastPoint.sequenceNum + 1)) {
                 // If it does, simply add it and it will appear at the end of the ordered collection
@@ -142,7 +147,25 @@ public class ProbeTemperatureLog : ObservableObject {
         } else {
             // If the collection is empty, just add it
             dataPointsDict[dataPoint.sequenceNum] = dataPoint
+            
+            setStartTime(dataPoint: dataPoint)
         }
+    }
+    
+    private func setStartTime(dataPoint: LoggedProbeDataPoint) {
+        // Do not recalculate start time after it has been set
+        guard startTime == nil else { return }
+ 
+        let currentTime = Date()
+        let secondDiff = Int(dataPoint.sequenceNum) * Int(sessionInformation.samplePeriod) / 1000
+        startTime = Calendar.current.date(byAdding: .second, value: -1 * secondDiff, to: currentTime)
     }
 }
 
+extension ProbeTemperatureLog: Identifiable {
+    
+    // Use the Session ID for `Identifiable` protocol
+    public var id: UInt32 {
+        return sessionInformation.sessionID
+    }
+}

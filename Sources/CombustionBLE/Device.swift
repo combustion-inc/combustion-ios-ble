@@ -70,6 +70,15 @@ public class Device : ObservableObject {
         self.identifier = identifier.uuidString
     }
     
+    func updateConnectionState(_ state: ConnectionState) {
+        connectionState = state
+        
+        // If we were disconnected and we should be maintaining a connection, attempt to reconnect.
+        if(maintainingConnection && (connectionState == .disconnected || connectionState == .failed)) {
+            DeviceManager.shared.connectToDevice(self)
+        }
+    }
+    
     func updateDeviceStale() {
         stale = Date().timeIntervalSince(lastUpdateTime) > Constants.STALE_TIMEOUT
     }
@@ -100,15 +109,6 @@ extension Device {
         
         // Disconnect if connected
         DeviceManager.shared.disconnectFromDevice(self)
-    }
-    
-    func updateConnectionState(_ state: ConnectionState) {
-        connectionState = state
-        
-        // If we were disconnected and we should be maintaining a connection, attempt to reconnect.
-        if(maintainingConnection && (connectionState == .disconnected || connectionState == .failed)) {
-            DeviceManager.shared.connectToDevice(self)
-        }
     }
 }
 

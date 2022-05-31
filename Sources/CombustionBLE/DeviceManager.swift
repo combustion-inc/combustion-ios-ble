@@ -235,9 +235,28 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
+    func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation) {
+        if let probe = devices[identifier.uuidString] as? Probe {
+            probe.updateWithSessionInformation(sessionInformation)
+        }
+    }
+    
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String) {
         if let device = devices[identifier.uuidString]  {
             device.firmareVersion = fwVersion
+            
+            // TODO : remove this at some point
+            // Prior to v0.8.0, the firmware did not support the Session ID command
+            // Therefore, add a hardcoded session for backwards compatibility
+            
+            // Remove git hash from debug versions
+            let splitVersion = fwVersion.split(separator: "-")
+
+            if(splitVersion.first?.compare("v0.8.0", options: String.CompareOptions.numeric, range: nil, locale: nil) == .orderedAscending) {
+                let fakeSessionInfo = SessionInformation(sessionID: 0, samplePeriod: 1000)
+                updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: fakeSessionInfo)
+            }
+            
         }
     }
     

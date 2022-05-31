@@ -1,9 +1,9 @@
-//  SetIDRequest.swift
+//  SessionInfo.swift
 
 /*--
 MIT License
 
-Copyright (c) 2021 Combustion Inc.
+Copyright (c) 2022 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,13 +26,36 @@ SOFTWARE.
 
 import Foundation
 
-class SetIDRequest: Request {
-    static let PAYLOAD_LENGTH: UInt8 = 1
+public struct SessionInformation {
+    let sessionID: UInt32
+    public let samplePeriod: UInt16
+}
+
+class SessionInfoRequest: Request {
+    static let PAYLOAD_LENGTH: UInt8 = 0
     
-    init(id: ProbeID) {
-        super.init(payloadLength: LogRequest.PAYLOAD_LENGTH, type: .SetID)
-        self.data[Request.HEADER_SIZE] = id.rawValue
+    init() {
+        super.init(payloadLength: SessionInfoRequest.PAYLOAD_LENGTH, type: .SessionInfo)
     }
 }
 
-class SetIDResponse : Response { }
+class SessionInfoResponse: Response {
+    let info: SessionInformation
+    
+    init(data: Data, success: Bool) {
+        let sequenceByteIndex = Response.HEADER_LENGTH
+        let sessionIDRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 4))
+        let sessionID = sessionIDRaw.withUnsafeBytes {
+            $0.load(as: UInt32.self)
+        }
+        
+        let samplePeriodRaw = data.subdata(in: (sequenceByteIndex + 4)..<(sequenceByteIndex + 6))
+        let samplePeriod = samplePeriodRaw.withUnsafeBytes {
+            $0.load(as: UInt16.self)
+        }
+        
+        info = SessionInformation(sessionID: sessionID, samplePeriod: samplePeriod)
+
+        super.init(success: success)
+    }
+}

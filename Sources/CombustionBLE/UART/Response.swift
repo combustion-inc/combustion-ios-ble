@@ -69,7 +69,6 @@ extension Response {
 
         // Payload Length
         let lengthByte = data.subdata(in: 6..<7)
-        _ = lengthByte // Suppress 'unused variable' warning
         let payloadLength = lengthByte.withUnsafeBytes {
             $0.load(as: UInt8.self)
         }
@@ -84,6 +83,8 @@ extension Response {
             return SetIDResponse(success: success)
         case .SetColor:
             return SetColorResponse(success: success)
+        case .SessionInfo:
+            return SessionInfoResponse(data: data, success: success)
         }
     }
 }

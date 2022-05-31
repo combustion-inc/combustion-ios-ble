@@ -39,11 +39,16 @@ public class Probe : Device {
     @Published public private(set) var minSequenceNumber: UInt32?
     @Published public private(set) var maxSequenceNumber: UInt32?
     
+    /// Tracks whether all logs on probe have been synced to the app
+    @Published public private(set) var logsUpToDate = false
+    
     @Published public private(set) var id: ProbeID
     @Published public private(set) var color: ProbeColor
     
-    /// Tracks whether all logs on probe have been synced to the app
-    @Published public private(set) var logsUpToDate = false
+    private var sessionInformation: SessionInformation?
+    
+    /// Stores historical values of probe temperatures
+    public private(set) var temperatureLogs: [ProbeTemperatureLog] = []
     
     /// Pretty-formatted device name
     public var name: String {
@@ -59,9 +64,6 @@ public class Probe : Device {
     public var macAddressString: String {
         return String(format: "%012llX", macAddress)
     }
-       
-    /// Stores historical values of probe temperatures
-    public private(set) var temperatureLog : ProbeTemperatureLog = ProbeTemperatureLog()
     
     /// Time at which probe instant read was last updated
     internal var lastInstantRead: Date?
@@ -74,6 +76,15 @@ public class Probe : Device {
         super.init(identifier: identifier)
         
         updateWithAdvertising(advertising, RSSI: RSSI)
+    }
+    
+    override func updateConnectionState(_ state: ConnectionState) {
+        // Clear session information on disconnect, since probe may have reset
+        if (state == .disconnected) {
+            sessionInformation = nil
+        }
+        
+        super.updateConnectionState(state)
     }
     
     override func updateDeviceStale() {
@@ -119,37 +130,59 @@ extension Probe {
             currentTemperatures = deviceStatus.temperatures
             
             // Log the temperature data point for "Normal" status updates
-            temperatureLog.appendDataPoint(dataPoint:
-                                            LoggedProbeDataPoint.fromDeviceStatus(deviceStatus:
-                                                                                    deviceStatus))
+            // Log the temperature data point
+            addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus))
         }
         else if(deviceStatus.mode == .InstantRead ){
             updateInstantRead(deviceStatus.temperatures.values[0])
         }
         
         // Check for missing records
-        if let missingSequence = temperatureLog.firstMissingIndex(sequenceRangeStart: deviceStatus.minSequenceNumber,
-                                                                  sequenceRangeEnd: deviceStatus.maxSequenceNumber) {
-            // Track that the app is not up to date with the probe
-            logsUpToDate = false
-            
-            // Request missing records
-            DeviceManager.shared.requestLogsFrom(self,
-                                                 minSequence: missingSequence,
-                                                 maxSequence: deviceStatus.maxSequenceNumber)
-        } else {
-            // If there were no gaps, mark that the logs are up to date
-            logsUpToDate = true
+        if let current = getCurrentTemperatureLog() {
+            if let missingSequence = current.firstMissingIndex(sequenceRangeStart: deviceStatus.minSequenceNumber,
+                                                                      sequenceRangeEnd: deviceStatus.maxSequenceNumber) {
+                // Track that the app is not up to date with the probe
+                logsUpToDate = false
+                
+                // Request missing records
+                DeviceManager.shared.requestLogsFrom(self,
+                                                     minSequence: missingSequence,
+                                                     maxSequence: deviceStatus.maxSequenceNumber)
+            } else {
+                // If there were no gaps, mark that the logs are up to date
+                logsUpToDate = true
+            }
         }
+
         
         lastUpdateTime = Date()
     }
     
+    func updateWithSessionInformation(_ sessionInformation: SessionInformation) {
+        self.sessionInformation = sessionInformation
+    }
+    
     /// Processes an incoming log response (response to a manual request for prior messages)
     func processLogResponse(logResponse: LogResponse) {
-        temperatureLog.insertDataPoint(newDataPoint:
-                                        LoggedProbeDataPoint.fromLogResponse(logResponse:
-                                                                                logResponse))
+        addDataToLog(LoggedProbeDataPoint.fromLogResponse(logResponse: logResponse))
+    }
+    
+    private func addDataToLog(_ dataPoint: LoggedProbeDataPoint) {
+        if let current = getCurrentTemperatureLog() {
+            // Append data to temperature log for current session
+            current.appendDataPoint(dataPoint: dataPoint)
+        }
+        else if let sessionInformation = sessionInformation {
+            // Create a new Temperature log for session and append data
+            let log = ProbeTemperatureLog(sessionInfo: sessionInformation)
+            log.appendDataPoint(dataPoint: dataPoint)
+            temperatureLogs.append(log)
+        }
+    }
+    
+    // Find the ProbeTemperatureLog that matches current session ID
+    private func getCurrentTemperatureLog() -> ProbeTemperatureLog? {
+        return temperatureLogs.first(where: { $0.sessionInformation.sessionID == sessionInformation?.sessionID } )
     }
     
     private func updateInstantRead(_ instantReadValue: Double) {

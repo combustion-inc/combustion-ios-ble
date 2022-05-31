@@ -34,7 +34,7 @@ class SimulatedProbe: Probe {
         super.init(advertising, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())
         
         firmareVersion = "v1.2.3"
-        hardwareRevision = "v2.3.4"
+        hardwareRevision = "v0.31-A1"
         
         // Create timer to update probe with fake advertising packets
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in

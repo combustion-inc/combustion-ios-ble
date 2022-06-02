@@ -237,23 +237,7 @@ extension BleManager: CBPeripheralDelegate {
         guard let data = characteristic.value else { return }
         
         if characteristic.uuid == Constants.UART_TX_CHAR {
-            if let logResponse = Response.fromData(data) as? LogResponse {
-                if(logResponse.success) {
-                    delegate?.updateDeviceWithLogResponse(identifier: peripheral.identifier, logResponse: logResponse)
-                }
-            }
-            else if let setIDResponse = Response.fromData(data) as? SetIDResponse {
-                delegate?.handleSetIDResponse(identifier: peripheral.identifier, success: setIDResponse.success)
-            }
-            else if let setColorResponse = Response.fromData(data) as? SetColorResponse {
-                delegate?.handleSetColorResponse(identifier: peripheral.identifier, success: setColorResponse.success)
-            }
-            else if let sessionResponse = Response.fromData(data) as? SessionInfoResponse {
-                if(sessionResponse.success) {
-                    delegate?.updateDeviceWithSessionInformation(identifier: peripheral.identifier,
-                                                                 sessionInformation: sessionResponse.info)
-                }
-            }
+            handleUartData(data: data, identifier: peripheral.identifier)
         }
         else if characteristic.uuid == Constants.DEVICE_STATUS_CHAR {
             if let status = DeviceStatus(fromData: data) {
@@ -280,6 +264,27 @@ extension BleManager: CBPeripheralDelegate {
             // Always enable notifications for UART TX characteristic
             if(characteristic.uuid == Constants.UART_TX_CHAR) {
                 peripheral.setNotifyValue(true, for: characteristic)
+            }
+        }
+    }
+    
+    private func handleUartData(data: Data, identifier: UUID) {
+        let responses = Response.fromData(data)
+        
+        for response in responses {
+            if let logResponse = response as? LogResponse {
+                delegate?.updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
+            }
+            else if let setIDResponse = response as? SetIDResponse {
+                delegate?.handleSetIDResponse(identifier: identifier, success: setIDResponse.success)
+            }
+            else if let setColorResponse = response as? SetColorResponse {
+                delegate?.handleSetColorResponse(identifier: identifier, success: setColorResponse.success)
+            }
+            else if let sessionResponse = response as? SessionInfoResponse {
+                if(sessionResponse.success) {
+                    delegate?.updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: sessionResponse.info)
+                }
             }
         }
     }

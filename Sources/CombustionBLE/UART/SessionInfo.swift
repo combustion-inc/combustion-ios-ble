@@ -40,6 +40,8 @@ class SessionInfoRequest: Request {
 }
 
 class SessionInfoResponse: Response {
+    static let PAYLOAD_LENGTH = 6
+    
     let info: SessionInformation
     
     init(data: Data, success: Bool) {
@@ -56,6 +58,6 @@ class SessionInfoResponse: Response {
         
         info = SessionInformation(sessionID: sessionID, samplePeriod: samplePeriod)
 
-        super.init(success: success)
+        super.init(success: success, payLoadLength: SessionInfoResponse.PAYLOAD_LENGTH)
     }
 }

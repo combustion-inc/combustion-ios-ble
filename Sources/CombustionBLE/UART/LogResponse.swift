@@ -28,6 +28,8 @@ import Foundation
 
 class LogResponse: Response {
     
+    static let PAYLOAD_LENGTH = 17
+    
     let sequenceNumber: UInt32
     let temperatures: ProbeTemperatures
     
@@ -45,6 +47,6 @@ class LogResponse: Response {
         // print("******** Received response!")
         // print("Sequence = \(sequenceNumber) : Temperature = \(temperatures)")
 
-        super.init(success: success)
+        super.init(success: success, payLoadLength: LogResponse.PAYLOAD_LENGTH)
     }
 }

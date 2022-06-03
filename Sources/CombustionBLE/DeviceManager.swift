@@ -218,6 +218,8 @@ extension DeviceManager : BleManagerDelegate {
     }
     
     func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse) {
+        guard logResponse.success else { return }
+        
         if let probe = devices[identifier.uuidString] as? Probe {
             probe.processLogResponse(logResponse: logResponse)
         }

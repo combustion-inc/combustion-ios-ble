@@ -40,6 +40,8 @@ public struct DeviceStatus {
     public let color: ProbeColor
     /// Probe mode
     public let mode: ProbeMode
+    /// Battery Status
+    public let batteryStatus: BatteryStatus
     
     private enum Constants {
         // Locations of data in status packet
@@ -47,6 +49,7 @@ public struct DeviceStatus {
         static let MAX_SEQ_RANGE = 4..<8
         static let TEMPERATURE_RANGE = 8..<21
         static let MODE_COLOR_ID_RANGE = 21..<22
+        static let BATTERY_STATUS_RANGE = 22..<23
     }
 }
 
@@ -79,6 +82,15 @@ extension DeviceStatus {
             id = .ID1
             color = .COLOR1
             mode = .Normal
+        }
+        
+        // Decode battery status if its present in the advertising packet
+        if(data.count >= 23) {
+            let statusData  = data.subdata(in: Constants.BATTERY_STATUS_RANGE)
+            batteryStatus = BatteryStatus.fromRawData(data: statusData)
+        }
+        else {
+            batteryStatus = .OK
         }
     }
 }

@@ -33,7 +33,6 @@ public enum CombustionProductType: UInt8 {
     case NODE = 0x02
 }
 
-
 /// Struct containing advertising data received from device.
 public struct AdvertisingData {
     /// Type of Combustion product
@@ -48,6 +47,8 @@ public struct AdvertisingData {
     public let color: ProbeColor
     /// Probe mode
     public let mode: ProbeMode
+    /// Battery Status
+    public let batteryStatus: BatteryStatus
 
     private enum Constants {
         // Locations of data in advertising packets
@@ -55,6 +56,7 @@ public struct AdvertisingData {
         static let SERIAL_RANGE = 3..<7
         static let TEMPERATURE_RANGE = 7..<20
         static let MODE_COLOR_ID_RANGE = 20..<21
+        static let BATTERY_STATUS_RANGE = 21..<22
     }
 }
 
@@ -101,6 +103,15 @@ extension AdvertisingData {
             color = .COLOR1
             mode = .Normal
         }
+        
+        // Decode battery status if its present in the advertising packet
+        if(data.count >= 22) {
+            let statusData  = data.subdata(in: Constants.BATTERY_STATUS_RANGE)
+            batteryStatus = BatteryStatus.fromRawData(data: statusData)
+        }
+        else {
+            batteryStatus = .OK
+        }
     }
 }
 
@@ -114,6 +125,7 @@ extension AdvertisingData {
         id = .ID1
         color = .COLOR1
         mode = .Normal
+        batteryStatus = .OK
     }
     
     // Fake data initializer for Simulated Probe
@@ -124,5 +136,6 @@ extension AdvertisingData {
         id = .ID1
         color = .COLOR1
         mode = .Normal
+        batteryStatus = .OK
     }
 }

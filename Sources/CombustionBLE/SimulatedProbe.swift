@@ -86,7 +86,8 @@ class SimulatedProbe: Probe {
                                         temperatures: ProbeTemperatures.withRandomData(),
                                         id: .ID1,
                                         color: .COLOR1,
-                                        mode: .Normal)
+                                        mode: .Normal,
+                                        batteryStatus: .OK)
         
         updateProbeStatus(deviceStatus: deviceStatus)
     }

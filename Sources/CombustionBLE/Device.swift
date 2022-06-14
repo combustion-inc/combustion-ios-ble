@@ -55,7 +55,7 @@ public class Device : ObservableObject {
     @Published public internal(set) var connectionState: ConnectionState = .disconnected
     
     /// Signal strength to device
-    @Published public internal(set) var rssi : Int = Int.min
+    @Published public internal(set) var rssi: Int
     
     /// Tracks whether the app should attempt to maintain a connection to the device.
     @Published public internal(set) var maintainingConnection = false
@@ -66,8 +66,9 @@ public class Device : ObservableObject {
     /// Time at which device was last updated
     internal var lastUpdateTime = Date()
     
-    public init(identifier: UUID) {
+    public init(identifier: UUID, RSSI: NSNumber) {
         self.identifier = identifier.uuidString
+        self.rssi = RSSI.intValue
     }
     
     func updateConnectionState(_ state: ConnectionState) {

@@ -45,6 +45,8 @@ public class Probe : Device {
     @Published public private(set) var id: ProbeID
     @Published public private(set) var color: ProbeColor
     
+    @Published public private(set) var batteryStatus: BatteryStatus
+    
     private var sessionInformation: SessionInformation?
     
     /// Stores historical values of probe temperatures
@@ -72,8 +74,9 @@ public class Probe : Device {
         serialNumber = advertising.serialNumber
         id = advertising.id
         color = advertising.color
+        batteryStatus = advertising.batteryStatus
         
-        super.init(identifier: identifier)
+        super.init(identifier: identifier, RSSI: RSSI)
         
         updateWithAdvertising(advertising, RSSI: RSSI)
     }
@@ -116,6 +119,10 @@ extension Probe {
         
         rssi = RSSI.intValue
         
+        id = advertising.id
+        color = advertising.color
+        batteryStatus = advertising.batteryStatus
+        
         lastUpdateTime = Date()
     }
     
@@ -125,6 +132,7 @@ extension Probe {
         maxSequenceNumber = deviceStatus.maxSequenceNumber
         id = deviceStatus.id
         color = deviceStatus.color
+        batteryStatus = deviceStatus.batteryStatus
         
         if(deviceStatus.mode == .Normal) {
             currentTemperatures = deviceStatus.temperatures

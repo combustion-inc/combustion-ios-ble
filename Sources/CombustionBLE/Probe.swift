@@ -45,7 +45,7 @@ public class Probe : Device {
     @Published public private(set) var id: ProbeID
     @Published public private(set) var color: ProbeColor
     
-    @Published public private(set) var batteryStatus: BatteryStatus
+    @Published public private(set) var batteryStatus: BatteryStatus = .OK
     
     private var sessionInformation: SessionInformation?
     
@@ -74,7 +74,6 @@ public class Probe : Device {
         serialNumber = advertising.serialNumber
         id = advertising.id
         color = advertising.color
-        batteryStatus = advertising.batteryStatus
         
         super.init(identifier: identifier, RSSI: RSSI)
         
@@ -99,6 +98,14 @@ public class Probe : Device {
         
         super.updateDeviceStale()
     }
+    
+    private func setBatteryStatus(_ batteryStatus: BatteryStatus) {
+        // Prior to v0.8.0, the firmware did not support battery status
+        // Therefore, ignore battery status if version < v0.8.0
+        if let fwVersion = firmareVersion, !Version.isBefore(deviceFirmware: fwVersion, comparison: "v0.8.0") {
+            self.batteryStatus = batteryStatus
+        }
+    }
 }
     
 extension Probe {
@@ -121,7 +128,7 @@ extension Probe {
         
         id = advertising.id
         color = advertising.color
-        batteryStatus = advertising.batteryStatus
+        setBatteryStatus(advertising.batteryStatus)
         
         lastUpdateTime = Date()
     }
@@ -132,7 +139,7 @@ extension Probe {
         maxSequenceNumber = deviceStatus.maxSequenceNumber
         id = deviceStatus.id
         color = deviceStatus.color
-        batteryStatus = deviceStatus.batteryStatus
+        setBatteryStatus(deviceStatus.batteryStatus)
         
         if(deviceStatus.mode == .Normal) {
             currentTemperatures = deviceStatus.temperatures

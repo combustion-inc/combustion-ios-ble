@@ -250,15 +250,10 @@ extension DeviceManager : BleManagerDelegate {
             // TODO : remove this at some point
             // Prior to v0.8.0, the firmware did not support the Session ID command
             // Therefore, add a hardcoded session for backwards compatibility
-            
-            // Remove git hash from debug versions
-            let splitVersion = fwVersion.split(separator: "-")
-
-            if(splitVersion.first?.compare("v0.8.0", options: String.CompareOptions.numeric, range: nil, locale: nil) == .orderedAscending) {
+            if(Version.isBefore(deviceFirmware: fwVersion, comparison: "v0.8.0")) {
                 let fakeSessionInfo = SessionInformation(sessionID: 0, samplePeriod: 1000)
                 updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: fakeSessionInfo)
             }
-            
         }
     }
     

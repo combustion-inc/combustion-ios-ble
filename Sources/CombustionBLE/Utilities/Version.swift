@@ -1,4 +1,4 @@
-//  MessageType.swift
+//  Version.swift
 
 /*--
 MIT License
@@ -23,12 +23,20 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
-
 import Foundation
 
-enum MessageType: UInt8  {
-    case SetID = 1
-    case SetColor = 2
-    case SessionInfo = 3
-    case Log = 4
+class Version {
+    
+    /// Compare device firmware versions.
+    /// - param deviceFirmware: Device firmware version
+    /// - param comparison: Version to compare against
+    /// - returns: true if deviceFirmware < comparison
+    static func isBefore(deviceFirmware: String, comparison: String) -> Bool {
+        // Remove git hash from debug versions
+        let splitVersion = deviceFirmware.split(separator: "-")
+
+        return splitVersion.first?.compare(comparison, options: String.CompareOptions.numeric, range: nil, locale: nil) == .orderedAscending
+    }
+    
+
 }

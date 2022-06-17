@@ -218,6 +218,8 @@ extension DeviceManager : BleManagerDelegate {
     }
     
     func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse) {
+        guard logResponse.success else { return }
+        
         if let probe = devices[identifier.uuidString] as? Probe {
             probe.processLogResponse(logResponse: logResponse)
         }
@@ -235,9 +237,23 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
+    func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation) {
+        if let probe = devices[identifier.uuidString] as? Probe {
+            probe.updateWithSessionInformation(sessionInformation)
+        }
+    }
+    
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String) {
         if let device = devices[identifier.uuidString]  {
             device.firmareVersion = fwVersion
+            
+            // TODO : remove this at some point
+            // Prior to v0.8.0, the firmware did not support the Session ID command
+            // Therefore, add a hardcoded session for backwards compatibility
+            if(Version.isBefore(deviceFirmware: fwVersion, comparison: "v0.8.0")) {
+                let fakeSessionInfo = SessionInformation(sessionID: 0, samplePeriod: 1000)
+                updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: fakeSessionInfo)
+            }
         }
     }
     

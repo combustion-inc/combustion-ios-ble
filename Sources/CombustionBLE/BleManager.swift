@@ -34,9 +34,10 @@ protocol BleManagerDelegate: AnyObject {
     func didDisconnectFrom(identifier: UUID)
     func handleSetIDResponse(identifier: UUID, success: Bool)
     func handleSetColorResponse(identifier: UUID, success: Bool)
-    func updateDeviceWithStatus(identifier: UUID, status: DeviceStatus)
     func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, identifier: UUID)
     func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse)
+    func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation)
+    func updateDeviceWithStatus(identifier: UUID, status: DeviceStatus)
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String)
     func updateDeviceHwRevision(identifier: UUID, hwRevision: String)
 }
@@ -221,30 +222,22 @@ extension BleManager: CBPeripheralDelegate {
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
-        
-        // Always enable notifications for Device status characteristic
         if(characteristic.uuid == Constants.UART_TX_CHAR),
             let statusChar = deviceStatusCharacteristics[peripheral.identifier.uuidString]  {
+            // After enabling UART notification
+            // Enable notifications for Device status characteristic
             peripheral.setNotifyValue(true, for: statusChar)
+            
+            // Send request the session ID from device
+            sendRequest(identifier: peripheral.identifier.uuidString, request: SessionInfoRequest())
         }
-        
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         guard let data = characteristic.value else { return }
         
         if characteristic.uuid == Constants.UART_TX_CHAR {
-            if let logResponse = Response.fromData(data) as? LogResponse {
-                if(logResponse.success) {
-                    delegate?.updateDeviceWithLogResponse(identifier: peripheral.identifier, logResponse: logResponse)
-                }
-            }
-            else if let setIDResponse = Response.fromData(data) as? SetIDResponse {
-                delegate?.handleSetIDResponse(identifier: peripheral.identifier, success: setIDResponse.success)
-            }
-            else if let setColorResponse = Response.fromData(data) as? SetColorResponse {
-                delegate?.handleSetColorResponse(identifier: peripheral.identifier, success: setColorResponse.success)
-            }
+            handleUartData(data: data, identifier: peripheral.identifier)
         }
         else if characteristic.uuid == Constants.DEVICE_STATUS_CHAR {
             if let status = DeviceStatus(fromData: data) {
@@ -271,6 +264,27 @@ extension BleManager: CBPeripheralDelegate {
             // Always enable notifications for UART TX characteristic
             if(characteristic.uuid == Constants.UART_TX_CHAR) {
                 peripheral.setNotifyValue(true, for: characteristic)
+            }
+        }
+    }
+    
+    private func handleUartData(data: Data, identifier: UUID) {
+        let responses = Response.fromData(data)
+        
+        for response in responses {
+            if let logResponse = response as? LogResponse {
+                delegate?.updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
+            }
+            else if let setIDResponse = response as? SetIDResponse {
+                delegate?.handleSetIDResponse(identifier: identifier, success: setIDResponse.success)
+            }
+            else if let setColorResponse = response as? SetColorResponse {
+                delegate?.handleSetColorResponse(identifier: identifier, success: setColorResponse.success)
+            }
+            else if let sessionResponse = response as? SessionInfoResponse {
+                if(sessionResponse.success) {
+                    delegate?.updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: sessionResponse.info)
+                }
             }
         }
     }

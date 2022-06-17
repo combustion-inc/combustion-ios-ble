@@ -30,16 +30,36 @@ class Response {
     static let HEADER_LENGTH = 7
     
     let success: Bool
+    let payLoadLength: Int
     
-    init(success: Bool) {
+    init(success: Bool, payLoadLength: Int) {
         self.success = success
+        self.payLoadLength = payLoadLength
     }
 }
 
 extension Response {
-    static func fromData(_ data : Data) -> Response? {
-        // print()
-        // print("*** Parsing UART response")
+    static func fromData(_ data : Data) -> [Response] {
+        var responses = [Response]()
+        
+        var numberBytesRead = 0
+        
+        while(numberBytesRead < data.count) {
+            let bytesToDecode = data.subdata(in: numberBytesRead..<data.count)
+            if let response = responseFromData(bytesToDecode) {
+                responses.append(response)
+                numberBytesRead += (response.payLoadLength + Response.HEADER_LENGTH)
+            }
+            else {
+                // Found invalid response, break out of while loop
+                break
+            }
+        }
+        
+        return responses
+    }
+    
+    private static func responseFromData(_ data : Data) -> Response? {
         // Sync bytes
         let syncBytes = data.subdata(in: 0..<2)
         let syncString = syncBytes.reduce("") {$0 + String(format: "%02x", $1)}
@@ -69,11 +89,16 @@ extension Response {
 
         // Payload Length
         let lengthByte = data.subdata(in: 6..<7)
-        _ = lengthByte // Suppress 'unused variable' warning
         let payloadLength = lengthByte.withUnsafeBytes {
             $0.load(as: UInt8.self)
         }
-        _ = payloadLength // Suppress 'unused variable' warning
+        
+        let responseLength = Int(payloadLength) + HEADER_LENGTH
+        
+        // Invalid number of bytes
+        if(data.count < responseLength) {
+            return nil
+        }
         
         // print("Success: \(success), payloadLength: \(payloadLength)")
         
@@ -81,9 +106,11 @@ extension Response {
         case .Log:
             return LogResponse(data: data, success: success)
         case .SetID:
-            return SetIDResponse(success: success)
+            return SetIDResponse(success: success, payLoadLength: Int(payloadLength))
         case .SetColor:
-            return SetColorResponse(success: success)
+            return SetColorResponse(success: success, payLoadLength: Int(payloadLength))
+        case .SessionInfo:
+            return SessionInfoResponse(data: data, success: success)
         }
     }
 }

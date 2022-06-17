@@ -1,4 +1,4 @@
-//  SetIDRequest.swift
+//  SetColor.swift
 
 /*--
 MIT License
@@ -30,7 +30,7 @@ class SetColorRequest: Request {
     static let PAYLOAD_LENGTH: UInt8 = 1
     
     init(color: ProbeColor) {
-        super.init(payloadLength: LogRequest.PAYLOAD_LENGTH, type: .SetColor)
+        super.init(payloadLength: SetColorRequest.PAYLOAD_LENGTH, type: .SetColor)
         self.data[Request.HEADER_SIZE] = color.rawValue
     }
 }

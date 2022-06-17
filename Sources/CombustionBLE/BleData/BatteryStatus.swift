@@ -1,4 +1,4 @@
-//  SetIDRequest.swift
+//  BatteryStatus.swift
 
 /*--
 MIT License
@@ -23,16 +23,21 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
-
 import Foundation
 
-class SetIDRequest: Request {
-    static let PAYLOAD_LENGTH: UInt8 = 1
+/// Enumeration of Battery status
+public enum BatteryStatus: UInt8 {
+    case OK = 0x00
+    case LOW = 0x01
     
-    init(id: ProbeID) {
-        super.init(payloadLength: LogRequest.PAYLOAD_LENGTH, type: .SetID)
-        self.data[Request.HEADER_SIZE] = id.rawValue
+    private enum Constants {
+        static let BATTERY_MASK: UInt8 = 0x3
+    }
+    
+    static func fromRawData(data: Data) -> BatteryStatus {
+        let statusBytes = [UInt8](data)
+        
+        let rawStatus = (statusBytes[0] & (Constants.BATTERY_MASK))
+        return BatteryStatus(rawValue: rawStatus) ?? .OK
     }
 }
-
-class SetIDResponse : Response { }

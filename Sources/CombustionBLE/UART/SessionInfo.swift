@@ -1,9 +1,9 @@
-//  LogResponse.swift
+//  SessionInfo.swift
 
 /*--
 MIT License
 
-Copyright (c) 2021 Combustion Inc.
+Copyright (c) 2022 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,27 +26,38 @@ SOFTWARE.
 
 import Foundation
 
-class LogResponse: Response {
+public struct SessionInformation {
+    let sessionID: UInt32
+    public let samplePeriod: UInt16
+}
+
+class SessionInfoRequest: Request {
+    static let PAYLOAD_LENGTH: UInt8 = 0
     
-    static let PAYLOAD_LENGTH = 17
+    init() {
+        super.init(payloadLength: SessionInfoRequest.PAYLOAD_LENGTH, type: .SessionInfo)
+    }
+}
+
+class SessionInfoResponse: Response {
+    static let PAYLOAD_LENGTH = 6
     
-    let sequenceNumber: UInt32
-    let temperatures: ProbeTemperatures
+    let info: SessionInformation
     
     init(data: Data, success: Bool) {
         let sequenceByteIndex = Response.HEADER_LENGTH
-        let sequenceRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 4))
-        sequenceNumber = sequenceRaw.withUnsafeBytes {
+        let sessionIDRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 4))
+        let sessionID = sessionIDRaw.withUnsafeBytes {
             $0.load(as: UInt32.self)
         }
         
-        // Temperatures (8 13-bit) values
-        let tempData = data.subdata(in: (Response.HEADER_LENGTH + 4)..<(Response.HEADER_LENGTH + 17))
-        temperatures = ProbeTemperatures.fromRawData(data: tempData)
+        let samplePeriodRaw = data.subdata(in: (sequenceByteIndex + 4)..<(sequenceByteIndex + 6))
+        let samplePeriod = samplePeriodRaw.withUnsafeBytes {
+            $0.load(as: UInt16.self)
+        }
         
-        // print("******** Received response!")
-        // print("Sequence = \(sequenceNumber) : Temperature = \(temperatures)")
+        info = SessionInformation(sessionID: sessionID, samplePeriod: samplePeriod)
 
-        super.init(success: success, payLoadLength: LogResponse.PAYLOAD_LENGTH)
+        super.init(success: success, payLoadLength: SessionInfoResponse.PAYLOAD_LENGTH)
     }
 }

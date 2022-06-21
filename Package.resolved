@@ -2,12 +2,30 @@
   "object": {
     "pins": [
       {
+        "package": "NordicDFU",
+        "repositoryURL": "https://github.com/NordicSemiconductor/IOS-DFU-Library",
+        "state": {
+          "branch": null,
+          "revision": "f73213f2de57c8c53700725ee2cff6cd35ef66fe",
+          "version": "4.11.1"
+        }
+      },
+      {
         "package": "swift-collections",
         "repositoryURL": "https://github.com/apple/swift-collections",
         "state": {
           "branch": null,
           "revision": "48254824bb4248676bf7ce56014ff57b142b77eb",
           "version": "1.0.2"
+        }
+      },
+      {
+        "package": "ZIPFoundation",
+        "repositoryURL": "https://github.com/weichsel/ZIPFoundation",
+        "state": {
+          "branch": null,
+          "revision": "ec32d62d412578542c0ffb7a6ce34d3e64b43b94",
+          "version": "0.9.11"
         }
       }
     ]

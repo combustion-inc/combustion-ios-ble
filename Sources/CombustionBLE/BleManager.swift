@@ -27,6 +27,8 @@ SOFTWARE.
 
 import Foundation
 import CoreBluetooth
+import NordicDFU
+
 
 protocol BleManagerDelegate: AnyObject {
     func didConnectTo(identifier: UUID)
@@ -84,6 +86,18 @@ class BleManager : NSObject {
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
             let uartChar = uartCharacteristics[identifier] {
             connectionPeripheral.writeValue(request.data, for: uartChar, type: .withoutResponse)
+        }
+    }
+    
+    func startFirmwareUpdate(device: Device, dfu: DFUFirmware) {
+        if let connectionPeripheral = getConnectedPeripheral(identifier: device.identifier) {
+            let initiator = DFUServiceInitiator().with(firmware: dfu)
+
+            initiator.delegate = device
+            initiator.progressDelegate = device
+
+
+            initiator.start(target: connectionPeripheral)
         }
     }
     
@@ -288,5 +302,4 @@ extension BleManager: CBPeripheralDelegate {
             }
         }
     }
-    
 }

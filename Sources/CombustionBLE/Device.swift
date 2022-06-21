@@ -26,6 +26,7 @@ SOFTWARE.
 --*/
 
 import Foundation
+import NordicDFU
 
 /// Struct containing info about a thermometer device.
 public class Device : ObservableObject {
@@ -63,6 +64,26 @@ public class Device : ObservableObject {
     /// Tracks whether the data has gone stale (no new data in some time)
     @Published public internal(set) var stale = false
     
+    /// DFU state
+    @Published public private(set) var dfuState: DFUState?
+    
+    public struct DFUErrorMessage {
+        public let error: DFUError
+        public let message: String
+    }
+    
+    /// DFU error message
+    @Published public private(set) var dfuError: DFUErrorMessage?
+
+    public struct DFUUploadProgress {
+        public let part: Int
+        public let totalParts: Int
+        public let progress: Int
+    }
+    
+    /// DFU Upload progress
+    @Published public private(set) var dfuUploadProgress: DFUUploadProgress?
+    
     /// Time at which device was last updated
     internal var lastUpdateTime = Date()
     
@@ -82,6 +103,16 @@ public class Device : ObservableObject {
     
     func updateDeviceStale() {
         stale = Date().timeIntervalSince(lastUpdateTime) > Constants.STALE_TIMEOUT
+    }
+    
+    public func isDFURunning() -> Bool {
+        guard let dfuState = dfuState else { return false }
+        
+        if(dfuState == .completed) {
+            return false
+        }
+        
+        return true
     }
 }
     
@@ -121,5 +152,25 @@ extension Device: Hashable {
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(identifier)
+    }
+}
+
+extension Device: DFUServiceDelegate {
+    public func dfuStateDidChange(to state: DFUState) {
+        dfuState = state
+    }
+    
+    public func dfuError(_ error: DFUError, didOccurWithMessage message: String) {
+        dfuError = DFUErrorMessage(error: error, message: message)
+    }
+}
+
+extension Device: DFUProgressDelegate {
+    public func dfuProgressDidChange(for part: Int,
+                                     outOf totalParts: Int,
+                                     to progress: Int,
+                                     currentSpeedBytesPerSecond: Double,
+                                     avgSpeedBytesPerSecond: Double) {
+        dfuUploadProgress = DFUUploadProgress(part: part, totalParts: totalParts, progress: progress)
     }
 }

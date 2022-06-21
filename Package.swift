@@ -23,7 +23,8 @@ let package = Package(
         .target(
             name: "CombustionBLE",
             dependencies: [
-                .product(name: "Collections", package: "swift-collections", condition: nil)
+                .product(name: "Collections", package: "swift-collections"),
+                .product(name: "NordicDFU", package: "IOS-DFU-Library")
             ],
             path: "Sources/CombustionBLE"),
         /*

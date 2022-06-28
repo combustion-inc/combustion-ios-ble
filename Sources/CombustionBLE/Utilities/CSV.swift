@@ -30,7 +30,7 @@ import Foundation
 public struct CSV {
     
     /// Helper function that generates a CSV representation of probe data.
-    private static func probeDataToCsv(probe: Probe, date: Date = Date()) -> String {
+    private static func probeDataToCsv(probe: Probe, appVersion: String, date: Date) -> String {
         var output = [String]()
         
         let dateFormatter = DateFormatter()
@@ -38,14 +38,13 @@ public struct CSV {
         let dateString = dateFormatter.string(from: date)
         
         output.append("Combustion Inc. Probe Data")
+        output.append("iOS app: \(appVersion)")
         output.append("CSV version: 2")
         output.append("Probe S/N: \(String(format: "%4X", probe.serialNumber))")
         output.append("Probe FW version: \(probe.firmareVersion ?? "??")")
         output.append("Probe HW revision: \(probe.hardwareRevision ?? "??")")
         output.append("\(dateString)")
         output.append("")
-        
-        // TODO add app version to this header
         
         // Header
         output.append("Timestamp,SessionID,SequenceNumber,T1,T2,T3,T4,T5,T6,T7,T8")
@@ -89,7 +88,7 @@ public struct CSV {
     /// Creates a CSV file for export.
     /// - param probe: Probe for which to create the file
     /// - returns: URL of file
-    public static func createCsvFile(probe: Probe) -> URL? {
+    public static func createCsvFile(probe: Probe, appVersion: String) -> URL? {
         let date = Date()
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH_mm_ss"
@@ -98,7 +97,7 @@ public struct CSV {
         let filename = "Probe Data - \(String(format: "%4X", probe.serialNumber)) - \(dateString).csv"
         
         // Generate the CSV
-        let csv = probeDataToCsv(probe: probe, date: date)
+        let csv = probeDataToCsv(probe: probe, appVersion: appVersion, date: date)
         
         // Create the temporary file
         let filePath = NSTemporaryDirectory() + "/" + filename;

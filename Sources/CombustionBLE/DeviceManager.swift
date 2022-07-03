@@ -167,9 +167,14 @@ public class DeviceManager : ObservableObject {
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
     }
     
-    public func runSoftwareUpgrade(_ device: Device, otaFile: URL) {
-        if let dfu = DFUFirmware(urlToZipFile: otaFile) {
+    public func runSoftwareUpgrade(_ device: Device, otaFile: URL) -> Bool {
+        do {
+            let dfu = try DFUFirmware(urlToZipFile: otaFile)
             BleManager.shared.startFirmwareUpdate(device: device, dfu: dfu)
+            return true
+        }
+        catch {
+            return false
         }
     }
     

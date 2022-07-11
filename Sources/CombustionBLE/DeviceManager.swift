@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 import SwiftUI
-
+import NordicDFU
 
 /// Singleton that provides list of detected Devices
 /// (either via Bluetooth or from a list in the Cloud)
@@ -162,9 +162,20 @@ public class DeviceManager : ObservableObject {
     /// - parameter ProbeColor: New Probe color
     public func setProbeColor(_ device: Device, color: ProbeColor, completionHandler: @escaping (Bool) -> Void) {
         setColorCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
-        
+
         let request = SetColorRequest(color: color)
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+    }
+    
+    public func runSoftwareUpgrade(_ device: Device, otaFile: URL) -> Bool {
+        do {
+            let dfu = try DFUFirmware(urlToZipFile: otaFile)
+            BleManager.shared.startFirmwareUpdate(device: device, dfu: dfu)
+            return true
+        }
+        catch {
+            return false
+        }
     }
     
     private func checkForMessageTimeout(messageHandlers: inout [String: MessageHandler]) {

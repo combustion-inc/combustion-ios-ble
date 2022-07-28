@@ -38,12 +38,14 @@ public struct CSV {
         let dateString = dateFormatter.string(from: date)
         
         output.append("Combustion Inc. Probe Data")
-        output.append("iOS app: \(appVersion)")
-        output.append("CSV version: 2")
+        output.append("App: iOS \(appVersion)")
+        output.append("CSV version: 3")
         output.append("Probe S/N: \(String(format: "%4X", probe.serialNumber))")
         output.append("Probe FW version: \(probe.firmareVersion ?? "??")")
         output.append("Probe HW revision: \(probe.hardwareRevision ?? "??")")
-        output.append("\(dateString)")
+        output.append("Framework: TODO")
+        output.append("Sample Period: TODO")
+        output.append("Created: \(dateString)")
         output.append("")
         
         // Header
@@ -55,20 +57,20 @@ public struct CSV {
                 for dataPoint in session.dataPoints {
                     
                     // Calculate timestamp for current data point
-                    var timeStamp = 0
+                    var timeStamp: TimeInterval = 0
                     if let currentSessionStart = session.startTime?.timeIntervalSince1970 {
                         // Number of seconds between first session start time and current start time
-                        let sessionStartTimeDiff = Int(currentSessionStart - firstSessionStart)
+                        let sessionStartTimeDiff = currentSessionStart - firstSessionStart
                         
                         // Number of seconds beteen current data point and session start time
-                        let dataPointSeconds = Int(dataPoint.sequenceNum) * Int(session.sessionInformation.samplePeriod) / 1000
+                        let dataPointSeconds = Double(dataPoint.sequenceNum) * Double(session.sessionInformation.samplePeriod) / 1000.0
                         
                         // Number of seconds between current data point and first session start
                         timeStamp = dataPointSeconds + sessionStartTimeDiff
                     }
 
                     
-                    output.append(String(format: "%d,%u,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f",
+                    output.append(String(format: "%.3f,%u,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f",
                                          timeStamp,
                                          session.id,
                                          dataPoint.sequenceNum,

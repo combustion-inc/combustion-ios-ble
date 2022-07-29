@@ -43,8 +43,8 @@ public struct CSV {
         output.append("Probe S/N: \(String(format: "%4X", probe.serialNumber))")
         output.append("Probe FW version: \(probe.firmareVersion ?? "??")")
         output.append("Probe HW revision: \(probe.hardwareRevision ?? "??")")
-        output.append("Framework: TODO")
-        output.append("Sample Period: TODO")
+        output.append("Framework: iOS")
+        output.append("Sample Period: \(probe.temperatureLogs.first?.sessionInformation.samplePeriod ?? 0)")
         output.append("Created: \(dateString)")
         output.append("")
         

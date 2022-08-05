@@ -27,11 +27,11 @@ SOFTWARE.
 import Foundation
 
 class SetIDRequest: Request {
-    static let PAYLOAD_LENGTH: UInt8 = 1
-    
     init(id: ProbeID) {
-        super.init(payloadLength: SetIDRequest.PAYLOAD_LENGTH, type: .SetID)
-        self.data[Request.HEADER_SIZE] = id.rawValue
+        var payload = Data()
+        payload.append(id.rawValue)
+        
+        super.init(payload: payload, type: .SetID)
     }
 }
 

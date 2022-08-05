@@ -32,10 +32,8 @@ public struct SessionInformation {
 }
 
 class SessionInfoRequest: Request {
-    static let PAYLOAD_LENGTH: UInt8 = 0
-    
     init() {
-        super.init(payloadLength: SessionInfoRequest.PAYLOAD_LENGTH, type: .SessionInfo)
+        super.init(payload: Data(), type: .SessionInfo)
     }
 }
 

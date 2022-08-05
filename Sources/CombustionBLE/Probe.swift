@@ -70,14 +70,14 @@ public class Probe : Device {
     /// Time at which probe instant read was last updated
     internal var lastInstantRead: Date?
     
-    public init(_ advertising: AdvertisingData, RSSI: NSNumber, identifier: UUID) {
+    public init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
         serialNumber = advertising.serialNumber
         id = advertising.id
         color = advertising.color
         
         super.init(identifier: identifier, RSSI: RSSI)
         
-        updateWithAdvertising(advertising, RSSI: RSSI)
+        updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI)
     }
     
     override func updateConnectionState(_ state: ConnectionState) {
@@ -108,21 +108,29 @@ extension Probe {
     }
     
     
-    func updateWithAdvertising(_ advertising: AdvertisingData, RSSI: NSNumber) {
-        if(advertising.mode == .Normal) {
-            currentTemperatures = advertising.temperatures
+    func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber) {
+        // Always update probe RSSI and isConnectable flag
+        self.rssi = RSSI.intValue
+        self.isConnectable = isConnectable
+        
+        // Only update rest of data if not connected to probe.  Otherwise, rely on status
+        // notifications to update data
+        if(connectionState != .connected)
+        {
+            if(advertising.mode == .Normal) {
+                currentTemperatures = advertising.temperatures
+            }
+            else if(advertising.mode == .InstantRead ){
+                updateInstantRead(advertising.temperatures.values[0])
+            }
+            
+
+            id = advertising.id
+            color = advertising.color
+            batteryStatus = advertising.batteryStatus
+            
+            lastUpdateTime = Date()
         }
-        else if(advertising.mode == .InstantRead ){
-            updateInstantRead(advertising.temperatures.values[0])
-        }
-        
-        rssi = RSSI.intValue
-        
-        id = advertising.id
-        color = advertising.color
-        batteryStatus = advertising.batteryStatus
-        
-        lastUpdateTime = Date()
     }
     
     /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.

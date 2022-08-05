@@ -55,6 +55,9 @@ public class Device : ObservableObject {
     /// Current connection state of device
     @Published public internal(set) var connectionState: ConnectionState = .disconnected
     
+    /// Connectable flag set in advertising packet
+    @Published public internal(set) var isConnectable = false
+    
     /// Signal strength to device
     @Published public internal(set) var rssi: Int
     
@@ -103,6 +106,12 @@ public class Device : ObservableObject {
     
     func updateDeviceStale() {
         stale = Date().timeIntervalSince(lastUpdateTime) > Constants.STALE_TIMEOUT
+        
+        
+        // If device data is stale, assume its not longer connectable
+        if(stale) {
+            isConnectable = false
+        }
     }
     
     public func isDFURunning() -> Bool {
@@ -126,7 +135,6 @@ extension Device {
     /// Attempt to connect to the device.
     public func connect() {
         // Mark that we should maintain a connection to this device.
-        // TODO - this doesn't seem to be propagating back to the UI??
         maintainingConnection = true
         
         if(connectionState != .connected) {

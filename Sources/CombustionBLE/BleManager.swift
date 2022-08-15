@@ -36,7 +36,7 @@ protocol BleManagerDelegate: AnyObject {
     func didDisconnectFrom(identifier: UUID)
     func handleSetIDResponse(identifier: UUID, success: Bool)
     func handleSetColorResponse(identifier: UUID, success: Bool)
-    func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, identifier: UUID)
+    func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID)
     func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse)
     func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation)
     func updateDeviceWithStatus(identifier: UUID, status: DeviceStatus)
@@ -137,6 +137,7 @@ extension BleManager: CBCentralManagerDelegate{
                                advertisementData: [String : Any], rssi RSSI: NSNumber) {
         
         let manufatureData: Data = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data ?? Data()
+        let isConnectable = advertisementData[CBAdvertisementDataIsConnectable] as? Bool ?? false
 
         if let advData = AdvertisingData(fromData: manufatureData) {
             // For now, only add probes.
@@ -145,7 +146,10 @@ extension BleManager: CBCentralManagerDelegate{
                 // Store peripheral reference for later use
                 peripherals.insert(peripheral)
 
-                delegate?.updateDeviceWithAdvertising(advertising: advData, rssi: RSSI, identifier: peripheral.identifier)
+                delegate?.updateDeviceWithAdvertising(advertising: advData,
+                                                      isConnectable: isConnectable,
+                                                      rssi: RSSI,
+                                                      identifier: peripheral.identifier)
             } else {
                 // print("Ignoring device with type \(advData.type)")
             }

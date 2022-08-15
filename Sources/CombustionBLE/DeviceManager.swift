@@ -236,14 +236,14 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
-    func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, identifier: UUID) {
+    func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID) {
         if devices[identifier.uuidString] != nil {
             if let probe = devices[identifier.uuidString] as? Probe {
-                probe.updateWithAdvertising(advertising, RSSI: rssi)
+                probe.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
             }
         }
         else {
-            let device = Probe(advertising, RSSI: rssi, identifier: identifier)
+            let device = Probe(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
             addDevice(device: device)
         }
     }

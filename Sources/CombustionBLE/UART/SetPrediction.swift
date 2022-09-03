@@ -1,4 +1,4 @@
-//  MessageType.swift
+//  SetPrediction.swift
 
 /*--
 MIT License
@@ -26,10 +26,15 @@ SOFTWARE.
 
 import Foundation
 
-enum MessageType: UInt8  {
-    case SetID = 1
-    case SetColor = 2
-    case SessionInfo = 3
-    case Log = 4
-    case SetPrediction = 5
+class SetPredictionRequest: Request {
+    init(setPointCelsius: Float, mode: PredictionMode) {
+        let rawSetPoint = UInt16(setPointCelsius / 0.1)        
+        var rawPayload = (UInt16(mode.rawValue) << 10) | (rawSetPoint & 0x3FF)
+        
+        let payload = Data(bytes: &rawPayload, count: MemoryLayout.size(ofValue: rawPayload))
+        
+        super.init(payload: payload, type: .SetPrediction)
+    }
 }
+
+class SetPredictionResponse : Response { }

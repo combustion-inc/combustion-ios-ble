@@ -126,6 +126,8 @@ extension Response {
             return SetColorResponse(success: success, payLoadLength: Int(payloadLength))
         case .SessionInfo:
             return SessionInfoResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
+        case .SetPrediction:
+            return SetPredictionResponse(success: success, payLoadLength: Int(payloadLength))
         }
     }
 }

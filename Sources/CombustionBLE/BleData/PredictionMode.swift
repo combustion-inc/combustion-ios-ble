@@ -1,4 +1,4 @@
-//  MessageType.swift
+//  PredictionMode.swift
 
 /*--
 MIT License
@@ -26,10 +26,9 @@ SOFTWARE.
 
 import Foundation
 
-enum MessageType: UInt8  {
-    case SetID = 1
-    case SetColor = 2
-    case SessionInfo = 3
-    case Log = 4
-    case SetPrediction = 5
+public enum PredictionMode: UInt8, CaseIterable {
+    case NONE = 0x00
+    case TIME_TO_REMOVAL = 0x01
+    case REMOVAL_AND_RESTING = 0x02
+    case RESERVED = 0x03
 }

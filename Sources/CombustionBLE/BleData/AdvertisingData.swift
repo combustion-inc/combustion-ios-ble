@@ -34,21 +34,23 @@ public enum CombustionProductType: UInt8 {
 }
 
 /// Struct containing advertising data received from device.
-public struct AdvertisingData {
+struct AdvertisingData {
     /// Type of Combustion product
-    public let type: CombustionProductType
+    let type: CombustionProductType
     /// Product serial number
-    public let serialNumber: UInt32
+    let serialNumber: UInt32
     /// Latest temperatures read by device
-    public let temperatures: ProbeTemperatures
+    let temperatures: ProbeTemperatures
     /// Prode ID
-    public let id: ProbeID
+    let id: ProbeID
     /// Probe Color
-    public let color: ProbeColor
+    let color: ProbeColor
     /// Probe mode
-    public let mode: ProbeMode
+    let mode: ProbeMode
     /// Battery Status
-    public let batteryStatus: BatteryStatus
+    let batteryStatus: BatteryStatus
+    /// Hop Count
+    let hopCount: HopCount
 
     private enum Constants {
         // Locations of data in advertising packets
@@ -56,7 +58,7 @@ public struct AdvertisingData {
         static let SERIAL_RANGE = 3..<7
         static let TEMPERATURE_RANGE = 7..<20
         static let MODE_COLOR_ID_RANGE = 20..<21
-        static let BATTERY_STATUS_RANGE = 21..<22
+        static let DEVICE_STATUS_RANGE = 21..<22
     }
 }
 
@@ -93,10 +95,10 @@ extension AdvertisingData {
         
         // Decode Probe ID and Color if its present in the advertising packet
         if(data.count >= 21) {
-            let modeIdColorData  = data.subdata(in: Constants.MODE_COLOR_ID_RANGE)
-            id = ProbeID.fromRawData(data: modeIdColorData)
-            color = ProbeColor.fromRawData(data: modeIdColorData)
-            mode = ProbeMode.fromRawData(data: modeIdColorData)
+            let modeIdColorByte = data.subdata(in: Constants.MODE_COLOR_ID_RANGE)[0]
+            id = ProbeID.from(modeIdColorByte: modeIdColorByte)
+            color = ProbeColor.from(modeIdColorByte: modeIdColorByte)
+            mode = ProbeMode.from(modeIdColorByte: modeIdColorByte)
         }
         else {
             id = .ID1
@@ -106,11 +108,13 @@ extension AdvertisingData {
         
         // Decode battery status if its present in the advertising packet
         if(data.count >= 22) {
-            let statusData  = data.subdata(in: Constants.BATTERY_STATUS_RANGE)
-            batteryStatus = BatteryStatus.fromRawData(data: statusData)
+            let deviceStatusByte = data.subdata(in: Constants.DEVICE_STATUS_RANGE)[0]
+            batteryStatus = BatteryStatus.from(deviceStatusByte: deviceStatusByte)
+            hopCount = HopCount.from(deviceStatusByte: deviceStatusByte)
         }
         else {
             batteryStatus = .OK
+            hopCount = .HOP1
         }
     }
 }
@@ -126,6 +130,7 @@ extension AdvertisingData {
         color = .COLOR1
         mode = .Normal
         batteryStatus = .OK
+        hopCount = .HOP1
     }
     
     // Fake data initializer for Simulated Probe
@@ -137,5 +142,6 @@ extension AdvertisingData {
         color = .COLOR1
         mode = .Normal
         batteryStatus = .OK
+        hopCount = .HOP1
     }
 }

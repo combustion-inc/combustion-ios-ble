@@ -163,7 +163,9 @@ public class DeviceManager : ObservableObject {
     public func setProbeColor(_ device: Device, color: ProbeColor, completionHandler: @escaping (Bool) -> Void) {
         setColorCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
 
-        let request = SetColorRequest(color: color)
+        // TODO JDJ DO not commit
+//        let request = SetColorRequest(color: color)
+        let request = SetPredictionRequest(setPointCelsius: 67.8, mode: .REMOVAL_AND_RESTING)
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
     }
     
@@ -222,7 +224,7 @@ extension DeviceManager : BleManagerDelegate {
         setIDCompetionHandlers.removeValue(forKey: identifier.uuidString)
     }
     
-    func updateDeviceWithStatus(identifier: UUID, status: DeviceStatus) {
+    func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus) {
         if let probe = devices[identifier.uuidString] as? Probe {
             probe.updateProbeStatus(deviceStatus: status)
         }

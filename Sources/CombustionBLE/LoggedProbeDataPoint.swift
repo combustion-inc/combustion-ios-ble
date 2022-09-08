@@ -35,8 +35,8 @@ public struct LoggedProbeDataPoint: Equatable {
 extension LoggedProbeDataPoint {
     
     /// Generates a LoggedProbeDataPoint from a previously-parsed DeviceStatus record.
-    /// - parameter deviceStatus: DeviceStatus instance
-    static func fromDeviceStatus(deviceStatus: DeviceStatus) -> LoggedProbeDataPoint {
+    /// - parameter ProbeStatus: ProbeStatus instance
+    static func fromDeviceStatus(deviceStatus: ProbeStatus) -> LoggedProbeDataPoint {
         return LoggedProbeDataPoint(sequenceNum: deviceStatus.maxSequenceNumber,
                                     temperatures: deviceStatus.temperatures)
     }

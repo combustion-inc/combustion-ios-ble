@@ -41,10 +41,8 @@ public enum ProbeID: UInt8, CaseIterable {
         static let PRODE_ID_SHIFT: UInt8 = 5
     }
     
-    static func fromRawData(data: Data) -> ProbeID {
-        let modeIdColorBytes = [UInt8](data)
-        
-        let rawProbeID = (modeIdColorBytes[0] & (Constants.PRODE_ID_MASK << Constants.PRODE_ID_SHIFT)) >> Constants.PRODE_ID_SHIFT
+    static func from(modeIdColorByte: UInt8) -> ProbeID {
+        let rawProbeID = (modeIdColorByte  >> Constants.PRODE_ID_SHIFT ) & Constants.PRODE_ID_MASK
         return ProbeID(rawValue: rawProbeID) ?? .ID1
     }
 }

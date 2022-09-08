@@ -70,7 +70,7 @@ public class Probe : Device {
     /// Time at which probe instant read was last updated
     internal var lastInstantRead: Date?
     
-    public init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
+    init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
         serialNumber = advertising.serialNumber
         id = advertising.id
         color = advertising.color
@@ -134,7 +134,7 @@ extension Probe {
     }
     
     /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.
-    func updateProbeStatus(deviceStatus: DeviceStatus) {
+    func updateProbeStatus(deviceStatus: ProbeStatus) {
         minSequenceNumber = deviceStatus.minSequenceNumber
         maxSequenceNumber = deviceStatus.maxSequenceNumber
         id = deviceStatus.id

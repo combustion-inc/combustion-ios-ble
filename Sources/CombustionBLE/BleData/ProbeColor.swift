@@ -41,10 +41,8 @@ public enum ProbeColor: UInt8, CaseIterable {
         static let PRODE_COLOR_SHIFT: UInt8 = 2
     }
     
-    static func fromRawData(data: Data) -> ProbeColor {
-        let modeIdColorBytes = [UInt8](data)
-        
-        let rawProbeColor = (modeIdColorBytes[0] & (Constants.PRODE_COLOR_MASK << Constants.PRODE_COLOR_SHIFT)) >> Constants.PRODE_COLOR_SHIFT
+    static func from(modeIdColorByte: UInt8) -> ProbeColor {
+        let rawProbeColor = (modeIdColorByte >> Constants.PRODE_COLOR_SHIFT) & Constants.PRODE_COLOR_MASK
         return ProbeColor(rawValue: rawProbeColor) ?? .COLOR1
     }
 }

@@ -1,9 +1,9 @@
-//  BatteryStatus.swift
+//  HopCount.swift
 
 /*--
 MIT License
 
-Copyright (c) 2021 Combustion Inc.
+Copyright (c) 2022 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,19 +23,22 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
+
 import Foundation
 
-/// Enumeration of Battery status
-public enum BatteryStatus: UInt8 {
-    case OK = 0x00
-    case LOW = 0x01
+public enum HopCount: UInt8, CaseIterable {
+    case HOP1 = 0x00
+    case HOP2 = 0x01
+    case HOP3 = 0x02
+    case HOP4 = 0x03
     
     private enum Constants {
-        static let BATTERY_MASK: UInt8 = 0x3
+        static let HOP_COUNT_MASK: UInt8 = 0x3
+        static let HOP_COUNT_SHIFT: UInt8 = 6
     }
     
-    static func from(deviceStatusByte: UInt8) -> BatteryStatus {
-        let rawStatus = (deviceStatusByte & (Constants.BATTERY_MASK))
-        return BatteryStatus(rawValue: rawStatus) ?? .OK
+    static func from(deviceStatusByte: UInt8) -> HopCount {
+        let rawHopCount = (deviceStatusByte >> Constants.HOP_COUNT_SHIFT) & Constants.HOP_COUNT_MASK
+        return HopCount(rawValue: rawHopCount) ?? .HOP1
     }
 }

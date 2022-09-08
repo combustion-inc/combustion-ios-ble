@@ -36,10 +36,8 @@ public enum ProbeMode: UInt8, CaseIterable {
         static let PRODE_MODE_MASK: UInt8 = 0x3
     }
     
-    static func fromRawData(data: Data) -> ProbeMode {
-        let modeIdColorBytes = [UInt8](data)
-        
-        let rawProbeID = modeIdColorBytes[0] & (Constants.PRODE_MODE_MASK)
+    static func from(modeIdColorByte: UInt8) -> ProbeMode {
+        let rawProbeID = modeIdColorByte & (Constants.PRODE_MODE_MASK)
         return ProbeMode(rawValue: rawProbeID) ?? .Normal
     }
 }

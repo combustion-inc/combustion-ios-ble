@@ -39,7 +39,7 @@ protocol BleManagerDelegate: AnyObject {
     func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID)
     func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse)
     func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation)
-    func updateDeviceWithStatus(identifier: UUID, status: DeviceStatus)
+    func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus)
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String)
     func updateDeviceHwRevision(identifier: UUID, hwRevision: String)
 }
@@ -258,7 +258,7 @@ extension BleManager: CBPeripheralDelegate {
             handleUartData(data: data, identifier: peripheral.identifier)
         }
         else if characteristic.uuid == Constants.DEVICE_STATUS_CHAR {
-            if let status = DeviceStatus(fromData: data) {
+            if let status = ProbeStatus(fromData: data) {
                 delegate?.updateDeviceWithStatus(identifier: peripheral.identifier, status: status)
             }
         }

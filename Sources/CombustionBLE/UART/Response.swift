@@ -119,13 +119,13 @@ extension Response {
         
         switch messageType {
         case .Log:
-            return LogResponse(data: data, success: success)
+            return LogResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
         case .SetID:
             return SetIDResponse(success: success, payLoadLength: Int(payloadLength))
         case .SetColor:
             return SetColorResponse(success: success, payLoadLength: Int(payloadLength))
         case .SessionInfo:
-            return SessionInfoResponse(data: data, success: success)
+            return SessionInfoResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
         }
     }
 }

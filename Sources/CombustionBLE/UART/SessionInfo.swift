@@ -42,7 +42,7 @@ class SessionInfoResponse: Response {
     
     let info: SessionInformation
     
-    init(data: Data, success: Bool) {
+    init(data: Data, success: Bool, payloadLength: Int) {
         let sequenceByteIndex = Response.HEADER_LENGTH
         let sessionIDRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 4))
         let sessionID = sessionIDRaw.withUnsafeBytes {
@@ -56,6 +56,17 @@ class SessionInfoResponse: Response {
         
         info = SessionInformation(sessionID: sessionID, samplePeriod: samplePeriod)
 
-        super.init(success: success, payLoadLength: SessionInfoResponse.PAYLOAD_LENGTH)
+        super.init(success: success, payLoadLength: payloadLength)
+    }
+}
+
+extension SessionInfoResponse {
+
+    static func fromRaw(data: Data, success: Bool, payloadLength: Int) -> SessionInfoResponse? {
+        if(payloadLength < PAYLOAD_LENGTH) {
+            return nil
+        }
+            
+        return SessionInfoResponse(data: data, success: success, payloadLength: payloadLength)
     }
 }

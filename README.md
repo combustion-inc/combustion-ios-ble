@@ -14,7 +14,7 @@ Our Predictive Thermometer's eight temperature sensors measure the temp outside 
 
 Or you can create your own mobile app to work with the Predictive Thermometer using this open source library.
 
-<img src="https://combustion.inc/assets/img/product_rendering/probe-and-timer-large.jp2" alt="Probe and Timer" width="400"/>
+<img src="https://github.com/combustion-inc/combustion-documentation/blob/main/images/Predictive%20Thermometer%20+%20Display%20&%20Range%20Extender%201024x1024.png?raw=true" alt="Probe and Timer" width="400"/>
 
 Visit [www.combustion.inc](https://www.combustion.inc) to sign up to be notified when they're available to order in early 2022.
 

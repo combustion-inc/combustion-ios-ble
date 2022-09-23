@@ -41,16 +41,10 @@ struct AdvertisingData {
     let serialNumber: UInt32
     /// Latest temperatures read by device
     let temperatures: ProbeTemperatures
-    /// Prode ID
-    let id: ProbeID
-    /// Probe Color
-    let color: ProbeColor
-    /// Probe mode
-    let mode: ProbeMode
-    /// Battery Status
-    let batteryStatus: BatteryStatus
-    /// Hop Count
-    let hopCount: HopCount
+    // ModeId (Probe color, ID, and mode)
+    let modeId: ModeId
+    /// Battery Status and Virtual Sensors
+    let batteryStatusVirtualSensors: BatteryStatusVirtualSensors
 
     private enum Constants {
         // Locations of data in advertising packets
@@ -93,28 +87,20 @@ extension AdvertisingData {
         let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
         temperatures = ProbeTemperatures.fromRawData(data: tempData)
         
-        // Decode Probe ID and Color if its present in the advertising packet
+        // Decode ModeId byte if present in the advertising packet
         if(data.count >= 21) {
-            let modeIdColorByte = data.subdata(in: Constants.MODE_COLOR_ID_RANGE)[0]
-            id = ProbeID.from(modeIdColorByte: modeIdColorByte)
-            color = ProbeColor.from(modeIdColorByte: modeIdColorByte)
-            mode = ProbeMode.from(modeIdColorByte: modeIdColorByte)
-        }
-        else {
-            id = .ID1
-            color = .COLOR1
-            mode = .Normal
+            let byte = data.subdata(in: Constants.MODE_COLOR_ID_RANGE)[0]
+            modeId = ModeId.fromByte(byte)
+        } else {
+            modeId = ModeId()
         }
         
-        // Decode battery status if its present in the advertising packet
+        // Decode battery status & virutal sensors if present in the advertising packet
         if(data.count >= 22) {
-            let deviceStatusByte = data.subdata(in: Constants.DEVICE_STATUS_RANGE)[0]
-            batteryStatus = BatteryStatus.from(deviceStatusByte: deviceStatusByte)
-            hopCount = HopCount.from(deviceStatusByte: deviceStatusByte)
-        }
-        else {
-            batteryStatus = .OK
-            hopCount = .HOP1
+            let byte = data.subdata(in: Constants.DEVICE_STATUS_RANGE)[0]
+            batteryStatusVirtualSensors = BatteryStatusVirtualSensors.fromByte(byte)
+        } else {
+            batteryStatusVirtualSensors = BatteryStatusVirtualSensors()
         }
     }
 }
@@ -126,11 +112,8 @@ extension AdvertisingData {
         type = .PROBE
         temperatures = ProbeTemperatures.withFakeData()
         serialNumber = fakeSerial
-        id = .ID1
-        color = .COLOR1
-        mode = .Normal
-        batteryStatus = .OK
-        hopCount = .HOP1
+        modeId = ModeId()
+        batteryStatusVirtualSensors = BatteryStatusVirtualSensors()
     }
     
     // Fake data initializer for Simulated Probe
@@ -138,10 +121,7 @@ extension AdvertisingData {
         type = .PROBE
         temperatures = fakeTemperatures
         serialNumber = fakeSerial
-        id = .ID1
-        color = .COLOR1
-        mode = .Normal
-        batteryStatus = .OK
-        hopCount = .HOP1
+        modeId = ModeId()
+        batteryStatusVirtualSensors = BatteryStatusVirtualSensors()
     }
 }

@@ -72,8 +72,8 @@ public class Probe : Device {
     
     init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
         serialNumber = advertising.serialNumber
-        id = advertising.id
-        color = advertising.color
+        id = advertising.modeId.id
+        color = advertising.modeId.color
         
         super.init(identifier: identifier, RSSI: RSSI)
         
@@ -117,17 +117,17 @@ extension Probe {
         // notifications to update data
         if(connectionState != .connected)
         {
-            if(advertising.mode == .Normal) {
+            if(advertising.modeId.mode == .Normal) {
                 currentTemperatures = advertising.temperatures
             }
-            else if(advertising.mode == .InstantRead ){
+            else if(advertising.modeId.mode == .InstantRead ){
                 updateInstantRead(advertising.temperatures.values[0])
             }
             
 
-            id = advertising.id
-            color = advertising.color
-            batteryStatus = advertising.batteryStatus
+            id = advertising.modeId.id
+            color = advertising.modeId.color
+            batteryStatus = advertising.batteryStatusVirtualSensors.batteryStatus
             
             lastUpdateTime = Date()
         }
@@ -137,18 +137,18 @@ extension Probe {
     func updateProbeStatus(deviceStatus: ProbeStatus) {
         minSequenceNumber = deviceStatus.minSequenceNumber
         maxSequenceNumber = deviceStatus.maxSequenceNumber
-        id = deviceStatus.id
-        color = deviceStatus.color
-        batteryStatus = deviceStatus.batteryStatus
+        id = deviceStatus.modeId.id
+        color = deviceStatus.modeId.color
+        batteryStatus = deviceStatus.batteryStatusVirtualSensors.batteryStatus
         
-        if(deviceStatus.mode == .Normal) {
+        if(deviceStatus.modeId.mode == .Normal) {
             currentTemperatures = deviceStatus.temperatures
             
             // Log the temperature data point for "Normal" status updates
             // Log the temperature data point
             addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus))
         }
-        else if(deviceStatus.mode == .InstantRead ){
+        else if(deviceStatus.modeId.mode == .InstantRead ){
             updateInstantRead(deviceStatus.temperatures.values[0])
         }
         

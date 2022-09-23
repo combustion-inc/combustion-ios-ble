@@ -84,11 +84,8 @@ class SimulatedProbe: Probe {
         let probeStatus = ProbeStatus(minSequenceNumber: firstSeq,
                                         maxSequenceNumber: lastSequence,
                                         temperatures: ProbeTemperatures.withRandomData(),
-                                        id: .ID1,
-                                        color: .COLOR1,
-                                        mode: .Normal,
-                                        batteryStatus: .OK,
-                                        hopCount: .HOP1)
+                                        modeId: ModeId(),
+                                        batteryStatusVirtualSensors: BatteryStatusVirtualSensors())
         
         updateProbeStatus(deviceStatus: probeStatus)
     }

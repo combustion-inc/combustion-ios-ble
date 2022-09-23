@@ -34,16 +34,10 @@ struct ProbeStatus {
     let maxSequenceNumber: UInt32
     /// Current temperatures sent by Probe.
     let temperatures: ProbeTemperatures
-    /// Prode ID
-    let id: ProbeID
-    /// Probe Color
-    let color: ProbeColor
-    /// Probe mode
-    let mode: ProbeMode
-    /// Battery Status
-    let batteryStatus: BatteryStatus
-    /// Hop Count
-    let hopCount: HopCount
+    // ModeId (Probe color, ID, and mode)
+    let modeId: ModeId
+    /// Battery Status and Virtual Sensors
+    let batteryStatusVirtualSensors: BatteryStatusVirtualSensors
     
     private enum Constants {
         // Locations of data in status packet
@@ -73,28 +67,21 @@ extension ProbeStatus {
         let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
         temperatures = ProbeTemperatures.fromRawData(data: tempData)
         
-        // Decode Probe ID and Color if its present in the status notification
+        // Decode ModeId byte if present in the advertising packet
         if(data.count >= 22) {
-            let modeIdColorByte = data.subdata(in: Constants.MODE_COLOR_ID_RANGE)[0]
-            id = ProbeID.from(modeIdColorByte: modeIdColorByte)
-            color = ProbeColor.from(modeIdColorByte: modeIdColorByte)
-            mode = ProbeMode.from(modeIdColorByte: modeIdColorByte)
-        }
-        else {
-            id = .ID1
-            color = .COLOR1
-            mode = .Normal
+            let byte = data.subdata(in: Constants.MODE_COLOR_ID_RANGE)[0]
+            modeId = ModeId.fromByte(byte)
+        } else {
+            modeId = ModeId()
         }
         
-        // Decode battery status if its present in the status notification
+        // Decode battery status & virutal sensors if present in the advertising packet
         if(data.count >= 23) {
-            let deviceStatusByte = data.subdata(in: Constants.DEVICE_STATUS_RANGE)[0]
-            batteryStatus = BatteryStatus.from(deviceStatusByte: deviceStatusByte)
-            hopCount = HopCount.from(deviceStatusByte: deviceStatusByte)
+            let byte = data.subdata(in: Constants.DEVICE_STATUS_RANGE)[0]
+            batteryStatusVirtualSensors = BatteryStatusVirtualSensors.fromByte(byte)
+        } else {
+            batteryStatusVirtualSensors = BatteryStatusVirtualSensors()
         }
-        else {
-            batteryStatus = .OK
-            hopCount = .HOP1
-        }
+
     }
 }

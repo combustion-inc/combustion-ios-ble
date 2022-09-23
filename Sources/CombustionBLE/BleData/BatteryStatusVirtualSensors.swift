@@ -1,4 +1,4 @@
-//  BatteryStatus.swift
+//  BatteryStatusVirtualSensors.swift
 
 /*--
 MIT License
@@ -30,12 +30,33 @@ public enum BatteryStatus: UInt8 {
     case OK = 0x00
     case LOW = 0x01
     
+    static let MASK: UInt8 = 0x3
+}
+
+class BatteryStatusVirtualSensors {
+    let batteryStatus: BatteryStatus
+    let virtualSensors: VirtualSensors
+    
     private enum Constants {
-        static let BATTERY_MASK: UInt8 = 0x3
+        static let VIRTUAL_SENSORS_SHIFT: UInt8 = 2
     }
     
-    static func from(deviceStatusByte: UInt8) -> BatteryStatus {
-        let rawStatus = (deviceStatusByte & (Constants.BATTERY_MASK))
-        return BatteryStatus(rawValue: rawStatus) ?? .OK
+    init() {
+        batteryStatus = .OK
+        virtualSensors = VirtualSensors()
+    }
+    
+    init(batteryStatus: BatteryStatus,
+         virtualSensors: VirtualSensors) {
+        self.batteryStatus = batteryStatus
+        self.virtualSensors = virtualSensors
+    }
+    
+    static func fromByte(_ byte: UInt8) -> BatteryStatusVirtualSensors {
+        let rawStatus = (byte & (BatteryStatus.MASK))
+        let battery = BatteryStatus(rawValue: rawStatus) ?? .OK
+        let virtualSensors = VirtualSensors.fromByte(byte >> Constants.VIRTUAL_SENSORS_SHIFT)
+        
+        return BatteryStatusVirtualSensors(batteryStatus: battery, virtualSensors: virtualSensors)
     }
 }

@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 import SwiftUI
-
+import NordicDFU
 
 /// Singleton that provides list of detected Devices
 /// (either via Bluetooth or from a list in the Cloud)
@@ -162,9 +162,20 @@ public class DeviceManager : ObservableObject {
     /// - parameter ProbeColor: New Probe color
     public func setProbeColor(_ device: Device, color: ProbeColor, completionHandler: @escaping (Bool) -> Void) {
         setColorCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
-        
+
         let request = SetColorRequest(color: color)
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+    }
+    
+    public func runSoftwareUpgrade(_ device: Device, otaFile: URL) -> Bool {
+        do {
+            let dfu = try DFUFirmware(urlToZipFile: otaFile)
+            BleManager.shared.startFirmwareUpdate(device: device, dfu: dfu)
+            return true
+        }
+        catch {
+            return false
+        }
     }
     
     private func checkForMessageTimeout(messageHandlers: inout [String: MessageHandler]) {
@@ -225,14 +236,14 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
-    func updateDeviceWithAdvertising(advertising: AdvertisingData, rssi: NSNumber, identifier: UUID) {
+    func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID) {
         if devices[identifier.uuidString] != nil {
             if let probe = devices[identifier.uuidString] as? Probe {
-                probe.updateWithAdvertising(advertising, RSSI: rssi)
+                probe.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
             }
         }
         else {
-            let device = Probe(advertising, RSSI: rssi, identifier: identifier)
+            let device = Probe(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
             addDevice(device: device)
         }
     }

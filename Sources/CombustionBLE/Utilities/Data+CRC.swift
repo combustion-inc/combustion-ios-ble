@@ -1,9 +1,9 @@
-//  SetID.swift
+//  Data+CRC.swift
 
 /*--
 MIT License
 
-Copyright (c) 2021 Combustion Inc.
+Copyright (c) 2022 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,13 +26,21 @@ SOFTWARE.
 
 import Foundation
 
-class SetIDRequest: Request {
-    init(id: ProbeID) {
-        var payload = Data()
-        payload.append(id.rawValue)
-        
-        super.init(payload: payload, type: .SetID)
+extension Data {
+    func crc16ccitt() -> UInt16 {
+        var crc: UInt16 = 0xFFFF // initial value
+        let polynomial: UInt16 = 0x1021 // 0001 0000 0010 0001  (0, 5, 12)
+
+        self.forEach { (byte) in
+            for i in 0...7 {
+                let bit = (byte >> (7 - i) & 1) == 1
+                let c15 = (crc  >> (15)    & 1) == 1
+                crc = crc << 1
+                if (c15 != bit) {
+                    crc = crc ^ polynomial
+                }
+            }
+        }
+        return crc & 0xffff
     }
 }
-
-class SetIDResponse : Response { }

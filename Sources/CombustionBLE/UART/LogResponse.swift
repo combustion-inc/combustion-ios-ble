@@ -33,7 +33,7 @@ class LogResponse: Response {
     let sequenceNumber: UInt32
     let temperatures: ProbeTemperatures
     
-    init(data: Data, success: Bool) {
+    init(data: Data, success: Bool, payloadLength: Int) {
         let sequenceByteIndex = Response.HEADER_LENGTH
         let sequenceRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 4))
         sequenceNumber = sequenceRaw.withUnsafeBytes {
@@ -47,6 +47,17 @@ class LogResponse: Response {
         // print("******** Received response!")
         // print("Sequence = \(sequenceNumber) : Temperature = \(temperatures)")
 
-        super.init(success: success, payLoadLength: LogResponse.PAYLOAD_LENGTH)
+        super.init(success: success, payLoadLength: payloadLength)
+    }
+}
+
+extension LogResponse {
+
+    static func fromRaw(data: Data, success: Bool, payloadLength: Int) -> LogResponse? {
+        if(payloadLength < PAYLOAD_LENGTH) {
+            return nil
+        }
+            
+        return LogResponse(data: data, success: success, payloadLength: payloadLength)
     }
 }

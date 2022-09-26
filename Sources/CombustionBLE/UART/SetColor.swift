@@ -27,11 +27,11 @@ SOFTWARE.
 import Foundation
 
 class SetColorRequest: Request {
-    static let PAYLOAD_LENGTH: UInt8 = 1
-    
     init(color: ProbeColor) {
-        super.init(payloadLength: SetColorRequest.PAYLOAD_LENGTH, type: .SetColor)
-        self.data[Request.HEADER_SIZE] = color.rawValue
+        var payload = Data()
+        payload.append(color.rawValue)
+        
+        super.init(payload: payload, type: .SetColor)
     }
 }
 

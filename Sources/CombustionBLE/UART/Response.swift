@@ -68,8 +68,6 @@ extension Response {
             return nil
         }
         
-        // CRC : TODO (bytes 2,3)
-        
         // Message type
         let typeByte = data.subdata(in: 4..<5)
         let typeRaw = typeByte.withUnsafeBytes {
@@ -93,6 +91,23 @@ extension Response {
             $0.load(as: UInt8.self)
         }
         
+        // CRC
+        let crcBytes = data.subdata(in: 2..<4)
+        let crc = crcBytes.withUnsafeBytes {
+            $0.load(as: UInt16.self)
+        }
+        
+        let crcDataLength = 3 + Int(payloadLength)
+        var crcData = data.dropFirst(4)
+        crcData = crcData.dropLast(crcData.count - crcDataLength)
+        
+        let calculatedCRC = crcData.crc16ccitt()
+        
+        guard crc == calculatedCRC else {
+            print("Response::fromData(): Invalid CRC")
+            return nil
+        }
+        
         let responseLength = Int(payloadLength) + HEADER_LENGTH
         
         // Invalid number of bytes
@@ -104,13 +119,13 @@ extension Response {
         
         switch messageType {
         case .Log:
-            return LogResponse(data: data, success: success)
+            return LogResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
         case .SetID:
             return SetIDResponse(success: success, payLoadLength: Int(payloadLength))
         case .SetColor:
             return SetColorResponse(success: success, payLoadLength: Int(payloadLength))
         case .SessionInfo:
-            return SessionInfoResponse(data: data, success: success)
+            return SessionInfoResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
         }
     }
 }

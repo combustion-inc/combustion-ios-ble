@@ -31,7 +31,7 @@ class SimulatedProbe: Probe {
     init() {
         let advertising = AdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
                                           fakeTemperatures: ProbeTemperatures.withRandomData())
-        super.init(advertising, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())
+        super.init(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())
         
         firmareVersion = "v1.2.3"
         hardwareRevision = "v0.31-A1"
@@ -64,7 +64,7 @@ class SimulatedProbe: Probe {
     private func updateFakeAdvertising() {
         let advertising = AdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
                                           fakeTemperatures: ProbeTemperatures.withRandomData())
-        updateWithAdvertising(advertising, RSSI: SimulatedProbe.randomeRSSI())
+        updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI())
     }
     
     private func updateFakeStatus() {

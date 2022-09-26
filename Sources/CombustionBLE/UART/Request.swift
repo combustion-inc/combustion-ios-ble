@@ -32,25 +32,35 @@ class Request {
     static let HEADER_SIZE = 6
     
     /// Contains message data.
-    var data: Data
+    var data = Data()
     
     /// Constructor for Request object.
     /// - parameter payloadLength: Length of payload of message
     /// - parameter type: Type of message
-    init(payloadLength: UInt8, type: MessageType) {
-        let messageSize = Request.HEADER_SIZE + Int(payloadLength)
-        data = Data(repeating: 0, count: messageSize)
+    init(payload: Data, type: MessageType) {
         
         // Sync Bytes { 0xCA, 0xFE }
-        data[0] = 0xCA
-        data[1] = 0xFE
+        data.append(0xCA)
+        data.append(0xFE)
         
-        // CRC : TODO
+        // Calculate CRC over Message Type, payload length, payload
+        var crcData = Data()
         
         // Message type
-        data[4] = type.rawValue
+        crcData.append(type.rawValue)
         
         // Payload length
-        data[5] = payloadLength
+        crcData.append(UInt8(payload.count))
+        
+        // Payload
+        crcData.append(payload)
+        
+        var crcValue = crcData.crc16ccitt()
+        
+        // CRC
+        data.append(Data(bytes: &crcValue, count: MemoryLayout.size(ofValue: crcValue)))
+        
+        // Message Type, payload length, payload
+        data.append(crcData)
     }
 }

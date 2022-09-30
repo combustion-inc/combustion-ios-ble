@@ -43,4 +43,8 @@ extension Data {
         }
         return crc & 0xffff
     }
+    
+    var hexDescription: String {
+        return reduce("") {$0 + String(format: "%02x", $1)}
+    }
 }

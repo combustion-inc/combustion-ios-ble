@@ -1,4 +1,4 @@
-//  HopCount.swift
+//  PredictionState.swift
 
 /*--
 MIT License
@@ -26,21 +26,19 @@ SOFTWARE.
 
 import Foundation
 
-public enum HopCount: UInt8, CaseIterable {
-    case hop1 = 0x00
-    case hop2 = 0x01
-    case hop3 = 0x02
-    case hop4 = 0x03
-}
-
-extension HopCount {
-    private enum Constants {
-        static let HOP_COUNT_MASK: UInt8 = 0x3
-        static let HOP_COUNT_SHIFT: UInt8 = 6
-    }
+/// Enumeration of Battery status
+public enum PredictionState: UInt8 {
+    case probeNotInserted       = 0x00
+    case probeInserted          = 0x01
+    case warming                = 0x02
+    case predicting             = 0x03
+    case removalPredictionDone  = 0x04
+//    * 5: Reserved State 5
+//    * 6: Reserved State 6
+//    ...
+//    * 14: Reserved State 14
+    case unknown                = 0x0F
     
-    static func from(deviceStatusByte: UInt8) -> HopCount {
-        let rawHopCount = (deviceStatusByte >> Constants.HOP_COUNT_SHIFT) & Constants.HOP_COUNT_MASK
-        return HopCount(rawValue: rawHopCount) ?? .hop1
-    }
+    
+    static let MASK: UInt8      = 0xF
 }

@@ -163,9 +163,7 @@ public class DeviceManager : ObservableObject {
     public func setProbeColor(_ device: Device, color: ProbeColor, completionHandler: @escaping (Bool) -> Void) {
         setColorCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
 
-        // TODO JDJ DO not commit
-//        let request = SetColorRequest(color: color)
-        let request = SetPredictionRequest(setPointCelsius: 67.8, mode: .REMOVAL_AND_RESTING)
+        let request = SetColorRequest(color: color)
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
     }
     

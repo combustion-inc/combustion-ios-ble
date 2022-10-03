@@ -33,7 +33,7 @@ public struct SessionInformation {
 
 class SessionInfoRequest: Request {
     init() {
-        super.init(payload: Data(), type: .SessionInfo)
+        super.init(payload: Data(), type: .sessionInfo)
     }
 }
 

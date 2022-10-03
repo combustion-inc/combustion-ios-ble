@@ -33,7 +33,7 @@ class SetPredictionRequest: Request {
         
         let payload = Data(bytes: &rawPayload, count: MemoryLayout.size(ofValue: rawPayload))
         
-        super.init(payload: payload, type: .SetPrediction)
+        super.init(payload: payload, type: .setPrediction)
     }
 }
 

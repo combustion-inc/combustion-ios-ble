@@ -27,36 +27,33 @@ import Foundation
 
 /// Enumeration of Battery status
 public enum BatteryStatus: UInt8 {
-    case OK = 0x00
-    case LOW = 0x01
+    case ok = 0x00
+    case low = 0x01
     
     static let MASK: UInt8 = 0x3
 }
 
-class BatteryStatusVirtualSensors {
+struct BatteryStatusVirtualSensors {
     let batteryStatus: BatteryStatus
     let virtualSensors: VirtualSensors
+}
+
+extension BatteryStatusVirtualSensors {
     
     private enum Constants {
         static let VIRTUAL_SENSORS_SHIFT: UInt8 = 2
     }
     
-    init() {
-        batteryStatus = .OK
-        virtualSensors = VirtualSensors()
-    }
-    
-    init(batteryStatus: BatteryStatus,
-         virtualSensors: VirtualSensors) {
-        self.batteryStatus = batteryStatus
-        self.virtualSensors = virtualSensors
-    }
-    
     static func fromByte(_ byte: UInt8) -> BatteryStatusVirtualSensors {
         let rawStatus = (byte & (BatteryStatus.MASK))
-        let battery = BatteryStatus(rawValue: rawStatus) ?? .OK
+        let battery = BatteryStatus(rawValue: rawStatus) ?? .ok
         let virtualSensors = VirtualSensors.fromByte(byte >> Constants.VIRTUAL_SENSORS_SHIFT)
         
         return BatteryStatusVirtualSensors(batteryStatus: battery, virtualSensors: virtualSensors)
+    }
+    
+    static func defaultValues() -> BatteryStatusVirtualSensors {
+        return BatteryStatusVirtualSensors(batteryStatus: .ok,
+                                           virtualSensors:  VirtualSensors(virtualCore: .T1, virtualSurface: .T4, virtualAmbient: .T5))
     }
 }

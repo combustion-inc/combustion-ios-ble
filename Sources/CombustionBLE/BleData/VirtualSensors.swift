@@ -55,26 +55,16 @@ public enum VirtualAmbientSensor: UInt8 {
     static let MASK: UInt8 = 0x3
 }
 
-class VirtualSensors {
+struct VirtualSensors {
     let virtualCore: VirtualCoreSensor
     let virtualSurface: VirtualSurfaceSensor
     let virtualAmbient: VirtualAmbientSensor
-    
+}
+
+extension VirtualSensors {
     private enum Constants {
         static let VIRTUAL_SURFACE_SHIFT: UInt8 = 3
         static let VIRTUAL_AMBIENT_SHIFT: UInt8 = 5
-    }
-    
-    init() {
-        virtualCore = .T1
-        virtualSurface = .T4
-        virtualAmbient = .T5
-    }
-    
-    init(virtualCore: VirtualCoreSensor, virtualSurface: VirtualSurfaceSensor, virtualAmbient: VirtualAmbientSensor) {
-        self.virtualCore = virtualCore
-        self.virtualSurface = virtualSurface
-        self.virtualAmbient = virtualAmbient
     }
     
     static func fromByte(_ byte: UInt8) -> VirtualSensors {

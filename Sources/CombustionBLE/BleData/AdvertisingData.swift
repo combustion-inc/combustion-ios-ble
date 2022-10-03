@@ -28,9 +28,9 @@ import Foundation
 
 /// Enumeration of Combustion, Inc. product types.
 public enum CombustionProductType: UInt8 {
-    case UNKNOWN = 0x00
-    case PROBE = 0x01
-    case NODE = 0x02
+    case unknown = 0x00
+    case probe = 0x01
+    case node = 0x02
 }
 
 /// Struct containing advertising data received from device.
@@ -45,7 +45,9 @@ struct AdvertisingData {
     let modeId: ModeId
     /// Battery Status and Virtual Sensors
     let batteryStatusVirtualSensors: BatteryStatusVirtualSensors
+}
 
+extension AdvertisingData {
     private enum Constants {
         // Locations of data in advertising packets
         static let PRODUCT_TYPE_RANGE = 2..<3
@@ -54,9 +56,7 @@ struct AdvertisingData {
         static let MODE_COLOR_ID_RANGE = 20..<21
         static let DEVICE_STATUS_RANGE = 21..<22
     }
-}
-
-extension AdvertisingData {
+    
     init?(fromData : Data?) {
         guard let data = fromData else { return nil }
         guard data.count >= 20 else { return nil }
@@ -64,7 +64,7 @@ extension AdvertisingData {
         // Product type (1 byte)
         let rawType = data.subdata(in: Constants.PRODUCT_TYPE_RANGE)
         let typeByte = [UInt8](rawType)
-        type = CombustionProductType(rawValue: typeByte[0]) ?? .UNKNOWN
+        type = CombustionProductType(rawValue: typeByte[0]) ?? .unknown
         
         // Device Serial number (4 bytes)
         // Reverse the byte order (this is a little-endian packed bitfield)
@@ -92,7 +92,7 @@ extension AdvertisingData {
             let byte = data.subdata(in: Constants.MODE_COLOR_ID_RANGE)[0]
             modeId = ModeId.fromByte(byte)
         } else {
-            modeId = ModeId()
+            modeId = ModeId.defaultValues()
         }
         
         // Decode battery status & virutal sensors if present in the advertising packet
@@ -100,7 +100,7 @@ extension AdvertisingData {
             let byte = data.subdata(in: Constants.DEVICE_STATUS_RANGE)[0]
             batteryStatusVirtualSensors = BatteryStatusVirtualSensors.fromByte(byte)
         } else {
-            batteryStatusVirtualSensors = BatteryStatusVirtualSensors()
+            batteryStatusVirtualSensors = BatteryStatusVirtualSensors.defaultValues()
         }
     }
 }
@@ -109,19 +109,19 @@ extension AdvertisingData {
 extension AdvertisingData {
     // Fake data initializer for previews
     public init(fakeSerial: UInt32) {
-        type = .PROBE
+        type = .probe
         temperatures = ProbeTemperatures.withFakeData()
         serialNumber = fakeSerial
-        modeId = ModeId()
-        batteryStatusVirtualSensors = BatteryStatusVirtualSensors()
+        modeId = ModeId.defaultValues()
+        batteryStatusVirtualSensors = BatteryStatusVirtualSensors.defaultValues()
     }
     
     // Fake data initializer for Simulated Probe
     public init(fakeSerial: UInt32, fakeTemperatures: ProbeTemperatures) {
-        type = .PROBE
+        type = .probe
         temperatures = fakeTemperatures
         serialNumber = fakeSerial
-        modeId = ModeId()
-        batteryStatusVirtualSensors = BatteryStatusVirtualSensors()
+        modeId = ModeId.defaultValues()
+        batteryStatusVirtualSensors = BatteryStatusVirtualSensors.defaultValues()
     }
 }

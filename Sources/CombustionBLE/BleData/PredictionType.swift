@@ -1,4 +1,4 @@
-//  HopCount.swift
+//  PredictionType.swift
 
 /*--
 MIT License
@@ -26,21 +26,11 @@ SOFTWARE.
 
 import Foundation
 
-public enum HopCount: UInt8, CaseIterable {
-    case hop1 = 0x00
-    case hop2 = 0x01
-    case hop3 = 0x02
-    case hop4 = 0x03
-}
-
-extension HopCount {
-    private enum Constants {
-        static let HOP_COUNT_MASK: UInt8 = 0x3
-        static let HOP_COUNT_SHIFT: UInt8 = 6
-    }
+public enum PredictionType: UInt8, CaseIterable {
+    case none = 0x00
+    case removal = 0x01
+    case resting = 0x02
+    case reserved = 0x03
     
-    static func from(deviceStatusByte: UInt8) -> HopCount {
-        let rawHopCount = (deviceStatusByte >> Constants.HOP_COUNT_SHIFT) & Constants.HOP_COUNT_MASK
-        return HopCount(rawValue: rawHopCount) ?? .hop1
-    }
+    static let MASK: UInt8 = 0x3
 }

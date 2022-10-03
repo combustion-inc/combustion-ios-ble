@@ -82,10 +82,11 @@ class SimulatedProbe: Probe {
         }
         
         let probeStatus = ProbeStatus(minSequenceNumber: firstSeq,
-                                        maxSequenceNumber: lastSequence,
-                                        temperatures: ProbeTemperatures.withRandomData(),
-                                        modeId: ModeId(),
-                                        batteryStatusVirtualSensors: BatteryStatusVirtualSensors())
+                                      maxSequenceNumber: lastSequence,
+                                      temperatures: ProbeTemperatures.withRandomData(),
+                                      modeId: ModeId.defaultValues(),
+                                      batteryStatusVirtualSensors: BatteryStatusVirtualSensors.defaultValues(),
+                                      predictionStatus: nil)
         
         updateProbeStatus(deviceStatus: probeStatus)
     }

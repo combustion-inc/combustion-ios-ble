@@ -26,45 +26,18 @@ SOFTWARE.
 
 import Foundation
 
-/// Enumeration of Battery status
-public enum PredictionState: UInt8 {
-    case ProbeNotInserted       = 0x00
-    case ProbeInserted          = 0x01
-    case Warming                = 0x02
-    case Predicting             = 0x03
-    case RemovalPredictionDone  = 0x04
-//    * 5: Reserved State 5
-//    * 6: Reserved State 6
-//    ...
-//    * 14: Reserved State 14
-    case Unknown                = 0x0F
-    
-    
-    static let MASK: UInt8      = 0xF
-}
-
-class VirtualSensorsPredictionState {
+struct VirtualSensorsPredictionState {
     let predictionState: PredictionState
     let virtualSensors: VirtualSensors
-    
-    
-    init() {
-        predictionState = .Unknown
-        virtualSensors = VirtualSensors()
-    }
-    
-    init(predictionState: PredictionState,
-         virtualSensors: VirtualSensors) {
-        self.predictionState = predictionState
-        self.virtualSensors = virtualSensors
-    }
-    
+}
+
+extension VirtualSensorsPredictionState {
     static func fromBytes(_ rawValue: UInt16) -> VirtualSensorsPredictionState {
         let lowerByte = UInt8(rawValue & 0xFF)
         let virtualSensors = VirtualSensors.fromByte(lowerByte)
         
         let rawPrediction = UInt8((rawValue >> 7) & UInt16(PredictionState.MASK))
-        let prediction = PredictionState(rawValue: rawPrediction) ?? .Unknown
+        let prediction = PredictionState(rawValue: rawPrediction) ?? .unknown
         
         return VirtualSensorsPredictionState(predictionState: prediction, virtualSensors: virtualSensors)
     }

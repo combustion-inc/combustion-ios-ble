@@ -45,7 +45,7 @@ public class Probe : Device {
     @Published public private(set) var id: ProbeID
     @Published public private(set) var color: ProbeColor
     
-    @Published public private(set) var batteryStatus: BatteryStatus = .OK
+    @Published public private(set) var batteryStatus: BatteryStatus = .ok
     
     private var sessionInformation: SessionInformation?
     
@@ -117,10 +117,10 @@ extension Probe {
         // notifications to update data
         if(connectionState != .connected)
         {
-            if(advertising.modeId.mode == .Normal) {
+            if(advertising.modeId.mode == .normal) {
                 currentTemperatures = advertising.temperatures
             }
-            else if(advertising.modeId.mode == .InstantRead ){
+            else if(advertising.modeId.mode == .instantRead ){
                 updateInstantRead(advertising.temperatures.values[0])
             }
             
@@ -141,14 +141,14 @@ extension Probe {
         color = deviceStatus.modeId.color
         batteryStatus = deviceStatus.batteryStatusVirtualSensors.batteryStatus
         
-        if(deviceStatus.modeId.mode == .Normal) {
+        if(deviceStatus.modeId.mode == .normal) {
             currentTemperatures = deviceStatus.temperatures
             
             // Log the temperature data point for "Normal" status updates
             // Log the temperature data point
             addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus))
         }
-        else if(deviceStatus.modeId.mode == .InstantRead ){
+        else if(deviceStatus.modeId.mode == .instantRead ){
             updateInstantRead(deviceStatus.temperatures.values[0])
         }
         

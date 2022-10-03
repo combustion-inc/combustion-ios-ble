@@ -27,8 +27,10 @@ SOFTWARE.
 import Foundation
 
 public enum PredictionMode: UInt8, CaseIterable {
-    case NONE = 0x00
-    case TIME_TO_REMOVAL = 0x01
-    case REMOVAL_AND_RESTING = 0x02
-    case RESERVED = 0x03
+    case none = 0x00
+    case timeToRemoval = 0x01
+    case removalAndResting = 0x02
+    case reserved = 0x03
+    
+    static let MASK: UInt8 = 0x3
 }

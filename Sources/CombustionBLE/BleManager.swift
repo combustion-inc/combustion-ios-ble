@@ -97,7 +97,7 @@ class BleManager : NSObject {
             initiator.progressDelegate = device
 
 
-            initiator.start(target: connectionPeripheral)
+            _ = initiator.start(target: connectionPeripheral)
         }
     }
     
@@ -141,8 +141,7 @@ extension BleManager: CBCentralManagerDelegate{
 
         if let advData = AdvertisingData(fromData: manufatureData) {
             // For now, only add probes.
-            if advData.type == .PROBE {
-
+            if advData.type == .probe {
                 // Store peripheral reference for later use
                 peripherals.insert(peripheral)
 

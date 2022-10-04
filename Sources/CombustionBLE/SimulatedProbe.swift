@@ -27,8 +27,8 @@ SOFTWARE.
 
 import Foundation
 
-class SimulatedProbe: Probe {
-    init() {
+public class SimulatedProbe: Probe {
+    public init() {
         let advertising = AdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
                                           fakeTemperatures: ProbeTemperatures.withRandomData())
         super.init(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())

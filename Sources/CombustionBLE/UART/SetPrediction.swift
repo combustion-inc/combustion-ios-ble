@@ -27,7 +27,7 @@ SOFTWARE.
 import Foundation
 
 class SetPredictionRequest: Request {
-    init(setPointCelsius: Float, mode: PredictionMode) {
+    init(setPointCelsius: Double, mode: PredictionMode) {
         let rawSetPoint = UInt16(setPointCelsius / 0.1)        
         var rawPayload = (UInt16(mode.rawValue) << 10) | (rawSetPoint & 0x3FF)
         

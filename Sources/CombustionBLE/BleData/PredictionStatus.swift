@@ -26,14 +26,14 @@ SOFTWARE.
 
 import Foundation
 
-struct PredictionStatus {
-    let predictionState: PredictionState
-    let predictionMode: PredictionMode
-    let predictionType: PredictionType
-    let predictionSetPointTemperature: Float
-    let heatStartTemperature: Float
-    let predictionValueSeconds: UInt
-    let estimatedCoreTemperature: Float
+public struct PredictionStatus {
+    public let predictionState: PredictionState
+    public let predictionMode: PredictionMode
+    public let predictionType: PredictionType
+    public let predictionSetPointTemperature: Double
+    public let heatStartTemperature: Double
+    public let predictionValueSeconds: UInt
+    public let estimatedCoreTemperature: Double
 }
  
 extension PredictionStatus {
@@ -49,18 +49,18 @@ extension PredictionStatus {
         
         // 10 bit field
         let rawSetPoint = UInt16(bytes[2] & 0x03) << 8 | UInt16(bytes[1])
-        let setPoint = Float(rawSetPoint) * 0.1
+        let setPoint = Double(rawSetPoint) * 0.1
         
         // 10 bit field
         let rawHeatStart = UInt16(bytes[3] & 0x0F) << 6 | UInt16(bytes[2] & 0xFC) >> 2
-        let heatStart = Float(rawHeatStart) * 0.1
+        let heatStart = Double(rawHeatStart) * 0.1
         
         // 17 bit field
         let seconds = UInt32(bytes[5] & 0x1F) << 12 | UInt32(bytes[4]) << 4 | UInt32(bytes[3] & 0xF0) >> 4
         
         // 11 bit field
         let rawCore = UInt16(bytes[6]) << 3 | UInt16(bytes[5] & 0xE0) >> 5
-        let estimatedCore = (Float(rawCore) * 0.1) - 20.0
+        let estimatedCore = (Double(rawCore) * 0.1) - 20.0
         
         return PredictionStatus(predictionState: predictionState,
                                 predictionMode: predictionMode,

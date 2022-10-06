@@ -55,10 +55,10 @@ public enum VirtualAmbientSensor: UInt8 {
     static let MASK: UInt8 = 0x3
 }
 
-struct VirtualSensors {
-    let virtualCore: VirtualCoreSensor
-    let virtualSurface: VirtualSurfaceSensor
-    let virtualAmbient: VirtualAmbientSensor
+public struct VirtualSensors {
+    public let virtualCore: VirtualCoreSensor
+    public let virtualSurface: VirtualSurfaceSensor
+    public let virtualAmbient: VirtualAmbientSensor
 }
 
 extension VirtualSensors {

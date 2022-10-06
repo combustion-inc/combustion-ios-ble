@@ -41,7 +41,7 @@ struct BatteryStatusVirtualSensors {
 extension BatteryStatusVirtualSensors {
     
     private enum Constants {
-        static let VIRTUAL_SENSORS_SHIFT: UInt8 = 2
+        static let VIRTUAL_SENSORS_SHIFT: UInt8 = 1
     }
     
     static func fromByte(_ byte: UInt8) -> BatteryStatusVirtualSensors {

@@ -30,7 +30,7 @@ import Foundation
 public enum PredictionState: UInt8 {
     case probeNotInserted       = 0x00
     case probeInserted          = 0x01
-    case warming                = 0x02
+    case cooking                = 0x02
     case predicting             = 0x03
     case removalPredictionDone  = 0x04
 //    * 5: Reserved State 5

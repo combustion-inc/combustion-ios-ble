@@ -34,12 +34,9 @@ protocol BleManagerDelegate: AnyObject {
     func didConnectTo(identifier: UUID)
     func didFailToConnectTo(identifier: UUID)
     func didDisconnectFrom(identifier: UUID)
-    func handleSetIDResponse(identifier: UUID, success: Bool)
-    func handleSetColorResponse(identifier: UUID, success: Bool)
     func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID)
-    func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse)
-    func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation)
     func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus)
+    func handleUARTResponse(identifier: UUID, response: Response)
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String)
     func updateDeviceHwRevision(identifier: UUID, hwRevision: String)
 }
@@ -289,20 +286,7 @@ extension BleManager: CBPeripheralDelegate {
         let responses = Response.fromData(data)
         
         for response in responses {
-            if let logResponse = response as? LogResponse {
-                delegate?.updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
-            }
-            else if let setIDResponse = response as? SetIDResponse {
-                delegate?.handleSetIDResponse(identifier: identifier, success: setIDResponse.success)
-            }
-            else if let setColorResponse = response as? SetColorResponse {
-                delegate?.handleSetColorResponse(identifier: identifier, success: setColorResponse.success)
-            }
-            else if let sessionResponse = response as? SessionInfoResponse {
-                if(sessionResponse.success) {
-                    delegate?.updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: sessionResponse.info)
-                }
-            }
+            delegate?.handleUARTResponse(identifier: identifier, response: response)
         }
     }
 }

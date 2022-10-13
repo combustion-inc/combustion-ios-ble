@@ -268,14 +268,6 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
-    func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse) {
-        guard logResponse.success else { return }
-        
-        if let probe = devices[identifier.uuidString] as? Probe {
-            probe.processLogResponse(logResponse: logResponse)
-        }
-    }
-    
     func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID) {
         if devices[identifier.uuidString] != nil {
             if let probe = devices[identifier.uuidString] as? Probe {
@@ -285,12 +277,6 @@ extension DeviceManager : BleManagerDelegate {
         else {
             let device = Probe(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
             addDevice(device: device)
-        }
-    }
-    
-    func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation) {
-        if let probe = devices[identifier.uuidString] as? Probe {
-            probe.updateWithSessionInformation(sessionInformation)
         }
     }
     
@@ -314,15 +300,55 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
-    func handleSetIDResponse(identifier: UUID, success: Bool) {
+    func handleUARTResponse(identifier: UUID, response: Response) {
+        if let logResponse = response as? LogResponse {
+            updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
+        }
+        else if let setIDResponse = response as? SetIDResponse {
+            handleSetIDResponse(identifier: identifier, success: setIDResponse.success)
+        }
+        else if let setColorResponse = response as? SetColorResponse {
+            handleSetColorResponse(identifier: identifier, success: setColorResponse.success)
+        }
+        else if let sessionResponse = response as? SessionInfoResponse {
+            if(sessionResponse.success) {
+                updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: sessionResponse.info)
+            }
+        }
+        else if let setPredictionResponse = response as? SetPredictionResponse {
+            handleSetPredictionRespone(identifier: identifier, success: setPredictionResponse.success)
+        }
+    }
+    
+    private func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse) {
+        guard logResponse.success else { return }
+        
+        if let probe = devices[identifier.uuidString] as? Probe {
+            probe.processLogResponse(logResponse: logResponse)
+        }
+    }
+    
+    private func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation) {
+        if let probe = devices[identifier.uuidString] as? Probe {
+            probe.updateWithSessionInformation(sessionInformation)
+        }
+    }
+    
+    private func handleSetIDResponse(identifier: UUID, success: Bool) {
         setIDCompetionHandlers[identifier.uuidString]?.handler(success)
         
         setIDCompetionHandlers.removeValue(forKey: identifier.uuidString)
     }
     
-    func handleSetColorResponse(identifier: UUID, success: Bool) {
+    private func handleSetColorResponse(identifier: UUID, success: Bool) {
         setColorCompetionHandlers[identifier.uuidString]?.handler(success)
         
         setColorCompetionHandlers.removeValue(forKey: identifier.uuidString)
+    }
+    
+    private func handleSetPredictionRespone(identifier: UUID, success: Bool) {
+        setPredictionCompetionHandlers[identifier.uuidString]?.handler(success)
+        
+        setPredictionCompetionHandlers.removeValue(forKey: identifier.uuidString)
     }
 }

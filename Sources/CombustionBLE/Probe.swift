@@ -169,14 +169,14 @@ extension Probe {
         id = deviceStatus.modeId.id
         color = deviceStatus.modeId.color
         batteryStatus = deviceStatus.batteryStatusVirtualSensors.batteryStatus
-        virtualSensors = deviceStatus.batteryStatusVirtualSensors.virtualSensors
-        predictionStatus = deviceStatus.predictionStatus
         
         if(deviceStatus.modeId.mode == .normal) {
-            currentTemperatures = deviceStatus.temperatures
+            // Prediction status and virtual sensors are only transmitter in "Normal" status updated
+            predictionStatus = deviceStatus.predictionStatus
+            virtualSensors = deviceStatus.batteryStatusVirtualSensors.virtualSensors
             
             // Log the temperature data point for "Normal" status updates
-            // Log the temperature data point
+            currentTemperatures = deviceStatus.temperatures
             addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus))
         }
         else if(deviceStatus.modeId.mode == .instantRead ){

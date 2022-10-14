@@ -31,7 +31,7 @@ class SetIDRequest: Request {
         var payload = Data()
         payload.append(id.rawValue)
         
-        super.init(payload: payload, type: .SetID)
+        super.init(payload: payload, type: .setID)
     }
 }
 

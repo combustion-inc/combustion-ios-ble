@@ -34,14 +34,18 @@ public class DeviceManager : ObservableObject {
     /// Singleton accessor for class
     public static let shared = DeviceManager()
     
+    public enum Constants {
+        static let MINIMUM_PREDICTION_SETPOINT_CELSIUS = 0.0
+        static let MAXIMUM_PREDICTION_SETPOINT_CELSIUS = 102.0
+    }
+    
     /// Dictionary of discovered devices.
     /// key = string representation of device identifier (UUID)
     @Published public private(set) var devices : [String: Device] = [String: Device]()
     
-    
     /// Dictionary of discovered probes (subset of devices).
     /// key = string representation of device identifier (UUID)
-    public var probes : [String: Probe] {
+    private var probes : [String: Probe] {
         get {
             devices.filter { $0.value is Probe }.mapValues { $0 as! Probe }
         }
@@ -56,11 +60,10 @@ public class DeviceManager : ObservableObject {
         let handler: (Bool) -> Void
     }
     
-    // Completion handlers for Set ID BLE message
+    // Completion handlers for Set ID, Set Color, and Set Prediction BLE messages
     private var setIDCompetionHandlers : [String: MessageHandler] = [:]
-    
-    // Completion handlers for Set Color BLE message
     private var setColorCompetionHandlers : [String: MessageHandler] = [:]
+    private var setPredictionCompetionHandlers : [String: MessageHandler] = [:]
     
     public func addSimulatedProbe() {
         addDevice(device: SimulatedProbe())
@@ -81,6 +84,7 @@ public class DeviceManager : ObservableObject {
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
             checkForMessageTimeout(messageHandlers: &setIDCompetionHandlers)
             checkForMessageTimeout(messageHandlers: &setColorCompetionHandlers)
+            checkForMessageTimeout(messageHandlers: &setPredictionCompetionHandlers)
         }
     }
     
@@ -150,6 +154,7 @@ public class DeviceManager : ObservableObject {
     /// Set Probe ID on specified device.
     /// - parameter device: Device to set ID on
     /// - parameter ProbeID: New Probe ID
+    /// - parameter completionHandler: Completion handler to be called operation is complete
     public func setProbeID(_ device: Device, id: ProbeID, completionHandler: @escaping (Bool) -> Void ) {
         setIDCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
         
@@ -160,6 +165,7 @@ public class DeviceManager : ObservableObject {
     /// Set Probe Color on specified device.
     /// - parameter device: Device to set Color on
     /// - parameter ProbeColor: New Probe color
+    /// - parameter completionHandler: Completion handler to be called operation is complete
     public func setProbeColor(_ device: Device, color: ProbeColor, completionHandler: @escaping (Bool) -> Void) {
         setColorCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
 
@@ -167,6 +173,40 @@ public class DeviceManager : ObservableObject {
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
     }
     
+    /// Sends a request to the device to set/change the set point temperature for the time to
+    /// removal prediction.  If a prediction is not currently active, it will be started.  If a
+    /// removal prediction is currently active, then the set point will be modified.  If another
+    /// type of prediction is active, then the probe will start predicting removal.
+    ///
+    /// - parameter device: Device to set prediction on
+    /// - parameter removalTemperatureC: the target removal temperature in Celsius
+    /// - parameter completionHandler: Completion handler to be called operation is complete
+    public func setRemovalPrediction(_ device: Device, removalTemperatureC: Double, completionHandler: @escaping (Bool) -> Void) {
+        guard removalTemperatureC < Constants.MAXIMUM_PREDICTION_SETPOINT_CELSIUS,
+              removalTemperatureC > Constants.MINIMUM_PREDICTION_SETPOINT_CELSIUS else {
+            completionHandler(false)
+            return
+        }
+        
+        setPredictionCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
+
+        let request = SetPredictionRequest(setPointCelsius: removalTemperatureC, mode: .timeToRemoval)
+        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+    }
+    
+    
+    /// Sends a request to the device to set the prediction mode to none, stopping any active prediction.
+    ///
+    /// - parameter device: Device to cancel prediction on
+    /// - parameter completionHandler: Completion handler to be called operation is complete
+    public func cancelPrediction(_ device: Device, completionHandler: @escaping (Bool) -> Void) {
+        setPredictionCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
+        
+        let request = SetPredictionRequest(setPointCelsius: 0.0, mode: .timeToRemoval)
+        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+    }
+
+
     public func runSoftwareUpgrade(_ device: Device, otaFile: URL) -> Bool {
         do {
             let dfu = try DFUFirmware(urlToZipFile: otaFile)
@@ -222,17 +262,9 @@ extension DeviceManager : BleManagerDelegate {
         setIDCompetionHandlers.removeValue(forKey: identifier.uuidString)
     }
     
-    func updateDeviceWithStatus(identifier: UUID, status: DeviceStatus) {
+    func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus) {
         if let probe = devices[identifier.uuidString] as? Probe {
             probe.updateProbeStatus(deviceStatus: status)
-        }
-    }
-    
-    func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse) {
-        guard logResponse.success else { return }
-        
-        if let probe = devices[identifier.uuidString] as? Probe {
-            probe.processLogResponse(logResponse: logResponse)
         }
     }
     
@@ -245,12 +277,6 @@ extension DeviceManager : BleManagerDelegate {
         else {
             let device = Probe(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
             addDevice(device: device)
-        }
-    }
-    
-    func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation) {
-        if let probe = devices[identifier.uuidString] as? Probe {
-            probe.updateWithSessionInformation(sessionInformation)
         }
     }
     
@@ -274,15 +300,55 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
-    func handleSetIDResponse(identifier: UUID, success: Bool) {
+    func handleUARTResponse(identifier: UUID, response: Response) {
+        if let logResponse = response as? LogResponse {
+            updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
+        }
+        else if let setIDResponse = response as? SetIDResponse {
+            handleSetIDResponse(identifier: identifier, success: setIDResponse.success)
+        }
+        else if let setColorResponse = response as? SetColorResponse {
+            handleSetColorResponse(identifier: identifier, success: setColorResponse.success)
+        }
+        else if let sessionResponse = response as? SessionInfoResponse {
+            if(sessionResponse.success) {
+                updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: sessionResponse.info)
+            }
+        }
+        else if let setPredictionResponse = response as? SetPredictionResponse {
+            handleSetPredictionRespone(identifier: identifier, success: setPredictionResponse.success)
+        }
+    }
+    
+    private func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse) {
+        guard logResponse.success else { return }
+        
+        if let probe = devices[identifier.uuidString] as? Probe {
+            probe.processLogResponse(logResponse: logResponse)
+        }
+    }
+    
+    private func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation) {
+        if let probe = devices[identifier.uuidString] as? Probe {
+            probe.updateWithSessionInformation(sessionInformation)
+        }
+    }
+    
+    private func handleSetIDResponse(identifier: UUID, success: Bool) {
         setIDCompetionHandlers[identifier.uuidString]?.handler(success)
         
         setIDCompetionHandlers.removeValue(forKey: identifier.uuidString)
     }
     
-    func handleSetColorResponse(identifier: UUID, success: Bool) {
+    private func handleSetColorResponse(identifier: UUID, success: Bool) {
         setColorCompetionHandlers[identifier.uuidString]?.handler(success)
         
         setColorCompetionHandlers.removeValue(forKey: identifier.uuidString)
+    }
+    
+    private func handleSetPredictionRespone(identifier: UUID, success: Bool) {
+        setPredictionCompetionHandlers[identifier.uuidString]?.handler(success)
+        
+        setPredictionCompetionHandlers.removeValue(forKey: identifier.uuidString)
     }
 }

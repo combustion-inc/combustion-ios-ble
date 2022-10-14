@@ -36,6 +36,6 @@ class LogRequest: Request {
         var max = maxSequence
         payload.append(Data(bytes: &max, count: MemoryLayout.size(ofValue: max)))
         
-        super.init(payload: payload, type: .Log)
+        super.init(payload: payload, type: .log)
     }
 }

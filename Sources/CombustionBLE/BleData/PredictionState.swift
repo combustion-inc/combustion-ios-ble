@@ -1,4 +1,4 @@
-//  Data+CRC.swift
+//  PredictionState.swift
 
 /*--
 MIT License
@@ -26,25 +26,19 @@ SOFTWARE.
 
 import Foundation
 
-extension Data {
-    func crc16ccitt() -> UInt16 {
-        var crc: UInt16 = 0xFFFF // initial value
-        let polynomial: UInt16 = 0x1021 // 0001 0000 0010 0001  (0, 5, 12)
-
-        self.forEach { (byte) in
-            for i in 0...7 {
-                let bit = (byte >> (7 - i) & 1) == 1
-                let c15 = (crc  >> (15)    & 1) == 1
-                crc = crc << 1
-                if (c15 != bit) {
-                    crc = crc ^ polynomial
-                }
-            }
-        }
-        return crc & 0xffff
-    }
+/// Enumeration of Battery status
+public enum PredictionState: UInt8 {
+    case probeNotInserted       = 0x00
+    case probeInserted          = 0x01
+    case cooking                = 0x02
+    case predicting             = 0x03
+    case removalPredictionDone  = 0x04
+//    * 5: Reserved State 5
+//    * 6: Reserved State 6
+//    ...
+//    * 14: Reserved State 14
+    case unknown                = 0x0F
     
-    var hexDescription: String {
-        return reduce("") {$0 + String(format: "%02x", $1)}
-    }
+    
+    static let MASK: UInt8      = 0xF
 }

@@ -1,4 +1,4 @@
-//  ProbeMode.swift
+//  BatteryStatusVirtualSensors.swift
 
 /*--
 MIT License
@@ -23,23 +23,37 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
-
 import Foundation
 
-public enum ProbeMode: UInt8, CaseIterable {
-    case Normal      = 0x00
-    case InstantRead = 0x01
-    case Reserved    = 0x02
-    case Error       = 0x03
+/// Enumeration of Battery status
+public enum BatteryStatus: UInt8 {
+    case ok = 0x00
+    case low = 0x01
+    
+    static let MASK: UInt8 = 0x3
+}
+
+struct BatteryStatusVirtualSensors {
+    let batteryStatus: BatteryStatus
+    let virtualSensors: VirtualSensors
+}
+
+extension BatteryStatusVirtualSensors {
     
     private enum Constants {
-        static let PRODE_MODE_MASK: UInt8 = 0x3
+        static let VIRTUAL_SENSORS_SHIFT: UInt8 = 1
     }
     
-    static func fromRawData(data: Data) -> ProbeMode {
-        let modeIdColorBytes = [UInt8](data)
+    static func fromByte(_ byte: UInt8) -> BatteryStatusVirtualSensors {
+        let rawStatus = (byte & (BatteryStatus.MASK))
+        let battery = BatteryStatus(rawValue: rawStatus) ?? .ok
+        let virtualSensors = VirtualSensors.fromByte(byte >> Constants.VIRTUAL_SENSORS_SHIFT)
         
-        let rawProbeID = modeIdColorBytes[0] & (Constants.PRODE_MODE_MASK)
-        return ProbeMode(rawValue: rawProbeID) ?? .Normal
+        return BatteryStatusVirtualSensors(batteryStatus: battery, virtualSensors: virtualSensors)
+    }
+    
+    static func defaultValues() -> BatteryStatusVirtualSensors {
+        return BatteryStatusVirtualSensors(batteryStatus: .ok,
+                                           virtualSensors:  VirtualSensors(virtualCore: .T1, virtualSurface: .T4, virtualAmbient: .T5))
     }
 }

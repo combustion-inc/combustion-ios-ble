@@ -27,8 +27,9 @@ SOFTWARE.
 import Foundation
 
 enum MessageType: UInt8  {
-    case SetID = 1
-    case SetColor = 2
-    case SessionInfo = 3
-    case Log = 4
+    case setID = 1
+    case setColor = 2
+    case sessionInfo = 3
+    case log = 4
+    case setPrediction = 5
 }

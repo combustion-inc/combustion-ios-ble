@@ -27,8 +27,8 @@ SOFTWARE.
 
 import Foundation
 
-class SimulatedProbe: Probe {
-    init() {
+public class SimulatedProbe: Probe {
+    public init() {
         let advertising = AdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
                                           fakeTemperatures: ProbeTemperatures.withRandomData())
         super.init(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())
@@ -81,14 +81,13 @@ class SimulatedProbe: Probe {
             lastSequence = 0
         }
         
-        let deviceStatus = DeviceStatus(minSequenceNumber: firstSeq,
-                                        maxSequenceNumber: lastSequence,
-                                        temperatures: ProbeTemperatures.withRandomData(),
-                                        id: .ID1,
-                                        color: .COLOR1,
-                                        mode: .Normal,
-                                        batteryStatus: .OK)
+        let probeStatus = ProbeStatus(minSequenceNumber: firstSeq,
+                                      maxSequenceNumber: lastSequence,
+                                      temperatures: ProbeTemperatures.withRandomData(),
+                                      modeId: ModeId.defaultValues(),
+                                      batteryStatusVirtualSensors: BatteryStatusVirtualSensors.defaultValues(),
+                                      predictionStatus: nil)
         
-        updateProbeStatus(deviceStatus: deviceStatus)
+        updateProbeStatus(deviceStatus: probeStatus)
     }
 }

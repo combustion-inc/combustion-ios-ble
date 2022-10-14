@@ -45,9 +45,35 @@ public class Probe : Device {
     @Published public private(set) var id: ProbeID
     @Published public private(set) var color: ProbeColor
     
-    @Published public private(set) var batteryStatus: BatteryStatus = .OK
+    @Published public private(set) var batteryStatus: BatteryStatus = .ok
     
-    private var sessionInformation: SessionInformation?
+    @Published public private(set) var virtualSensors: VirtualSensors?
+    @Published public private(set) var predictionStatus: PredictionStatus?
+    
+    public var coreTemperature: Double? {
+        guard let virtualSensors = virtualSensors,
+              let currentTemperatures = currentTemperatures else { return nil }
+        
+        return currentTemperatures.values[Int(virtualSensors.virtualCore.rawValue)]
+    }
+    
+    public var surfaceTemperature: Double? {
+        guard let virtualSensors = virtualSensors,
+              let currentTemperatures = currentTemperatures else { return nil }
+        
+        // Surface range is T4 - T7, therefore add 3
+        let sensorNumber = Int(virtualSensors.virtualSurface.rawValue) + 3
+        return currentTemperatures.values[sensorNumber]
+    }
+    
+    public var ambientTemperature: Double? {
+        guard let virtualSensors = virtualSensors,
+              let currentTemperatures = currentTemperatures else { return nil }
+        
+        // Ambient range is T5 - T8, therefore add 4
+        let sensorNumber = Int(virtualSensors.virtualAmbient.rawValue) + 4
+        return currentTemperatures.values[sensorNumber]
+    }
     
     /// Stores historical values of probe temperatures
     public private(set) var temperatureLogs: [ProbeTemperatureLog] = []
@@ -67,13 +93,15 @@ public class Probe : Device {
         return String(format: "%012llX", macAddress)
     }
     
+    private var sessionInformation: SessionInformation?
+    
     /// Time at which probe instant read was last updated
     internal var lastInstantRead: Date?
     
-    public init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
+    init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
         serialNumber = advertising.serialNumber
-        id = advertising.id
-        color = advertising.color
+        id = advertising.modeId.id
+        color = advertising.modeId.color
         
         super.init(identifier: identifier, RSSI: RSSI)
         
@@ -117,38 +145,41 @@ extension Probe {
         // notifications to update data
         if(connectionState != .connected)
         {
-            if(advertising.mode == .Normal) {
+            if(advertising.modeId.mode == .normal) {
                 currentTemperatures = advertising.temperatures
             }
-            else if(advertising.mode == .InstantRead ){
+            else if(advertising.modeId.mode == .instantRead ){
                 updateInstantRead(advertising.temperatures.values[0])
             }
             
 
-            id = advertising.id
-            color = advertising.color
-            batteryStatus = advertising.batteryStatus
+            id = advertising.modeId.id
+            color = advertising.modeId.color
+            batteryStatus = advertising.batteryStatusVirtualSensors.batteryStatus
+            virtualSensors = advertising.batteryStatusVirtualSensors.virtualSensors
             
             lastUpdateTime = Date()
         }
     }
     
     /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.
-    func updateProbeStatus(deviceStatus: DeviceStatus) {
+    func updateProbeStatus(deviceStatus: ProbeStatus) {
         minSequenceNumber = deviceStatus.minSequenceNumber
         maxSequenceNumber = deviceStatus.maxSequenceNumber
-        id = deviceStatus.id
-        color = deviceStatus.color
-        batteryStatus = deviceStatus.batteryStatus
+        id = deviceStatus.modeId.id
+        color = deviceStatus.modeId.color
+        batteryStatus = deviceStatus.batteryStatusVirtualSensors.batteryStatus
         
-        if(deviceStatus.mode == .Normal) {
-            currentTemperatures = deviceStatus.temperatures
+        if(deviceStatus.modeId.mode == .normal) {
+            // Prediction status and virtual sensors are only transmitter in "Normal" status updated
+            predictionStatus = deviceStatus.predictionStatus
+            virtualSensors = deviceStatus.batteryStatusVirtualSensors.virtualSensors
             
             // Log the temperature data point for "Normal" status updates
-            // Log the temperature data point
+            currentTemperatures = deviceStatus.temperatures
             addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus))
         }
-        else if(deviceStatus.mode == .InstantRead ){
+        else if(deviceStatus.modeId.mode == .instantRead ){
             updateInstantRead(deviceStatus.temperatures.values[0])
         }
         

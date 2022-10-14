@@ -118,14 +118,16 @@ extension Response {
         // print("Success: \(success), payloadLength: \(payloadLength)")
         
         switch messageType {
-        case .Log:
+        case .log:
             return LogResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
-        case .SetID:
+        case .setID:
             return SetIDResponse(success: success, payLoadLength: Int(payloadLength))
-        case .SetColor:
+        case .setColor:
             return SetColorResponse(success: success, payLoadLength: Int(payloadLength))
-        case .SessionInfo:
+        case .sessionInfo:
             return SessionInfoResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
+        case .setPrediction:
+            return SetPredictionResponse(success: success, payLoadLength: Int(payloadLength))
         }
     }
 }

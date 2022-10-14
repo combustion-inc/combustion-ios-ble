@@ -34,12 +34,9 @@ protocol BleManagerDelegate: AnyObject {
     func didConnectTo(identifier: UUID)
     func didFailToConnectTo(identifier: UUID)
     func didDisconnectFrom(identifier: UUID)
-    func handleSetIDResponse(identifier: UUID, success: Bool)
-    func handleSetColorResponse(identifier: UUID, success: Bool)
     func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID)
-    func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse)
-    func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation)
-    func updateDeviceWithStatus(identifier: UUID, status: DeviceStatus)
+    func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus)
+    func handleUARTResponse(identifier: UUID, response: Response)
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String)
     func updateDeviceHwRevision(identifier: UUID, hwRevision: String)
 }
@@ -97,7 +94,7 @@ class BleManager : NSObject {
             initiator.progressDelegate = device
 
 
-            initiator.start(target: connectionPeripheral)
+            _ = initiator.start(target: connectionPeripheral)
         }
     }
     
@@ -141,8 +138,7 @@ extension BleManager: CBCentralManagerDelegate{
 
         if let advData = AdvertisingData(fromData: manufatureData) {
             // For now, only add probes.
-            if advData.type == .PROBE {
-
+            if advData.type == .probe {
                 // Store peripheral reference for later use
                 peripherals.insert(peripheral)
 
@@ -258,7 +254,7 @@ extension BleManager: CBPeripheralDelegate {
             handleUartData(data: data, identifier: peripheral.identifier)
         }
         else if characteristic.uuid == Constants.DEVICE_STATUS_CHAR {
-            if let status = DeviceStatus(fromData: data) {
+            if let status = ProbeStatus(fromData: data) {
                 delegate?.updateDeviceWithStatus(identifier: peripheral.identifier, status: status)
             }
         }
@@ -290,20 +286,7 @@ extension BleManager: CBPeripheralDelegate {
         let responses = Response.fromData(data)
         
         for response in responses {
-            if let logResponse = response as? LogResponse {
-                delegate?.updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
-            }
-            else if let setIDResponse = response as? SetIDResponse {
-                delegate?.handleSetIDResponse(identifier: identifier, success: setIDResponse.success)
-            }
-            else if let setColorResponse = response as? SetColorResponse {
-                delegate?.handleSetColorResponse(identifier: identifier, success: setColorResponse.success)
-            }
-            else if let sessionResponse = response as? SessionInfoResponse {
-                if(sessionResponse.success) {
-                    delegate?.updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: sessionResponse.info)
-                }
-            }
+            delegate?.handleUARTResponse(identifier: identifier, response: response)
         }
     }
 }

@@ -202,7 +202,7 @@ public class DeviceManager : ObservableObject {
     public func cancelPrediction(_ device: Device, completionHandler: @escaping (Bool) -> Void) {
         setPredictionCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
         
-        let request = SetPredictionRequest(setPointCelsius: 0.0, mode: .timeToRemoval)
+        let request = SetPredictionRequest(setPointCelsius: 0.0, mode: .none)
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
     }
 

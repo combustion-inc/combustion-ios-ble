@@ -31,7 +31,7 @@ class SetColorRequest: Request {
         var payload = Data()
         payload.append(color.rawValue)
         
-        super.init(payload: payload, type: .SetColor)
+        super.init(payload: payload, type: .setColor)
     }
 }
 

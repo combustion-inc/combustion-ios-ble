@@ -1,9 +1,9 @@
-//  Data+CRC.swift
+//  SetPrediction.swift
 
 /*--
 MIT License
 
-Copyright (c) 2022 Combustion Inc.
+Copyright (c) 2021 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,25 +26,15 @@ SOFTWARE.
 
 import Foundation
 
-extension Data {
-    func crc16ccitt() -> UInt16 {
-        var crc: UInt16 = 0xFFFF // initial value
-        let polynomial: UInt16 = 0x1021 // 0001 0000 0010 0001  (0, 5, 12)
-
-        self.forEach { (byte) in
-            for i in 0...7 {
-                let bit = (byte >> (7 - i) & 1) == 1
-                let c15 = (crc  >> (15)    & 1) == 1
-                crc = crc << 1
-                if (c15 != bit) {
-                    crc = crc ^ polynomial
-                }
-            }
-        }
-        return crc & 0xffff
-    }
-    
-    var hexDescription: String {
-        return reduce("") {$0 + String(format: "%02x", $1)}
+class SetPredictionRequest: Request {
+    init(setPointCelsius: Double, mode: PredictionMode) {
+        let rawSetPoint = UInt16(setPointCelsius / 0.1)        
+        var rawPayload = (UInt16(mode.rawValue) << 10) | (rawSetPoint & 0x3FF)
+        
+        let payload = Data(bytes: &rawPayload, count: MemoryLayout.size(ofValue: rawPayload))
+        
+        super.init(payload: payload, type: .setPrediction)
     }
 }
+
+class SetPredictionResponse : Response { }

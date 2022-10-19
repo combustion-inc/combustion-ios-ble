@@ -28,24 +28,39 @@ import Foundation
 
 class LogResponse: Response {
     
-    static let PAYLOAD_LENGTH = 17
+    enum Constants {
+        static let MINIMUM_PAYLOAD_LENGTH = 17
+        
+        static let SEQUENCE_RANGE = Response.HEADER_LENGTH..<(Response.HEADER_LENGTH + 4)
+        static let TEMPERATURE_RANGE = (Response.HEADER_LENGTH + 4)..<(Response.HEADER_LENGTH + 17)
+        static let SENSOR_RANGE = (Response.HEADER_LENGTH + 17)..<(Response.HEADER_LENGTH + 19)
+    }
     
     let sequenceNumber: UInt32
     let temperatures: ProbeTemperatures
+    let virtualSensorsPredictionState: VirtualSensorsPredictionState?
     
     init(data: Data, success: Bool, payloadLength: Int) {
-        let sequenceByteIndex = Response.HEADER_LENGTH
-        let sequenceRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 4))
+        let sequenceRaw = data.subdata(in: Constants.SEQUENCE_RANGE)
         sequenceNumber = sequenceRaw.withUnsafeBytes {
             $0.load(as: UInt32.self)
         }
         
         // Temperatures (8 13-bit) values
-        let tempData = data.subdata(in: (Response.HEADER_LENGTH + 4)..<(Response.HEADER_LENGTH + 17))
+        let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
         temperatures = ProbeTemperatures.fromRawData(data: tempData)
         
-        // print("******** Received response!")
-        // print("Sequence = \(sequenceNumber) : Temperature = \(temperatures)")
+        // Virtual sensors and Prediction state
+        if(payloadLength >= 19) {
+            let sensorData = data.subdata(in: Constants.SENSOR_RANGE)
+            let sensorValue = sensorData.withUnsafeBytes {
+                $0.load(as: UInt16.self)
+            }
+            virtualSensorsPredictionState = VirtualSensorsPredictionState.fromBytes(sensorValue)
+        }
+        else {
+            virtualSensorsPredictionState = nil
+        }
 
         super.init(success: success, payLoadLength: payloadLength)
     }
@@ -54,7 +69,7 @@ class LogResponse: Response {
 extension LogResponse {
 
     static func fromRaw(data: Data, success: Bool, payloadLength: Int) -> LogResponse? {
-        if(payloadLength < PAYLOAD_LENGTH) {
+        if(payloadLength < Constants.MINIMUM_PAYLOAD_LENGTH) {
             return nil
         }
             

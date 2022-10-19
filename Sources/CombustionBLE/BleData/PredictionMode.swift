@@ -1,4 +1,4 @@
-//  ProbeColor.swift
+//  PredictionMode.swift
 
 /*--
 MIT License
@@ -26,25 +26,11 @@ SOFTWARE.
 
 import Foundation
 
-public enum ProbeColor: UInt8, CaseIterable {
-    case COLOR1 = 0x00
-    case COLOR2 = 0x01
-    case COLOR3 = 0x02
-    case COLOR4 = 0x03
-    case COLOR5 = 0x04
-    case COLOR6 = 0x05
-    case COLOR7 = 0x06
-    case COLOR8 = 0x07
+public enum PredictionMode: UInt8, CaseIterable {
+    case none = 0x00
+    case timeToRemoval = 0x01
+    case removalAndResting = 0x02
+    case reserved = 0x03
     
-    private enum Constants {
-        static let PRODE_COLOR_MASK: UInt8 = 0x7
-        static let PRODE_COLOR_SHIFT: UInt8 = 2
-    }
-    
-    static func fromRawData(data: Data) -> ProbeColor {
-        let modeIdColorBytes = [UInt8](data)
-        
-        let rawProbeColor = (modeIdColorBytes[0] & (Constants.PRODE_COLOR_MASK << Constants.PRODE_COLOR_SHIFT)) >> Constants.PRODE_COLOR_SHIFT
-        return ProbeColor(rawValue: rawProbeColor) ?? .COLOR1
-    }
+    static let MASK: UInt8 = 0x3
 }

@@ -1,4 +1,4 @@
-//  Data+CRC.swift
+//  PredictionType.swift
 
 /*--
 MIT License
@@ -26,25 +26,11 @@ SOFTWARE.
 
 import Foundation
 
-extension Data {
-    func crc16ccitt() -> UInt16 {
-        var crc: UInt16 = 0xFFFF // initial value
-        let polynomial: UInt16 = 0x1021 // 0001 0000 0010 0001  (0, 5, 12)
-
-        self.forEach { (byte) in
-            for i in 0...7 {
-                let bit = (byte >> (7 - i) & 1) == 1
-                let c15 = (crc  >> (15)    & 1) == 1
-                crc = crc << 1
-                if (c15 != bit) {
-                    crc = crc ^ polynomial
-                }
-            }
-        }
-        return crc & 0xffff
-    }
+public enum PredictionType: UInt8, CaseIterable {
+    case none = 0x00
+    case removal = 0x01
+    case resting = 0x02
+    case reserved = 0x03
     
-    var hexDescription: String {
-        return reduce("") {$0 + String(format: "%02x", $1)}
-    }
+    static let MASK: UInt8 = 0x3
 }

@@ -1,9 +1,9 @@
-//  ProbeID.swift
+//  ModeId.swift
 
 /*--
 MIT License
 
-Copyright (c) 2021 Combustion Inc.
+Copyright (c) 2022 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,16 +35,55 @@ public enum ProbeID: UInt8, CaseIterable {
     case ID6 = 0x05
     case ID7 = 0x06
     case ID8 = 0x07
-    
+}
+
+public enum ProbeColor: UInt8, CaseIterable {
+    case color1 = 0x00
+    case color2 = 0x01
+    case color3 = 0x02
+    case color4 = 0x03
+    case color5 = 0x04
+    case color6 = 0x05
+    case color7 = 0x06
+    case color8 = 0x07
+}
+
+public enum ProbeMode: UInt8, CaseIterable {
+    case normal      = 0x00
+    case instantRead = 0x01
+    case reserved    = 0x02
+    case error       = 0x03
+}
+
+struct ModeId {
+    let id: ProbeID
+    let color: ProbeColor
+    let mode: ProbeMode
+}
+
+extension ModeId {
     private enum Constants {
         static let PRODE_ID_MASK: UInt8 = 0x7
         static let PRODE_ID_SHIFT: UInt8 = 5
+        static let PRODE_COLOR_MASK: UInt8 = 0x7
+        static let PRODE_COLOR_SHIFT: UInt8 = 2
+        static let PRODE_MODE_MASK: UInt8 = 0x3
     }
     
-    static func fromRawData(data: Data) -> ProbeID {
-        let modeIdColorBytes = [UInt8](data)
+    static func fromByte(_ byte: UInt8) -> ModeId {
+        let rawProbeID = (byte  >> Constants.PRODE_ID_SHIFT ) & Constants.PRODE_ID_MASK
+        let id = ProbeID(rawValue: rawProbeID) ?? .ID1
         
-        let rawProbeID = (modeIdColorBytes[0] & (Constants.PRODE_ID_MASK << Constants.PRODE_ID_SHIFT)) >> Constants.PRODE_ID_SHIFT
-        return ProbeID(rawValue: rawProbeID) ?? .ID1
+        let rawProbeColor = (byte >> Constants.PRODE_COLOR_SHIFT) & Constants.PRODE_COLOR_MASK
+        let color =  ProbeColor(rawValue: rawProbeColor) ?? .color1
+        
+        let rawMode = byte & (Constants.PRODE_MODE_MASK)
+        let mode = ProbeMode(rawValue: rawMode) ?? .normal
+        
+        return ModeId(id: id, color: color, mode: mode)
+    }
+    
+    static func defaultValues() -> ModeId {
+        return ModeId(id: .ID1, color: .color1, mode: .normal)
     }
 }

@@ -69,6 +69,10 @@ public class DeviceManager : ObservableObject {
         addDevice(device: SimulatedProbe())
     }
     
+    public func initBluetooth() {
+        BleManager.shared.initBluetooth()
+    }
+    
     /// Private initializer to enforce singleton
     private init() {
         BleManager.shared.delegate = self

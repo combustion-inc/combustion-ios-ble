@@ -53,7 +53,7 @@ class BleManager : NSObject {
     private var uartCharacteristics: [String: CBCharacteristic] = [:]
     private var deviceStatusCharacteristics: [String: CBCharacteristic] = [:]
     
-    private var manager: CBCentralManager!
+    private var manager: CBCentralManager?
     
     private enum Constants {
         static let DEVICE_INFO_SERVICE  = CBUUID(string: "180a")
@@ -70,12 +70,16 @@ class BleManager : NSObject {
     /// Private initializer to enforce singleton
     private override init() {
         super.init()
-        
-        manager = CBCentralManager(delegate: self, queue: nil)
+    }
+    
+    func initBluetooth() {
+        if(manager == nil) {
+            manager = CBCentralManager(delegate: self, queue: nil)
+        }
     }
     
     private func startScanning() {
-        manager.scanForPeripherals(withServices: [Constants.NEEDLE_SERVICE],
+        manager?.scanForPeripherals(withServices: [Constants.NEEDLE_SERVICE],
                                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
     }
     
@@ -163,14 +167,14 @@ extension BleManager: CBCentralManagerDelegate{
         
         for peripheral in devicePeripherals {
             // print("Connecting to peripheral: \(peripheral.name) : \(peripheral.identifier)")
-            manager.connect(peripheral, options: nil)
+            manager?.connect(peripheral, options: nil)
         }
     }
     
     /// Disconnect from device with the specified name.
     public func disconnect(identifier: String) {
         if let connectedPeripheral = getConnectedPeripheral(identifier: identifier) {
-            manager.cancelPeripheralConnection(connectedPeripheral)
+            manager?.cancelPeripheralConnection(connectedPeripheral)
         }
     }
     

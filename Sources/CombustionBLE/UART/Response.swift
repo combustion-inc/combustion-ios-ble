@@ -128,6 +128,8 @@ extension Response {
             return SessionInfoResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
         case .setPrediction:
             return SetPredictionResponse(success: success, payLoadLength: Int(payloadLength))
+        case .readOverTemperature:
+            return ReadOverTemperatureResponse(data: data, success: success, payloadLength: Int(payloadLength))
         }
     }
 }

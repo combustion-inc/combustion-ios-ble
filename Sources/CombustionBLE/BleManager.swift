@@ -141,18 +141,13 @@ extension BleManager: CBCentralManagerDelegate{
         let isConnectable = advertisementData[CBAdvertisementDataIsConnectable] as? Bool ?? false
 
         if let advData = AdvertisingData(fromData: manufatureData) {
-            // For now, only add probes.
-            if advData.type == .probe {
-                // Store peripheral reference for later use
-                peripherals.insert(peripheral)
-
-                delegate?.updateDeviceWithAdvertising(advertising: advData,
-                                                      isConnectable: isConnectable,
-                                                      rssi: RSSI,
-                                                      identifier: peripheral.identifier)
-            } else {
-                // print("Ignoring device with type \(advData.type)")
-            }
+            // Store peripheral reference for later use
+            peripherals.insert(peripheral)
+            
+            delegate?.updateDeviceWithAdvertising(advertising: advData,
+                                                  isConnectable: isConnectable,
+                                                  rssi: RSSI,
+                                                  identifier: peripheral.identifier)
         }
     }
     

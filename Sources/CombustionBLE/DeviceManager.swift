@@ -42,16 +42,11 @@ public class DeviceManager : ObservableObject {
     /// Dictionary of discovered devices.
     /// key = string representation of device identifier (UUID)
     @Published public private(set) var devices : [String: Device] = [String: Device]()
-    
-    /// Dictionary of discovered probes (subset of devices).
-    /// key = string representation of device identifier (UUID)
-    private var probes : [String: Probe] {
-        get {
-            devices.filter { $0.value is Probe }.mapValues { $0 as! Probe }
-        }
-        set {
-            devices = newValue
-        }
+
+    // Struct to store when BLE message was send and the completion handler for message
+    private struct MessageHandler {
+        let timeSent: Date
+        let handler: (Bool) -> Void
     }
     
     private let messageHandlers = MessageHandlers()
@@ -95,7 +90,17 @@ public class DeviceManager : ObservableObject {
     /// Returns list of probes
     /// - returns: List of all known probes.
     public func getProbes() -> [Probe] {
-        return Array(probes.values)
+        return Array(devices.values).compactMap { device in
+            return device as? Probe
+        }
+    }
+    
+    /// Returns list of kitchen timers
+    /// - returns: List of all kitchen timers
+    public func getKitchenTimers() -> [KitchenTimer] {
+        return Array(devices.values).compactMap { device in
+            return device as? KitchenTimer
+        }
     }
     
     /// Returns the nearest probe.
@@ -270,8 +275,20 @@ extension DeviceManager : BleManagerDelegate {
             }
         }
         else {
-            let device = Probe(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
-            addDevice(device: device)
+            switch(advertising.type) {
+            case .probe:
+                let device = Probe(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
+                addDevice(device: device)
+                
+            case .kitchenTimer:
+                let device = KitchenTimer(identifier: identifier, RSSI: rssi)
+                addDevice(device: device)
+                
+            case .unknown:
+                print("Found device with unknown type")
+            }
+
+
         }
     }
     

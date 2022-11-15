@@ -28,6 +28,10 @@ SOFTWARE.
 import Foundation
 
 public class KitchenTimer: Device {
+    
+    /// Serial Number
+    @Published public internal(set) var serialNumberString: String?
+    
     override init(identifier: UUID, RSSI: NSNumber) {
         super.init(identifier: identifier, RSSI: RSSI)
     }

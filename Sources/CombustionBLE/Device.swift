@@ -47,10 +47,10 @@ public class Device : ObservableObject {
     public var identifier: String
     
     /// Device firmware version
-    public internal(set) var firmareVersion: String?
+    @Published public internal(set) var firmareVersion: String?
     
     /// Device hardware revision
-    public internal(set) var hardwareRevision: String?
+    @Published public internal(set) var hardwareRevision: String?
     
     /// Current connection state of device
     @Published public internal(set) var connectionState: ConnectionState = .disconnected

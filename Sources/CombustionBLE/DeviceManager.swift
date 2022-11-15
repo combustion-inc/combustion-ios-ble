@@ -273,6 +273,12 @@ extension DeviceManager : BleManagerDelegate {
             if let probe = devices[identifier.uuidString] as? Probe {
                 probe.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
             }
+            else if let timer = devices[identifier.uuidString] as? KitchenTimer {
+                // Automatically connect to kitchen timer
+                if(timer.connectionState == .disconnected) {
+                    timer.connect()
+                }
+            }
         }
         else {
             switch(advertising.type) {
@@ -303,6 +309,12 @@ extension DeviceManager : BleManagerDelegate {
                 let fakeSessionInfo = SessionInformation(sessionID: 0, samplePeriod: 1000)
                 updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: fakeSessionInfo)
             }
+        }
+    }
+    
+    func updateDeviceSerialNumber(identifier: UUID, serialNumber: String) {
+        if let timer = devices[identifier.uuidString] as? KitchenTimer {
+            timer.serialNumberString = serialNumber
         }
     }
     

@@ -245,18 +245,21 @@ public class DeviceManager : ObservableObject {
 
 extension DeviceManager : BleManagerDelegate {
     func didConnectTo(identifier: UUID) {
-        guard let _ = devices[identifier.uuidString] else { return }
-        devices[identifier.uuidString]?.updateConnectionState(.connected)
+        guard let device = devices[identifier.uuidString] else { return }
+        
+        device.updateConnectionState(.connected)
     }
     
     func didFailToConnectTo(identifier: UUID) {
-        guard let _ = devices[identifier.uuidString] else { return }
-        devices[identifier.uuidString]?.updateConnectionState(.failed)
+        guard let device = devices[identifier.uuidString] else { return }
+        
+        device.updateConnectionState(.failed)
     }
     
     func didDisconnectFrom(identifier: UUID) {
-        guard let _ = devices[identifier.uuidString] else { return }
-        devices[identifier.uuidString]?.updateConnectionState(.disconnected)
+        guard let device = devices[identifier.uuidString] else { return }
+        
+        device.updateConnectionState(.disconnected)
         
         // Clear any pending message handlers
         messageHandlers.clearHandlersForDevice(identifier)

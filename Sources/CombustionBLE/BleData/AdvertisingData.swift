@@ -50,16 +50,27 @@ struct AdvertisingData {
 extension AdvertisingData {
     private enum Constants {
         // Locations of data in advertising packets
+        static let VENDOR_ID_RANGE = 0..<2
         static let PRODUCT_TYPE_RANGE = 2..<3
         static let SERIAL_RANGE = 3..<7
         static let TEMPERATURE_RANGE = 7..<20
         static let MODE_COLOR_ID_RANGE = 20..<21
         static let DEVICE_STATUS_RANGE = 21..<22
+        
+        static let COMBUSTION_VENDOR_ID = 0x09C7
     }
     
     init?(fromData : Data?) {
         guard let data = fromData else { return nil }
         guard data.count >= 20 else { return nil }
+        
+        // Vendor ID
+        let rawVendorId = data.subdata(in: Constants.VENDOR_ID_RANGE)
+        let vendorID = rawVendorId.withUnsafeBytes {
+            $0.load(as: UInt16.self)
+        }
+        
+        guard vendorID == Constants.COMBUSTION_VENDOR_ID else { return nil }
         
         // Product type (1 byte)
         let rawType = data.subdata(in: Constants.PRODUCT_TYPE_RANGE)

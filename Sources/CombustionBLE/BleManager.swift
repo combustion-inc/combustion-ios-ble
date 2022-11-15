@@ -79,7 +79,7 @@ class BleManager : NSObject {
     }
     
     private func startScanning() {
-        manager?.scanForPeripherals(withServices: [Constants.NEEDLE_SERVICE],
+        manager?.scanForPeripherals(withServices: nil,
                                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
     }
     

@@ -53,17 +53,8 @@ public class DeviceManager : ObservableObject {
             devices = newValue
         }
     }
-
-    // Struct to store when BLE message was send and the completion handler for message
-    private struct MessageHandler {
-        let timeSent: Date
-        let handler: (Bool) -> Void
-    }
     
-    // Completion handlers for Set ID, Set Color, and Set Prediction BLE messages
-    private var setIDCompetionHandlers : [String: MessageHandler] = [:]
-    private var setColorCompetionHandlers : [String: MessageHandler] = [:]
-    private var setPredictionCompetionHandlers : [String: MessageHandler] = [:]
+    private let messageHandlers = MessageHandlers()
     
     public func addSimulatedProbe() {
         addDevice(device: SimulatedProbe())
@@ -86,9 +77,7 @@ public class DeviceManager : ObservableObject {
         
         // Start a timer to check for BLE message timeouts
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
-            checkForMessageTimeout(messageHandlers: &setIDCompetionHandlers)
-            checkForMessageTimeout(messageHandlers: &setColorCompetionHandlers)
-            checkForMessageTimeout(messageHandlers: &setPredictionCompetionHandlers)
+            messageHandlers.checkForTimeout()
         }
     }
     
@@ -159,9 +148,11 @@ public class DeviceManager : ObservableObject {
     /// - parameter device: Device to set ID on
     /// - parameter ProbeID: New Probe ID
     /// - parameter completionHandler: Completion handler to be called operation is complete
-    public func setProbeID(_ device: Device, id: ProbeID, completionHandler: @escaping (Bool) -> Void ) {
-        setIDCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
+    public func setProbeID(_ device: Device, id: ProbeID, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        // Store completion handler
+        messageHandlers.addSetIDCompletionHandler(device, completionHandler: completionHandler)
         
+        // Send request to device
         let request = SetIDRequest(id: id)
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
     }
@@ -170,9 +161,13 @@ public class DeviceManager : ObservableObject {
     /// - parameter device: Device to set Color on
     /// - parameter ProbeColor: New Probe color
     /// - parameter completionHandler: Completion handler to be called operation is complete
-    public func setProbeColor(_ device: Device, color: ProbeColor, completionHandler: @escaping (Bool) -> Void) {
-        setColorCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
+    public func setProbeColor(_ device: Device,
+                              color: ProbeColor,
+                              completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        // Store completion handler
+        messageHandlers.addSetColorCompletionHandler(device, completionHandler: completionHandler)
 
+        // Send request to device
         let request = SetColorRequest(color: color)
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
     }
@@ -185,15 +180,19 @@ public class DeviceManager : ObservableObject {
     /// - parameter device: Device to set prediction on
     /// - parameter removalTemperatureC: the target removal temperature in Celsius
     /// - parameter completionHandler: Completion handler to be called operation is complete
-    public func setRemovalPrediction(_ device: Device, removalTemperatureC: Double, completionHandler: @escaping (Bool) -> Void) {
+    public func setRemovalPrediction(_ device: Device,
+                                     removalTemperatureC: Double,
+                                     completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
         guard removalTemperatureC < Constants.MAXIMUM_PREDICTION_SETPOINT_CELSIUS,
               removalTemperatureC > Constants.MINIMUM_PREDICTION_SETPOINT_CELSIUS else {
             completionHandler(false)
             return
         }
         
-        setPredictionCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
+        // Store completion handler
+        messageHandlers.addSetPredictionCompletionHandler(device, completionHandler: completionHandler)
 
+        // Send request to device
         let request = SetPredictionRequest(setPointCelsius: removalTemperatureC, mode: .timeToRemoval)
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
     }
@@ -203,10 +202,26 @@ public class DeviceManager : ObservableObject {
     ///
     /// - parameter device: Device to cancel prediction on
     /// - parameter completionHandler: Completion handler to be called operation is complete
-    public func cancelPrediction(_ device: Device, completionHandler: @escaping (Bool) -> Void) {
-        setPredictionCompetionHandlers[device.identifier] = MessageHandler(timeSent: Date(), handler: completionHandler)
+    public func cancelPrediction(_ device: Device, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        // Store completion handler
+        messageHandlers.addSetPredictionCompletionHandler(device, completionHandler: completionHandler)
         
+        // Send request to device
         let request = SetPredictionRequest(setPointCelsius: 0.0, mode: .none)
+        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+    }
+    
+    /// Sends a request to the device to read Over Temperature flag
+    ///
+    /// - parameter device: Device to read flag from
+    /// - parameter completionHandler: Completion handler to be called operation is complete
+    public func readOverTemperatureFlag(_ device: Device,
+                                        completionHandler: @escaping MessageHandlers.ReadOverTemperatureCompletionHandler) {
+        // Store completion handler
+        messageHandlers.addReadOverTemperatureCompletionHandler(device, completionHandler: completionHandler)
+        
+        // Send request to device
+        let request = ReadOverTemperatureRequest()
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
     }
 
@@ -219,29 +234,6 @@ public class DeviceManager : ObservableObject {
         }
         catch {
             return false
-        }
-    }
-    
-    private func checkForMessageTimeout(messageHandlers: inout [String: MessageHandler]) {
-        let currentTime = Date()
-        
-        var keysToRemove = [String]()
-        
-        for key in messageHandlers.keys {
-            if let messageHandler = messageHandlers[key],
-               Int(currentTime.timeIntervalSince(messageHandler.timeSent)) > 3 {
-                
-                // More than three seconds have elapsed, therefore call handler with failure
-                messageHandler.handler(false)
-                
-                // Save key to remove
-                keysToRemove.append(key)
-            }
-        }
-        
-        // Remove keys that timed out
-        for key in keysToRemove {
-            messageHandlers.removeValue(forKey: key)
         }
     }
 }
@@ -261,9 +253,8 @@ extension DeviceManager : BleManagerDelegate {
         guard let _ = devices[identifier.uuidString] else { return }
         devices[identifier.uuidString]?.updateConnectionState(.disconnected)
         
-        // Clear any pending completion handlers
-        setColorCompetionHandlers.removeValue(forKey: identifier.uuidString)
-        setIDCompetionHandlers.removeValue(forKey: identifier.uuidString)
+        // Clear any pending message handlers
+        messageHandlers.clearHandlersForDevice(identifier)
     }
     
     func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus) {
@@ -309,10 +300,10 @@ extension DeviceManager : BleManagerDelegate {
             updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
         }
         else if let setIDResponse = response as? SetIDResponse {
-            handleSetIDResponse(identifier: identifier, success: setIDResponse.success)
+            messageHandlers.callSetIDCompletionHandler(identifier, response: setIDResponse)
         }
         else if let setColorResponse = response as? SetColorResponse {
-            handleSetColorResponse(identifier: identifier, success: setColorResponse.success)
+            messageHandlers.callSetColorCompletionHandler(identifier, response: setColorResponse)
         }
         else if let sessionResponse = response as? SessionInfoResponse {
             if(sessionResponse.success) {
@@ -320,7 +311,10 @@ extension DeviceManager : BleManagerDelegate {
             }
         }
         else if let setPredictionResponse = response as? SetPredictionResponse {
-            handleSetPredictionRespone(identifier: identifier, success: setPredictionResponse.success)
+            messageHandlers.callSetPredictionCompletionHandler(identifier, response: setPredictionResponse)
+        }
+        else if let readOverTemperatureResponse = response as? ReadOverTemperatureResponse {
+            messageHandlers.callReadOverTemperatureCompletionHandler(identifier, response: readOverTemperatureResponse)
         }
     }
     
@@ -336,23 +330,5 @@ extension DeviceManager : BleManagerDelegate {
         if let probe = devices[identifier.uuidString] as? Probe {
             probe.updateWithSessionInformation(sessionInformation)
         }
-    }
-    
-    private func handleSetIDResponse(identifier: UUID, success: Bool) {
-        setIDCompetionHandlers[identifier.uuidString]?.handler(success)
-        
-        setIDCompetionHandlers.removeValue(forKey: identifier.uuidString)
-    }
-    
-    private func handleSetColorResponse(identifier: UUID, success: Bool) {
-        setColorCompetionHandlers[identifier.uuidString]?.handler(success)
-        
-        setColorCompetionHandlers.removeValue(forKey: identifier.uuidString)
-    }
-    
-    private func handleSetPredictionRespone(identifier: UUID, success: Bool) {
-        setPredictionCompetionHandlers[identifier.uuidString]?.handler(success)
-        
-        setPredictionCompetionHandlers.removeValue(forKey: identifier.uuidString)
     }
 }

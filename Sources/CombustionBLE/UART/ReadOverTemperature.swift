@@ -1,9 +1,9 @@
-//  MessageType.swift
+//  ReadOverTemperature.swift
 
 /*--
 MIT License
 
-Copyright (c) 2021 Combustion Inc.
+Copyright (c) 2022 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,11 +26,25 @@ SOFTWARE.
 
 import Foundation
 
-enum MessageType: UInt8  {
-    case setID = 1
-    case setColor = 2
-    case sessionInfo = 3
-    case log = 4
-    case setPrediction = 5
-    case readOverTemperature = 6
+class ReadOverTemperatureRequest: Request {
+    init() {
+        let payload = Data()
+        super.init(payload: payload, type: .readOverTemperature)
+    }
+}
+
+class ReadOverTemperatureResponse : Response {
+    static let PAYLOAD_LENGTH = 1
+    
+    let flagSet: Bool
+    
+    init(data: Data, success: Bool, payloadLength: Int) {
+        let sequenceByteIndex = Response.HEADER_LENGTH
+        let flagSetByte = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 1))
+        flagSet = flagSetByte.withUnsafeBytes {
+            $0.load(as: Bool.self)
+        }
+
+        super.init(success: success, payLoadLength: payloadLength)
+    }
 }

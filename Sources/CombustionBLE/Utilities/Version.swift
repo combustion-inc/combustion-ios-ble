@@ -25,13 +25,13 @@ SOFTWARE.
 --*/
 import Foundation
 
-class Version {
+public class Version {
     
     /// Compare device firmware versions.
     /// - param deviceFirmware: Device firmware version
     /// - param comparison: Version to compare against
     /// - returns: true if deviceFirmware < comparison
-    static func isBefore(deviceFirmware: String, comparison: String) -> Bool {
+    public static func isBefore(deviceFirmware: String, comparison: String) -> Bool {
         // Remove git hash from debug versions
         let splitVersion = deviceFirmware.split(separator: "-")
 

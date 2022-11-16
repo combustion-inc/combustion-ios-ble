@@ -47,10 +47,10 @@ public class Device : ObservableObject {
     public var identifier: String
     
     /// Device firmware version
-    public internal(set) var firmareVersion: String?
+    @Published public internal(set) var firmareVersion: String?
     
     /// Device hardware revision
-    public internal(set) var hardwareRevision: String?
+    @Published public internal(set) var hardwareRevision: String?
     
     /// Current connection state of device
     @Published public internal(set) var connectionState: ConnectionState = .disconnected
@@ -97,6 +97,15 @@ public class Device : ObservableObject {
     
     func updateConnectionState(_ state: ConnectionState) {
         connectionState = state
+        
+        // Clear firmware version and DFU state on disconnect
+        if(connectionState == .disconnected) {
+            firmareVersion = nil
+            
+            dfuState = nil
+            dfuError = nil
+            dfuUploadProgress = nil
+        }
         
         // If we were disconnected and we should be maintaining a connection, attempt to reconnect.
         if(maintainingConnection && (connectionState == .disconnected || connectionState == .failed)) {

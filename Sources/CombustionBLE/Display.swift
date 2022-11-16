@@ -1,4 +1,5 @@
-//  Version.swift
+//  Display.swift
+//  Representation of a Probe Device
 
 /*--
 MIT License
@@ -23,20 +24,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
+
 import Foundation
 
-public class Version {
+public class Display: Device {
     
-    /// Compare device firmware versions.
-    /// - param deviceFirmware: Device firmware version
-    /// - param comparison: Version to compare against
-    /// - returns: true if deviceFirmware < comparison
-    public static func isBefore(deviceFirmware: String, comparison: String) -> Bool {
-        // Remove git hash from debug versions
-        let splitVersion = deviceFirmware.split(separator: "-")
-
-        return splitVersion.first?.compare(comparison, options: String.CompareOptions.numeric, range: nil, locale: nil) == .orderedAscending
+    /// Serial Number
+    @Published public internal(set) var serialNumberString: String?
+    
+    override init(identifier: UUID, RSSI: NSNumber) {
+        super.init(identifier: identifier, RSSI: RSSI)
     }
-    
 
 }

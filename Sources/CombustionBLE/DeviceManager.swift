@@ -42,16 +42,11 @@ public class DeviceManager : ObservableObject {
     /// Dictionary of discovered devices.
     /// key = string representation of device identifier (UUID)
     @Published public private(set) var devices : [String: Device] = [String: Device]()
-    
-    /// Dictionary of discovered probes (subset of devices).
-    /// key = string representation of device identifier (UUID)
-    private var probes : [String: Probe] {
-        get {
-            devices.filter { $0.value is Probe }.mapValues { $0 as! Probe }
-        }
-        set {
-            devices = newValue
-        }
+
+    // Struct to store when BLE message was send and the completion handler for message
+    private struct MessageHandler {
+        let timeSent: Date
+        let handler: (Bool) -> Void
     }
     
     private let messageHandlers = MessageHandlers()
@@ -95,7 +90,17 @@ public class DeviceManager : ObservableObject {
     /// Returns list of probes
     /// - returns: List of all known probes.
     public func getProbes() -> [Probe] {
-        return Array(probes.values)
+        return Array(devices.values).compactMap { device in
+            return device as? Probe
+        }
+    }
+    
+    /// Returns list of displays
+    /// - returns: List of all kitchen timers
+    public func getDisplays() -> [Display] {
+        return Array(devices.values).compactMap { device in
+            return device as? Display
+        }
     }
     
     /// Returns the nearest probe.
@@ -240,18 +245,21 @@ public class DeviceManager : ObservableObject {
 
 extension DeviceManager : BleManagerDelegate {
     func didConnectTo(identifier: UUID) {
-        guard let _ = devices[identifier.uuidString] else { return }
-        devices[identifier.uuidString]?.updateConnectionState(.connected)
+        guard let device = devices[identifier.uuidString] else { return }
+        
+        device.updateConnectionState(.connected)
     }
     
     func didFailToConnectTo(identifier: UUID) {
-        guard let _ = devices[identifier.uuidString] else { return }
-        devices[identifier.uuidString]?.updateConnectionState(.failed)
+        guard let device = devices[identifier.uuidString] else { return }
+        
+        device.updateConnectionState(.failed)
     }
     
     func didDisconnectFrom(identifier: UUID) {
-        guard let _ = devices[identifier.uuidString] else { return }
-        devices[identifier.uuidString]?.updateConnectionState(.disconnected)
+        guard let device = devices[identifier.uuidString] else { return }
+        
+        device.updateConnectionState(.disconnected)
         
         // Clear any pending message handlers
         messageHandlers.clearHandlersForDevice(identifier)
@@ -268,10 +276,28 @@ extension DeviceManager : BleManagerDelegate {
             if let probe = devices[identifier.uuidString] as? Probe {
                 probe.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
             }
+            else if let timer = devices[identifier.uuidString] as? Display {
+                // Automatically connect to kitchen timer
+                if(timer.connectionState == .disconnected) {
+                    timer.connect()
+                }
+            }
         }
         else {
-            let device = Probe(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
-            addDevice(device: device)
+            switch(advertising.type) {
+            case .probe:
+                let device = Probe(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
+                addDevice(device: device)
+                
+            case .display:
+                let device = Display(identifier: identifier, RSSI: rssi)
+                addDevice(device: device)
+                
+            case .unknown:
+                print("Found device with unknown type")
+            }
+
+
         }
     }
     
@@ -286,6 +312,12 @@ extension DeviceManager : BleManagerDelegate {
                 let fakeSessionInfo = SessionInformation(sessionID: 0, samplePeriod: 1000)
                 updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: fakeSessionInfo)
             }
+        }
+    }
+    
+    func updateDeviceSerialNumber(identifier: UUID, serialNumber: String) {
+        if let timer = devices[identifier.uuidString] as? Display {
+            timer.serialNumberString = serialNumber
         }
     }
     

@@ -39,6 +39,7 @@ protocol BleManagerDelegate: AnyObject {
     func handleUARTResponse(identifier: UUID, response: Response)
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String)
     func updateDeviceHwRevision(identifier: UUID, hwRevision: String)
+    func updateDeviceSerialNumber(identifier: UUID, serialNumber: String)
 }
 
 /// Manages Core Bluetooth interface with the rest of the app.
@@ -60,6 +61,7 @@ class BleManager : NSObject {
         static let NEEDLE_SERVICE       = CBUUID(string: "00000100-CAAB-3792-3D44-97AE51C1407A")
         static let UART_SERVICE         = CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
         
+        static let SERIAL_NUMBER_CHAR   = CBUUID(string: "2a25")
         static let FW_VERSION_CHAR      = CBUUID(string: "2a26")
         static let HW_REVISION_CHAR     = CBUUID(string: "2a27")
         static let DEVICE_STATUS_CHAR   = CBUUID(string: "00000101-CAAB-3792-3D44-97AE51C1407A")
@@ -79,7 +81,7 @@ class BleManager : NSObject {
     }
     
     private func startScanning() {
-        manager?.scanForPeripherals(withServices: [Constants.NEEDLE_SERVICE],
+        manager?.scanForPeripherals(withServices: nil,
                                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
     }
     
@@ -141,18 +143,13 @@ extension BleManager: CBCentralManagerDelegate{
         let isConnectable = advertisementData[CBAdvertisementDataIsConnectable] as? Bool ?? false
 
         if let advData = AdvertisingData(fromData: manufatureData) {
-            // For now, only add probes.
-            if advData.type == .probe {
-                // Store peripheral reference for later use
-                peripherals.insert(peripheral)
-
-                delegate?.updateDeviceWithAdvertising(advertising: advData,
-                                                      isConnectable: isConnectable,
-                                                      rssi: RSSI,
-                                                      identifier: peripheral.identifier)
-            } else {
-                // print("Ignoring device with type \(advData.type)")
-            }
+            // Store peripheral reference for later use
+            peripherals.insert(peripheral)
+            
+            delegate?.updateDeviceWithAdvertising(advertising: advData,
+                                                  isConnectable: isConnectable,
+                                                  rssi: RSSI,
+                                                  identifier: peripheral.identifier)
         }
     }
     
@@ -226,8 +223,9 @@ extension BleManager: CBPeripheralDelegate {
             } else if(characteristic.uuid == Constants.DEVICE_STATUS_CHAR) {
                 deviceStatusCharacteristics[peripheral.identifier.uuidString] = characteristic
             } else if(characteristic.uuid == Constants.FW_VERSION_CHAR ||
-                      characteristic.uuid == Constants.HW_REVISION_CHAR) {
-                // Read FW version and HW revision when the characteristics are discovered
+                      characteristic.uuid == Constants.HW_REVISION_CHAR ||
+                      characteristic.uuid == Constants.SERIAL_NUMBER_CHAR) {
+                // Read FW version, HW revision, and serial number when the characteristics are discovered
                 peripheral.readValue(for: characteristic)
             }
             
@@ -254,24 +252,29 @@ extension BleManager: CBPeripheralDelegate {
     public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         guard let data = characteristic.value else { return }
         
-        if characteristic.uuid == Constants.UART_TX_CHAR {
+        switch(characteristic.uuid) {
+        case Constants.UART_TX_CHAR:
             handleUartData(data: data, identifier: peripheral.identifier)
-        }
-        else if characteristic.uuid == Constants.DEVICE_STATUS_CHAR {
+            
+        case Constants.DEVICE_STATUS_CHAR:
             if let status = ProbeStatus(fromData: data) {
                 delegate?.updateDeviceWithStatus(identifier: peripheral.identifier, status: status)
             }
-        }
-        else if characteristic.uuid == Constants.FW_VERSION_CHAR {
+            
+        case Constants.SERIAL_NUMBER_CHAR:
+            let serialNumber = String(decoding: data, as: UTF8.self)
+            delegate?.updateDeviceSerialNumber(identifier: peripheral.identifier, serialNumber: serialNumber)
+            
+        case Constants.FW_VERSION_CHAR:
             let fwVersion = String(decoding: data, as: UTF8.self)
             delegate?.updateDeviceFwVersion(identifier: peripheral.identifier, fwVersion: fwVersion)
-        }
-        else if characteristic.uuid == Constants.HW_REVISION_CHAR {
+            
+        case Constants.HW_REVISION_CHAR:
             let hwRevision = String(decoding: data, as: UTF8.self)
             delegate?.updateDeviceHwRevision(identifier: peripheral.identifier, hwRevision: hwRevision)
-        }
-        else {
-            // print("didUpdateValueFor: \(characteristic): unknown service")
+            
+        default:
+            break
         }
     }
     

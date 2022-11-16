@@ -29,7 +29,6 @@ import Foundation
 import CoreBluetooth
 import NordicDFU
 
-
 protocol BleManagerDelegate: AnyObject {
     func didConnectTo(identifier: UUID)
     func didFailToConnectTo(identifier: UUID)
@@ -58,6 +57,7 @@ class BleManager : NSObject {
     
     private enum Constants {
         static let DEVICE_INFO_SERVICE  = CBUUID(string: "180a")
+        static let DFU_SERVICE          = CBUUID(string: "FE59")
         static let NEEDLE_SERVICE       = CBUUID(string: "00000100-CAAB-3792-3D44-97AE51C1407A")
         static let UART_SERVICE         = CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
         
@@ -81,7 +81,7 @@ class BleManager : NSObject {
     }
     
     private func startScanning() {
-        manager?.scanForPeripherals(withServices: nil,
+        manager?.scanForPeripherals(withServices: [Constants.DFU_SERVICE],
                                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
     }
     
@@ -92,16 +92,10 @@ class BleManager : NSObject {
         }
     }
     
-    func startFirmwareUpdate(device: Device, dfu: DFUFirmware) {
-        if let connectionPeripheral = getConnectedPeripheral(identifier: device.identifier) {
-            let initiator = DFUServiceInitiator().with(firmware: dfu)
-
-            initiator.delegate = device
-            initiator.progressDelegate = device
-
-
-            _ = initiator.start(target: connectionPeripheral)
-        }
+    func startFirmwareUpdate(device: Device, dfu: DFUFirmware) -> DFUServiceController? {
+        guard let connectedPeripheral = getConnectedPeripheral(identifier: device.identifier) else { return nil }
+        
+        return DFUManager.shared.startDFU(peripheral: connectedPeripheral, device: device, firmware: dfu)
     }
     
     private func getConnectedPeripheral(identifier: String) -> CBPeripheral? {
@@ -138,11 +132,13 @@ extension BleManager: CBCentralManagerDelegate{
     
     public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral,
                                advertisementData: [String : Any], rssi RSSI: NSNumber) {
-        
         let manufatureData: Data = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data ?? Data()
         let isConnectable = advertisementData[CBAdvertisementDataIsConnectable] as? Bool ?? false
-
-        if let advData = AdvertisingData(fromData: manufatureData) {
+        
+        if let name = advertisementData[CBAdvertisementDataLocalNameKey] as? String {
+            DFUManager.shared.retryDfuOnBootloader(peripheral: peripheral, advertisingName: name)
+        }
+        else if let advData = AdvertisingData(fromData: manufatureData)  {
             // Store peripheral reference for later use
             peripherals.insert(peripheral)
             

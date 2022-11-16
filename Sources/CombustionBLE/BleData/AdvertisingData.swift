@@ -30,7 +30,7 @@ import Foundation
 public enum CombustionProductType: UInt8 {
     case unknown = 0x00
     case probe = 0x01
-    case kitchenTimer = 0x02
+    case display = 0x02
 }
 
 /// Struct containing advertising data received from device.

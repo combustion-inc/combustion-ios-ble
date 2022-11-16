@@ -95,11 +95,11 @@ public class DeviceManager : ObservableObject {
         }
     }
     
-    /// Returns list of kitchen timers
+    /// Returns list of displays
     /// - returns: List of all kitchen timers
-    public func getKitchenTimers() -> [KitchenTimer] {
+    public func getDisplays() -> [Display] {
         return Array(devices.values).compactMap { device in
-            return device as? KitchenTimer
+            return device as? Display
         }
     }
     
@@ -276,7 +276,7 @@ extension DeviceManager : BleManagerDelegate {
             if let probe = devices[identifier.uuidString] as? Probe {
                 probe.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
             }
-            else if let timer = devices[identifier.uuidString] as? KitchenTimer {
+            else if let timer = devices[identifier.uuidString] as? Display {
                 // Automatically connect to kitchen timer
                 if(timer.connectionState == .disconnected) {
                     timer.connect()
@@ -289,8 +289,8 @@ extension DeviceManager : BleManagerDelegate {
                 let device = Probe(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
                 addDevice(device: device)
                 
-            case .kitchenTimer:
-                let device = KitchenTimer(identifier: identifier, RSSI: rssi)
+            case .display:
+                let device = Display(identifier: identifier, RSSI: rssi)
                 addDevice(device: device)
                 
             case .unknown:
@@ -316,7 +316,7 @@ extension DeviceManager : BleManagerDelegate {
     }
     
     func updateDeviceSerialNumber(identifier: UUID, serialNumber: String) {
-        if let timer = devices[identifier.uuidString] as? KitchenTimer {
+        if let timer = devices[identifier.uuidString] as? Display {
             timer.serialNumberString = serialNumber
         }
     }

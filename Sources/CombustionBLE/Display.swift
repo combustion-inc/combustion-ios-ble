@@ -1,4 +1,4 @@
-//  KitchenTimer.swift
+//  Display.swift
 //  Representation of a Probe Device
 
 /*--
@@ -27,7 +27,7 @@ SOFTWARE.
 
 import Foundation
 
-public class KitchenTimer: Device {
+public class Display: Device {
     
     /// Serial Number
     @Published public internal(set) var serialNumberString: String?

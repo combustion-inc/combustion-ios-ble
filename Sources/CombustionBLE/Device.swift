@@ -98,9 +98,13 @@ public class Device : ObservableObject {
     func updateConnectionState(_ state: ConnectionState) {
         connectionState = state
         
-        // Clear firmware version on disconnect
+        // Clear firmware version and DFU state on disconnect
         if(connectionState == .disconnected) {
             firmareVersion = nil
+            
+            dfuState = nil
+            dfuError = nil
+            dfuUploadProgress = nil
         }
         
         // If we were disconnected and we should be maintaining a connection, attempt to reconnect.

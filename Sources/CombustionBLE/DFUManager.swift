@@ -42,9 +42,10 @@ class DFUManager {
     private var runningDFUs = [String: DFU]()
     
     private var defaultDisplayFirmware: DFUFirmware?
+    private var defaultThermometerFirmware: DFUFirmware?
     
     enum Constants {
-        static let PROBE_DFU_NAME = "Probe_DFU_"
+        static let THERMOMETER_DFU_NAME = "Thermom_DFU_"
         static let DISPLAY_DFU_NAME = "Display_DFU_"
         
         static let RETRY_TIME_DELAY = 10 // seconds
@@ -59,7 +60,7 @@ class DFUManager {
         // Uncomment this to receive feedback from Nordic DFU library
 //        initiator.logger = device
         
-        let typeName = (device is Probe) ? Constants.PROBE_DFU_NAME : Constants.DISPLAY_DFU_NAME
+        let typeName = (device is Probe) ? Constants.THERMOMETER_DFU_NAME : Constants.DISPLAY_DFU_NAME
         
         // Add random value to advertising name
         let advertisingName = typeName + String(format: "%05d", arc4random_uniform(100000))
@@ -78,33 +79,56 @@ class DFUManager {
             // If more than 10 seconds have elapsed, then restart the DFU
             let differenceInSeconds = Int(Date().timeIntervalSince(runningDFU.startedAt))
             if(differenceInSeconds > Constants.RETRY_TIME_DELAY) {
-                let initiator = DFUServiceInitiator().with(firmware: runningDFU.firmware)
-                
-                // Reset DFU start time
-                runningDFUs.removeValue(forKey: advertisingName)
-                runningDFUs[advertisingName] = DFU(firmware: runningDFU.firmware, startedAt: Date())
-                
-                _ = initiator.start(target: peripheral)
+                restartDfu(firmware: runningDFU.firmware,
+                           advertisingName: advertisingName,
+                           peripheral: peripheral)
             }
         }
         else {
+            // Device is in bootloader, but DFU was not started by this app instance
+            
+            // Use advertising name to determine if device is Display or Thermometer
+            // and restart DFU with the default file for each device type
             
             if advertisingName.contains(Constants.DISPLAY_DFU_NAME),
-                let displayFirmware = defaultDisplayFirmware {
+               let firmware = defaultDisplayFirmware {
+                restartDfu(firmware: firmware,
+                           advertisingName: advertisingName,
+                           peripheral: peripheral)
                 
-                let initiator = DFUServiceInitiator().with(firmware: displayFirmware)
+            } else if advertisingName.contains(Constants.THERMOMETER_DFU_NAME),
+                      let firmware = defaultThermometerFirmware {
                 
-                // Initialize DFU start time
-                runningDFUs[advertisingName] = DFU(firmware: displayFirmware, startedAt: Date())
-                
-                _ = initiator.start(target: peripheral)
+                restartDfu(firmware: firmware,
+                           advertisingName: advertisingName,
+                           peripheral: peripheral)
             }
         }
     }
     
-    func setDisplayDFU(displayDFUFile: URL) {
+    private func restartDfu(firmware: DFUFirmware, advertisingName: String, peripheral: CBPeripheral) {
+        let initiator = DFUServiceInitiator().with(firmware: firmware)
+        
+        // Initialize DFU start time
+        runningDFUs[advertisingName] = DFU(firmware: firmware, startedAt: Date())
+        
+        _ = initiator.start(target: peripheral)
+    }
+    
+    func setDisplayDFU(_ displayDFUFile: URL?) {
+        guard let dfuFile = displayDFUFile else { return }
+        
         do {
-            defaultDisplayFirmware = try DFUFirmware(urlToZipFile: displayDFUFile)
+            defaultDisplayFirmware = try DFUFirmware(urlToZipFile: dfuFile)
+        }
+        catch { }
+    }
+    
+    func setThermometerDFU(_ thermometerDFUFile: URL?) {
+        guard let dfuFile = thermometerDFUFile else { return }
+        
+        do {
+            defaultThermometerFirmware = try DFUFirmware(urlToZipFile: dfuFile)
         }
         catch { }
     }

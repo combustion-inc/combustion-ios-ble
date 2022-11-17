@@ -235,9 +235,11 @@ public class DeviceManager : ObservableObject {
     /// the software upgrade process.  After this method is called, DFU will be initiated
     /// when a device with failed software upgrade is detected.
     ///
-    /// - displayDFUFile: Display device DFU file
-    public func restartFailedUpgradesWith(displayDFUFile: URL) {
-        DFUManager.shared.setDisplayDFU(displayDFUFile: displayDFUFile)
+    /// - displayDFUFile: Display DFU file
+    /// - thermometerDFUFile: Thermometer DFU file
+    public func restartFailedUpgradesWith(displayDFUFile: URL?, thermometerDFUFile: URL?) {
+        DFUManager.shared.setDisplayDFU(displayDFUFile)
+        DFUManager.shared.setThermometerDFU( thermometerDFUFile)
     }
 }
 

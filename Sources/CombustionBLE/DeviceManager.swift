@@ -229,17 +229,15 @@ public class DeviceManager : ObservableObject {
         let request = ReadOverTemperatureRequest()
         BleManager.shared.sendRequest(identifier: device.identifier, request: request)
     }
-
-
-    public func runSoftwareUpgrade(_ device: Device, otaFile: URL) -> Bool {
-        do {
-            let dfu = try DFUFirmware(urlToZipFile: otaFile)
-            BleManager.shared.startFirmwareUpdate(device: device, dfu: dfu)
-            return true
-        }
-        catch {
-            return false
-        }
+    
+    /// Set the DFU file to be used on displays with failed software upgrade.
+    /// A failed upgrade will occur if the user kills the application in the middle of
+    /// the software upgrade process.  After this method is called, DFU will be initiated
+    /// when a device with failed software upgrade is detected.
+    ///
+    /// - displayDFUFile: Display device DFU file
+    public func restartFailedUpgradesWith(displayDFUFile: URL) {
+        DFUManager.shared.setDisplayDFU(displayDFUFile: displayDFUFile)
     }
 }
 

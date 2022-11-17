@@ -87,6 +87,8 @@ public class Device : ObservableObject {
     /// DFU Upload progress
     @Published public private(set) var dfuUploadProgress: DFUUploadProgress?
     
+    private var dfuServiceController: DFUServiceController? = nil
+    
     /// Time at which device was last updated
     internal var lastUpdateTime = Date()
     
@@ -101,10 +103,6 @@ public class Device : ObservableObject {
         // Clear firmware version and DFU state on disconnect
         if(connectionState == .disconnected) {
             firmareVersion = nil
-            
-            dfuState = nil
-            dfuError = nil
-            dfuUploadProgress = nil
         }
         
         // If we were disconnected and we should be maintaining a connection, attempt to reconnect.
@@ -159,6 +157,17 @@ extension Device {
         // Disconnect if connected
         DeviceManager.shared.disconnectFromDevice(self)
     }
+    
+    public func runSoftwareUpgrade(dfuFile: URL) -> Bool {
+        do {
+            let dfu = try DFUFirmware(urlToZipFile: dfuFile)
+            dfuServiceController = BleManager.shared.startFirmwareUpdate(device: self, dfu: dfu)
+            return true
+        }
+        catch {
+            return false
+        }
+    }
 }
 
 
@@ -179,6 +188,8 @@ extension Device: DFUServiceDelegate {
     
     public func dfuError(_ error: DFUError, didOccurWithMessage message: String) {
         dfuError = DFUErrorMessage(error: error, message: message)
+        
+        dfuServiceController?.restart()
     }
 }
 
@@ -189,5 +200,11 @@ extension Device: DFUProgressDelegate {
                                      currentSpeedBytesPerSecond: Double,
                                      avgSpeedBytesPerSecond: Double) {
         dfuUploadProgress = DFUUploadProgress(part: part, totalParts: totalParts, progress: progress)
+    }
+}
+
+extension Device: LoggerDelegate {
+    public func logWith(_ level: NordicDFU.LogLevel, message: String) {
+        NSLog("LoggerDelegate : \(message)")
     }
 }

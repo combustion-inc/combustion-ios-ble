@@ -276,12 +276,6 @@ extension DeviceManager : BleManagerDelegate {
             if let probe = devices[identifier.uuidString] as? Probe {
                 probe.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
             }
-            else if let timer = devices[identifier.uuidString] as? Display {
-                // Automatically connect to kitchen timer
-                if(timer.connectionState == .disconnected) {
-                    timer.connect()
-                }
-            }
         }
         else {
             switch(advertising.type) {

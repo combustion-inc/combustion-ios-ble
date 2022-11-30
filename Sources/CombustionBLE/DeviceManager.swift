@@ -35,8 +35,8 @@ public class DeviceManager : ObservableObject {
     public static let shared = DeviceManager()
     
     public enum Constants {
-        static let MINIMUM_PREDICTION_SETPOINT_CELSIUS = 0.0
-        static let MAXIMUM_PREDICTION_SETPOINT_CELSIUS = 102.0
+        public static let MINIMUM_PREDICTION_SETPOINT_CELSIUS = 0.0
+        public static let MAXIMUM_PREDICTION_SETPOINT_CELSIUS = 102.0
     }
     
     /// Dictionary of discovered devices.

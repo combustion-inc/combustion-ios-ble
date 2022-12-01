@@ -50,6 +50,12 @@ public class Probe : Device {
     @Published public private(set) var virtualSensors: VirtualSensors?
     @Published public private(set) var predictionStatus: PredictionStatus?
     
+    public var hasActivePrediction: Bool {
+        guard let status = predictionStatus else { return false }
+        
+        return status.predictionMode != .none
+    }
+    
     public var coreTemperature: Double? {
         guard let virtualSensors = virtualSensors,
               let currentTemperatures = currentTemperatures else { return nil }

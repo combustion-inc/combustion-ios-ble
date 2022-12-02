@@ -81,12 +81,20 @@ public class SimulatedProbe: Probe {
             lastSequence = 0
         }
         
+        let predictionStatus = PredictionStatus(predictionState: .predicting,
+                                                predictionMode: .timeToRemoval,
+                                                predictionType: .none,
+                                                predictionSetPointTemperature: 71.0,
+                                                heatStartTemperature: 5.0,
+                                                predictionValueSeconds: 3540,
+                                                estimatedCoreTemperature: 30.0)
+        
         let probeStatus = ProbeStatus(minSequenceNumber: firstSeq,
                                       maxSequenceNumber: lastSequence,
                                       temperatures: ProbeTemperatures.withRandomData(),
                                       modeId: ModeId.defaultValues(),
                                       batteryStatusVirtualSensors: BatteryStatusVirtualSensors.defaultValues(),
-                                      predictionStatus: nil)
+                                      predictionStatus: predictionStatus)
         
         updateProbeStatus(deviceStatus: probeStatus)
     }

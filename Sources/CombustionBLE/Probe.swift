@@ -33,7 +33,12 @@ public class Probe : Device {
     /// Probe serial number
     @Published public private(set) var serialNumber: UInt32
     
-    @Published public private(set) var currentTemperatures: ProbeTemperatures?
+    @Published public private(set) var currentTemperatures: ProbeTemperatures? {
+        didSet {
+            updateVirtualTemperatures()
+        }
+    }
+    
     @Published public private(set) var instantReadTemperature: Double?
     
     @Published public private(set) var minSequenceNumber: UInt32?
@@ -47,32 +52,26 @@ public class Probe : Device {
     
     @Published public private(set) var batteryStatus: BatteryStatus = .ok
     
-    @Published public private(set) var virtualSensors: VirtualSensors?
+    @Published public private(set) var virtualSensors: VirtualSensors? {
+        didSet {
+            updateVirtualTemperatures()
+        }
+    }
+    
     @Published public private(set) var predictionStatus: PredictionStatus?
     
-    public var coreTemperature: Double? {
-        guard let virtualSensors = virtualSensors,
-              let currentTemperatures = currentTemperatures else { return nil }
-        
-        return currentTemperatures.values[Int(virtualSensors.virtualCore.rawValue)]
+    public struct VirtualTemperatures {
+        public let coreTemperature: Double
+        public let surfaceTemperature: Double
+        public let ambientTemperature: Double
     }
     
-    public var surfaceTemperature: Double? {
-        guard let virtualSensors = virtualSensors,
-              let currentTemperatures = currentTemperatures else { return nil }
-        
-        // Surface range is T4 - T7, therefore add 3
-        let sensorNumber = Int(virtualSensors.virtualSurface.rawValue) + 3
-        return currentTemperatures.values[sensorNumber]
-    }
+    @Published public private(set) var virtualTemperatures: VirtualTemperatures?
     
-    public var ambientTemperature: Double? {
-        guard let virtualSensors = virtualSensors,
-              let currentTemperatures = currentTemperatures else { return nil }
+    public var hasActivePrediction: Bool {
+        guard let status = predictionStatus else { return false }
         
-        // Ambient range is T5 - T8, therefore add 4
-        let sensorNumber = Int(virtualSensors.virtualAmbient.rawValue) + 4
-        return currentTemperatures.values[sensorNumber]
+        return status.predictionMode != .none
     }
     
     /// Stores historical values of probe temperatures
@@ -236,6 +235,27 @@ extension Probe {
         instantReadTemperature = instantReadValue
     }
     
+    private func updateVirtualTemperatures() {
+        guard let virtualSensors = virtualSensors,
+              let currentTemperatures = currentTemperatures else {
+            self.virtualTemperatures = nil
+            return
+        }
+        
+        let core = currentTemperatures.values[Int(virtualSensors.virtualCore.rawValue)]
+        
+        // Surface range is T4 - T7, therefore add 3
+        let surfaceSensorNumber = Int(virtualSensors.virtualSurface.rawValue) + 3
+        let surface = currentTemperatures.values[surfaceSensorNumber]
+        
+        // Ambient range is T5 - T8, therefore add 4
+        let ambientSensorNumber = Int(virtualSensors.virtualAmbient.rawValue) + 4
+        let ambient =  currentTemperatures.values[ambientSensorNumber]
+        
+        virtualTemperatures = VirtualTemperatures(coreTemperature: core,
+                                                  surfaceTemperature: surface,
+                                                  ambientTemperature: ambient)
+    }
     
     ///////////////////////
     // Current value functions

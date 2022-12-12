@@ -62,10 +62,10 @@ public class Device : ObservableObject {
     @Published public internal(set) var rssi: Int
     
     /// Tracks whether the app should attempt to maintain a connection to the device.
-    @Published public internal(set) var maintainingConnection = false
+    @Published public private(set) var maintainingConnection = false
     
     /// Tracks whether the data has gone stale (no new data in some time)
-    @Published public internal(set) var stale = false
+    @Published public private(set) var stale = false
     
     /// DFU state
     @Published public private(set) var dfuState: DFUState?

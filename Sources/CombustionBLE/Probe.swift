@@ -59,6 +59,10 @@ public class Probe : Device {
     }
     
     @Published public private(set) var predictionStatus: PredictionStatus?
+    @Published public private(set) var predictionStale = false
+    
+    /// Time at which prediction was last updated
+    private var lastPredictionUpdateTime = Date()
     
     public struct VirtualTemperatures {
         public let coreTemperature: Double
@@ -123,6 +127,8 @@ public class Probe : Device {
             instantReadTemperature = nil
         }
         
+        predictionStale = Date().timeIntervalSince(lastPredictionUpdateTime) > Constants.PREDICTION_STALE_TIMEOUT
+        
         super.updateDeviceStale()
     }
 }
@@ -132,6 +138,9 @@ extension Probe {
     private enum Constants {
         /// Instant read is considered stale after 5 seconds
         static let INSTANT_READ_STALE_TIMEOUT = 5.0
+        
+        /// Prediction is considered stale after 15 seconds
+        static let PREDICTION_STALE_TIMEOUT = 15.0
     }
     
     
@@ -172,6 +181,7 @@ extension Probe {
         if(deviceStatus.modeId.mode == .normal) {
             // Prediction status and virtual sensors are only transmitter in "Normal" status updated
             predictionStatus = deviceStatus.predictionStatus
+            lastPredictionUpdateTime = Date()
             virtualSensors = deviceStatus.batteryStatusVirtualSensors.virtualSensors
             
             // Log the temperature data point for "Normal" status updates

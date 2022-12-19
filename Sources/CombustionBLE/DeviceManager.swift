@@ -370,6 +370,9 @@ extension DeviceManager : BleManagerDelegate {
                     let node = Display(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
                     addDevice(device: node)
                     
+                    // If MeatNet is enabled, try to connect to all Nodes.
+                    connectToDevice(node)
+                    
                     // Also update the probe associated with this advertising data
                     if let probe = updateProbeWithAdvertising(advertising: advertising, isConnectable: nil, rssi: nil, identifier: nil) {
                         node.updateNetworkedProbe(probe: probe)

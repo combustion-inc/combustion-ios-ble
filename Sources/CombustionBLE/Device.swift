@@ -43,8 +43,13 @@ public class Device : ObservableObject {
         case failed
     }
     
-    /// String representation of device identifier (UUID)
-    public var identifier: String
+    /// String representation of BLE device identifier (UUID), if able to see this device's
+    /// adveritsing messages directly.
+    public var bleIdentifier: String?
+    
+    /// Unique identifier for this device, which is Serial Number for Probes, or BLE device
+    /// identifier for Nodes.
+    public var uniqueIdentifier: String
     
     /// Device firmware version
     @Published public internal(set) var firmareVersion: String?
@@ -84,6 +89,10 @@ public class Device : ObservableObject {
         public let progress: Int
     }
     
+    /// Minimum possible value for RSSI
+    private let MIN_RSSI = -128
+    
+    
     /// DFU Upload progress
     @Published public private(set) var dfuUploadProgress: DFUUploadProgress?
     
@@ -92,9 +101,18 @@ public class Device : ObservableObject {
     /// Time at which device was last updated
     internal var lastUpdateTime = Date()
     
-    public init(identifier: UUID, RSSI: NSNumber) {
-        self.identifier = identifier.uuidString
-        self.rssi = RSSI.intValue
+    public init(uniqueIdentifier: String, bleIdentifier: UUID?, RSSI: NSNumber?) {
+        self.uniqueIdentifier = uniqueIdentifier
+        
+        if let bleIdentifier = bleIdentifier {
+            self.bleIdentifier = bleIdentifier.uuidString
+        }
+        
+        if let RSSI = RSSI {
+            self.rssi = RSSI.intValue
+        } else {
+            self.rssi = MIN_RSSI
+        }
     }
     
     func updateConnectionState(_ state: ConnectionState) {
@@ -115,7 +133,7 @@ public class Device : ObservableObject {
         stale = Date().timeIntervalSince(lastUpdateTime) > Constants.STALE_TIMEOUT
         
         
-        // If device data is stale, assume its not longer connectable
+        // If device data is stale, assume its not connectable
         if(stale) {
             isConnectable = false
         }
@@ -173,11 +191,11 @@ extension Device {
 
 extension Device: Hashable {
     public static func == (lhs: Device, rhs: Device) -> Bool {
-        return lhs.identifier == rhs.identifier
+        return lhs.uniqueIdentifier == rhs.uniqueIdentifier
     }
 
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(identifier)
+        hasher.combine(uniqueIdentifier)
     }
 }
 

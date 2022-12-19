@@ -93,7 +93,7 @@ class BleManager : NSObject {
     }
     
     func startFirmwareUpdate(device: Device, dfu: DFUFirmware) -> DFUServiceController? {
-        guard let connectedPeripheral = getConnectedPeripheral(identifier: device.identifier) else { return nil }
+        guard let bleIdentifier = device.bleIdentifier, let connectedPeripheral = getConnectedPeripheral(identifier: bleIdentifier) else { return nil }
         
         return DFUManager.shared.startDFU(peripheral: connectedPeripheral, device: device, firmware: dfu)
     }

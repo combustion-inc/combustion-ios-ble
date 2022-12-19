@@ -101,12 +101,12 @@ public class Probe : Device {
     /// Time at which probe instant read was last updated
     internal var lastInstantRead: Date?
     
-    init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
+    init(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, identifier: UUID?) {
         serialNumber = advertising.serialNumber
         id = advertising.modeId.id
         color = advertising.modeId.color
         
-        super.init(identifier: identifier, RSSI: RSSI)
+        super.init(uniqueIdentifier: String(advertising.serialNumber), bleIdentifier: identifier, RSSI: RSSI)
         
         updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI)
     }
@@ -144,10 +144,20 @@ extension Probe {
     }
     
     
-    func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber) {
+    /// Updates this Probe with data from an advertisement message.
+    /// - param advertising: Advertising data either directly from the Probe, or related via a MeatNet Node
+    /// - param isConnectable: Whether Probe is connectable (not present if via Node)
+    /// - param RSSI: Signal strength (not present if via Node)
+    func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?) {
         // Always update probe RSSI and isConnectable flag
-        self.rssi = RSSI.intValue
-        self.isConnectable = isConnectable
+        if let RSSI = RSSI {
+            self.rssi = RSSI.intValue
+        }
+        if let isConnectable = isConnectable {
+            self.isConnectable = isConnectable
+        }
+        
+        // TODO - Filter incoming information based on hop count and timestamp.
         
         // Only update rest of data if not connected to probe.  Otherwise, rely on status
         // notifications to update data

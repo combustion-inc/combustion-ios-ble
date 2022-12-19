@@ -67,27 +67,35 @@ public class MessageHandlers {
     }
     
     func addSetIDCompletionHandler(_ device: Device, completionHandler: @escaping SuccessCompletionHandler) {
-        setIDCompletionHandlers[device.identifier] = MessageSentHandler(timeSent: Date(),
-                                                                 successHandler: completionHandler,
-                                                                 readOverTemperatureHandler: nil)
+        if let bleIdentifier = device.bleIdentifier {
+            setIDCompletionHandlers[bleIdentifier] = MessageSentHandler(timeSent: Date(),
+                                                                        successHandler: completionHandler,
+                                                                        readOverTemperatureHandler: nil)
+        }
     }
     
     func addSetColorCompletionHandler(_ device: Device, completionHandler: @escaping SuccessCompletionHandler) {
-        setColorCompletionHandlers[device.identifier] = MessageSentHandler(timeSent: Date(),
-                                                                    successHandler: completionHandler,
-                                                                    readOverTemperatureHandler: nil)
+        if let bleIdentifier = device.bleIdentifier {
+            setColorCompletionHandlers[bleIdentifier] = MessageSentHandler(timeSent: Date(),
+                                                                           successHandler: completionHandler,
+                                                                           readOverTemperatureHandler: nil)
+        }
     }
     
     func addSetPredictionCompletionHandler(_ device: Device, completionHandler: @escaping SuccessCompletionHandler) {
-        setPredictionCompletionHandlers[device.identifier] = MessageSentHandler(timeSent: Date(),
-                                                                         successHandler: completionHandler,
-                                                                         readOverTemperatureHandler: nil)
+        if let bleIdentifier = device.bleIdentifier {
+            setPredictionCompletionHandlers[bleIdentifier] = MessageSentHandler(timeSent: Date(),
+                                                                                successHandler: completionHandler,
+                                                                                readOverTemperatureHandler: nil)
+        }
     }
     
     func addReadOverTemperatureCompletionHandler(_ device: Device, completionHandler: @escaping ReadOverTemperatureCompletionHandler) {
-        readOverTemperatureCompletionHandlers[device.identifier] = MessageSentHandler(timeSent: Date(),
-                                                                               successHandler: nil,
-                                                                               readOverTemperatureHandler: completionHandler)
+        if let bleIdentifier = device.bleIdentifier {
+            readOverTemperatureCompletionHandlers[bleIdentifier] = MessageSentHandler(timeSent: Date(),
+                                                                                      successHandler: nil,
+                                                                                      readOverTemperatureHandler: completionHandler)
+        }
     }
     
     func callSetIDCompletionHandler(_ identifier: UUID, response: SetIDResponse) {

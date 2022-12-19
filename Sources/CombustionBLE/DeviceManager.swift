@@ -31,6 +31,10 @@ import NordicDFU
 /// Singleton that provides list of detected Devices
 /// (either via Bluetooth or from a list in the Cloud)
 public class DeviceManager : ObservableObject {
+    
+    /// Serial Number value indicating 'No Probe'
+    private let INVALID_PROBE_SERIAL_NUMBER = 0
+    
     /// Singleton accessor for class
     public static let shared = DeviceManager()
     
@@ -49,6 +53,9 @@ public class DeviceManager : ObservableObject {
         let handler: (Bool) -> Void
     }
     
+    /// Tracks whether MeatNet is enabled.
+    private var meatNetEnabled : Bool = false;
+    
     private let messageHandlers = MessageHandlers()
     
     public func addSimulatedProbe() {
@@ -57,6 +64,11 @@ public class DeviceManager : ObservableObject {
     
     public func initBluetooth() {
         BleManager.shared.initBluetooth()
+    }
+    
+    /// Enables MeatNet repeater network.
+    public func enableMeatNet() {
+        meatNetEnabled = true;
     }
     
     /// Private initializer to enforce singleton
@@ -79,7 +91,7 @@ public class DeviceManager : ObservableObject {
     /// Adds a device to the local list.
     /// - parameter device: Add device to list of known devices.
     private func addDevice(device: Device) {
-        devices[device.identifier] = device
+        devices[device.uniqueIdentifier] = device
     }
     
     /// Removes all found devices from the list.
@@ -98,8 +110,12 @@ public class DeviceManager : ObservableObject {
     /// Returns list of displays
     /// - returns: List of all kitchen timers
     public func getDisplays() -> [Display] {
-        return Array(devices.values).compactMap { device in
-            return device as? Display
+        if meatNetEnabled {
+            return Array(devices.values).compactMap { device in
+                return device as? Display
+            }
+        } else {
+            return []
         }
     }
     
@@ -122,20 +138,26 @@ public class DeviceManager : ObservableObject {
     }
     
     func connectToDevice(_ device: Device) {
-        if let _ = device as? SimulatedProbe, let uuid = UUID(uuidString: device.identifier) {
+        if let _ = device as? SimulatedProbe, let bleIdentifier = device.bleIdentifier, let uuid = UUID(uuidString: bleIdentifier) {
+            // If this device is a Simulated Probe, use a simulated connection.
             didConnectTo(identifier: uuid)
         }
-        else {
-            BleManager.shared.connect(identifier: device.identifier)
+        else if let bleIdentifier = device.bleIdentifier {
+            // If this device has a BLE identifier (advertisements are directly detected rather than through MeatNet),
+            // attempt to connect to it.
+            BleManager.shared.connect(identifier: bleIdentifier)
         }
     }
     
     func disconnectFromDevice(_ device: Device) {
-        if let _ = device as? SimulatedProbe, let uuid = UUID(uuidString: device.identifier) {
+        if let _ = device as? SimulatedProbe, let bleIdentifier = device.bleIdentifier, let uuid = UUID(uuidString: bleIdentifier) {
+            // If this device is a Simulated Probe, use a simulated disconnect.
             didDisconnectFrom(identifier: uuid)
         }
-        else {
-            BleManager.shared.disconnect(identifier: device.identifier)
+        else if let bleIdentifier = device.bleIdentifier {
+            // If this device has a BLE identifier (advertisements are directly detected rather than through MeatNet),
+            // attempt to disconnect from it.
+            BleManager.shared.disconnect(identifier: bleIdentifier)
         }
     }
     
@@ -146,7 +168,10 @@ public class DeviceManager : ObservableObject {
     func requestLogsFrom(_ device: Device, minSequence: UInt32, maxSequence: UInt32) {
         let request = LogRequest(minSequence: minSequence,
                                  maxSequence: maxSequence)
-        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+        // TODO - Request logs via Node.
+        if let device = device as? Probe, let bleIdentifier = device.bleIdentifier {
+            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+        }
     }
     
     /// Set Probe ID on specified device.
@@ -154,12 +179,16 @@ public class DeviceManager : ObservableObject {
     /// - parameter ProbeID: New Probe ID
     /// - parameter completionHandler: Completion handler to be called operation is complete
     public func setProbeID(_ device: Device, id: ProbeID, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        // TODO - Send request via Node.
+        
         // Store completion handler
         messageHandlers.addSetIDCompletionHandler(device, completionHandler: completionHandler)
         
         // Send request to device
-        let request = SetIDRequest(id: id)
-        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+        if let device = device as? Probe, let bleIdentifier = device.bleIdentifier {
+            let request = SetIDRequest(id: id)
+            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+        }
     }
     
     /// Set Probe Color on specified device.
@@ -169,12 +198,16 @@ public class DeviceManager : ObservableObject {
     public func setProbeColor(_ device: Device,
                               color: ProbeColor,
                               completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        // TODO - Send request via Node.
+        
         // Store completion handler
         messageHandlers.addSetColorCompletionHandler(device, completionHandler: completionHandler)
 
         // Send request to device
-        let request = SetColorRequest(color: color)
-        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+        if let device = device as? Probe, let bleIdentifier = device.bleIdentifier {
+            let request = SetColorRequest(color: color)
+            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+        }
     }
     
     /// Sends a request to the device to set/change the set point temperature for the time to
@@ -193,13 +226,16 @@ public class DeviceManager : ObservableObject {
             completionHandler(false)
             return
         }
+        // TODO - Send request via Node.
         
-        // Store completion handler
-        messageHandlers.addSetPredictionCompletionHandler(device, completionHandler: completionHandler)
-
-        // Send request to device
-        let request = SetPredictionRequest(setPointCelsius: removalTemperatureC, mode: .timeToRemoval)
-        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+        if let device = device as? Probe, let bleIdentifier = device.bleIdentifier {
+            // Store completion handler
+            messageHandlers.addSetPredictionCompletionHandler(device, completionHandler: completionHandler)
+            
+            // Send request to device
+            let request = SetPredictionRequest(setPointCelsius: removalTemperatureC, mode: .timeToRemoval)
+            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+        }
     }
     
     
@@ -208,12 +244,16 @@ public class DeviceManager : ObservableObject {
     /// - parameter device: Device to cancel prediction on
     /// - parameter completionHandler: Completion handler to be called operation is complete
     public func cancelPrediction(_ device: Device, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        // Store completion handler
-        messageHandlers.addSetPredictionCompletionHandler(device, completionHandler: completionHandler)
+        // TODO - Send request via Node.
         
-        // Send request to device
-        let request = SetPredictionRequest(setPointCelsius: 0.0, mode: .none)
-        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+        if let device = device as? Probe, let bleIdentifier = device.bleIdentifier {
+            // Store completion handler
+            messageHandlers.addSetPredictionCompletionHandler(device, completionHandler: completionHandler)
+            
+            // Send request to device
+            let request = SetPredictionRequest(setPointCelsius: 0.0, mode: .none)
+            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+        }
     }
     
     /// Sends a request to the device to read Over Temperature flag
@@ -222,12 +262,16 @@ public class DeviceManager : ObservableObject {
     /// - parameter completionHandler: Completion handler to be called operation is complete
     public func readOverTemperatureFlag(_ device: Device,
                                         completionHandler: @escaping MessageHandlers.ReadOverTemperatureCompletionHandler) {
-        // Store completion handler
-        messageHandlers.addReadOverTemperatureCompletionHandler(device, completionHandler: completionHandler)
+        // TODO - Send request via Node.
         
-        // Send request to device
-        let request = ReadOverTemperatureRequest()
-        BleManager.shared.sendRequest(identifier: device.identifier, request: request)
+        if let device = device as? Probe, let bleIdentifier = device.bleIdentifier {
+            // Store completion handler
+            messageHandlers.addReadOverTemperatureCompletionHandler(device, completionHandler: completionHandler)
+            
+            // Send request to device
+            let request = ReadOverTemperatureRequest()
+            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+        }
     }
     
     /// Set the DFU file to be used on displays with failed software upgrade.
@@ -271,27 +315,70 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
-    func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID) {
-        if devices[identifier.uuidString] != nil {
-            if let probe = devices[identifier.uuidString] as? Probe {
+    
+    /// Searches for or creates a Device record for the Probe represented by specified AdvertisingData.
+    /// - param advertising - Advertising data for the specified Probe
+    /// - param isConnectable - Whether the Probe is currently connectable (only present if advertising is directly from Probe)
+    /// - param rssi - Signal strength to Probe (only present if advertising is directly from Probe)
+    /// - param identifier - BLE identifier (only present if advertising is directly from Probe)
+    /// - return Probe that was updated or added, if any
+    func updateProbeWithAdvertising(advertising: AdvertisingData, isConnectable: Bool?, rssi: NSNumber?, identifier: UUID?) -> Probe? {
+        var foundProbe : Probe? = nil
+        
+        // If this advertising data was from a Probe, attempt to find its Device entry by its serial number.
+        if advertising.serialNumber != INVALID_PROBE_SERIAL_NUMBER {
+            let uniqueIdentifier = String(advertising.serialNumber)
+            if let probe = devices[uniqueIdentifier] as? Probe {
+                // If we already have an entry for this Probe, update its information.
                 probe.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
-            }
-        }
-        else {
-            switch(advertising.type) {
-            case .probe:
+                foundProbe = probe
+            } else {
+                // If we don't yet have an entry for this Probe, create one.
                 let device = Probe(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
                 addDevice(device: device)
-                
-            case .display:
-                let device = Display(identifier: identifier, RSSI: rssi)
-                addDevice(device: device)
-                
-            case .unknown:
-                print("Found device with unknown type")
+                foundProbe = device
             }
-
-
+        }
+        
+        return foundProbe
+    }
+    
+    /// Determines which Device to create/update based on received AdvertisingData.
+    /// - param advertising - Advertising data for the specified Probe
+    /// - param isConnectable - Whether the advertising device is currently connectable
+    /// - param rssi - Signal strength to advertising device
+    /// - param identifier - BLE identifier of advertising device
+    func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID) {
+        switch(advertising.type) {
+        case .probe:
+            let _ = updateProbeWithAdvertising(advertising: advertising, isConnectable: isConnectable, rssi: rssi, identifier: identifier)
+            
+        case .display:
+            // If this advertising data was from a Node, attempt to find its Device entry by its BLE identifier.
+            if(meatNetEnabled) {
+                let uniqueIdentifier = identifier.uuidString
+                if let node = devices[uniqueIdentifier] as? MeatNetNode {
+                    node.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
+                    
+                    // Also update the probe associated with this advertising data
+                    if let probe = updateProbeWithAdvertising(advertising: advertising, isConnectable: nil, rssi: nil, identifier: nil) {
+                        node.updateNetworkedProbe(probe: probe)
+                    }
+                    
+                } else {
+                    let node = Display(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
+                    addDevice(device: node)
+                    
+                    // Also update the probe associated with this advertising data
+                    if let probe = updateProbeWithAdvertising(advertising: advertising, isConnectable: nil, rssi: nil, identifier: nil) {
+                        node.updateNetworkedProbe(probe: probe)
+                    }
+                }
+            }
+            
+        case .unknown:
+            print("Found device with unknown type")
+            
         }
     }
     

@@ -108,7 +108,7 @@ public class Probe : Device {
         
         super.init(uniqueIdentifier: String(advertising.serialNumber), bleIdentifier: identifier, RSSI: RSSI)
         
-        updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI)
+        updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI, bleIdentifier: identifier)
     }
     
     override func updateConnectionState(_ state: ConnectionState) {
@@ -148,13 +148,17 @@ extension Probe {
     /// - param advertising: Advertising data either directly from the Probe, or related via a MeatNet Node
     /// - param isConnectable: Whether Probe is connectable (not present if via Node)
     /// - param RSSI: Signal strength (not present if via Node)
-    func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?) {
+    /// - param bleIdentifier: BLE UUID (not present if via Node)
+    func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, bleIdentifier: UUID?) {
         // Always update probe RSSI and isConnectable flag
         if let RSSI = RSSI {
             self.rssi = RSSI.intValue
         }
         if let isConnectable = isConnectable {
             self.isConnectable = isConnectable
+        }
+        if let bleIdentifier = bleIdentifier {
+            self.bleIdentifier = bleIdentifier.uuidString
         }
         
         // TODO - Filter incoming information based on hop count and timestamp.

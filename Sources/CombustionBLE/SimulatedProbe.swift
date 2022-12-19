@@ -64,7 +64,7 @@ public class SimulatedProbe: Probe {
     private func updateFakeAdvertising() {
         let advertising = AdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
                                           fakeTemperatures: ProbeTemperatures.withRandomData())
-        updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI())
+        updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), bleIdentifier: nil)
     }
     
     private func updateFakeStatus() {

@@ -289,19 +289,19 @@ public class DeviceManager : ObservableObject {
 
 extension DeviceManager : BleManagerDelegate {
     func didConnectTo(identifier: UUID) {
-        guard let device = devices[identifier.uuidString] else { return }
+        guard let device = findDeviceByBleIdentifier(bleIdentifier: identifier) else { return }
         
         device.updateConnectionState(.connected)
     }
     
     func didFailToConnectTo(identifier: UUID) {
-        guard let device = devices[identifier.uuidString] else { return }
+        guard let device = findDeviceByBleIdentifier(bleIdentifier: identifier) else { return }
         
         device.updateConnectionState(.failed)
     }
     
     func didDisconnectFrom(identifier: UUID) {
-        guard let device = devices[identifier.uuidString] else { return }
+        guard let device = findDeviceByBleIdentifier(bleIdentifier: identifier) else { return }
         
         device.updateConnectionState(.disconnected)
         
@@ -310,9 +310,9 @@ extension DeviceManager : BleManagerDelegate {
     }
     
     func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus) {
-        if let probe = devices[identifier.uuidString] as? Probe {
-            probe.updateProbeStatus(deviceStatus: status)
-        }
+        // TODO - Update from Nodes as well
+        guard let probe = findDeviceByBleIdentifier(bleIdentifier: identifier) as? Probe else { return }
+        probe.updateProbeStatus(deviceStatus: status)
     }
     
     
@@ -330,7 +330,7 @@ extension DeviceManager : BleManagerDelegate {
             let uniqueIdentifier = String(advertising.serialNumber)
             if let probe = devices[uniqueIdentifier] as? Probe {
                 // If we already have an entry for this Probe, update its information.
-                probe.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
+                probe.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi, bleIdentifier: identifier)
                 foundProbe = probe
             } else {
                 // If we don't yet have an entry for this Probe, create one.
@@ -380,10 +380,33 @@ extension DeviceManager : BleManagerDelegate {
             print("Found device with unknown type")
             
         }
+        
+    }
+    
+    /// Finds Device (Node or Probe) by specified BLE identifier.
+    func findDeviceByBleIdentifier(bleIdentifier: UUID) -> Device? {
+        var foundDevice : Device? = nil
+        if let device = devices[bleIdentifier.uuidString]  {
+            // This was a MeatNet Node as it was stored by its BLE UUID.
+            foundDevice = device
+        } else {
+            // Search through Devices to see if any Probes have a matching BLE identifier.
+            for(_, device) in devices {
+                if let deviceBleIdentifier = device.bleIdentifier {
+                    if bleIdentifier.uuidString == deviceBleIdentifier {
+                        // We found a device matching this identifier, so break
+                        foundDevice = device
+                        break
+                    }
+                }
+            }
+        }
+        
+        return foundDevice
     }
     
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String) {
-        if let device = devices[identifier.uuidString]  {
+        if let device = findDeviceByBleIdentifier(bleIdentifier: identifier) {
             device.firmareVersion = fwVersion
             
             // TODO : remove this at some point
@@ -403,7 +426,7 @@ extension DeviceManager : BleManagerDelegate {
     }
     
     func updateDeviceHwRevision(identifier: UUID, hwRevision: String) {
-        if let device = devices[identifier.uuidString]  {
+        if let device = findDeviceByBleIdentifier(bleIdentifier: identifier)  {
             device.hardwareRevision = hwRevision
         }
     }

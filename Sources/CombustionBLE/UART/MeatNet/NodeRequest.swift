@@ -127,7 +127,7 @@ extension NodeRequest {
             $0.load(as: UInt16.self)
         }
         
-        let crcDataLength = 3 + Int(payloadLength)
+        let crcDataLength = 6 + Int(payloadLength)
         var crcData = data.dropFirst(4)
         crcData = crcData.dropLast(crcData.count - crcDataLength)
         

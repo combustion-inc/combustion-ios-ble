@@ -56,6 +56,7 @@ public class DeviceManager : ObservableObject {
     /// Tracks whether MeatNet is enabled.
     private var meatNetEnabled : Bool = false;
     
+    /// Handler for messages from Probe
     private let messageHandlers = MessageHandlers()
     
     public func addSimulatedProbe() {
@@ -431,7 +432,37 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
-    func handleUARTResponse(identifier: UUID, response: Response) {
+    /// Processes data received over UART, which could be Responses and/or Requests depending on the source.
+    func handleUARTData(identifier: UUID, data: Data) {
+        if let device = findDeviceByBleIdentifier(bleIdentifier: identifier) {
+            if let _ = device as? Probe {
+                // If this was a Probe, treat all the Data as Responses.
+                let responses = Response.fromData(data)
+                for response in responses {
+                    handleProbeUARTResponse(identifier: identifier, response: response)
+                }
+            } else if let _ = device as? MeatNetNode {
+                // If this was a Node, the data could be Responses and/or Requests.
+                let messages = NodeUARTMessage.fromData(data)
+                for message in messages {
+                    if let request = message as? NodeRequest {
+                        // Process Node request
+                        handleNodeUARTRequest(identifier: identifier, request: request)
+                    } else if let response = message as? NodeResponse {
+                        // Process node response
+                        handleNodeUARTResponse(identifier: identifier, response: response)
+                    }
+                }
+            }
+            
+        }
+    }
+    
+    //////////////////////////////////////////////
+    /// - MARK: Probe Direct Message Handling
+    //////////////////////////////////////////////
+    
+    func handleProbeUARTResponse(identifier: UUID, response: Response) {
         if let logResponse = response as? LogResponse {
             updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
         }
@@ -466,5 +497,61 @@ extension DeviceManager : BleManagerDelegate {
         if let probe = devices[identifier.uuidString] as? Probe {
             probe.updateWithSessionInformation(sessionInformation)
         }
+    }
+    
+    ///////////////////////////////////////
+    /// - MARK: Node/MeatNet Direct Message Handling
+    ///////////////////////////////////////
+    
+    func handleNodeUARTResponse(identifier: UUID, response: NodeResponse) {
+        print("Received Response from Node: \(response)")
+        /*
+        if let logResponse = response as? LogResponse {
+            updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
+        }
+        else if let setIDResponse = response as? SetIDResponse {
+            messageHandlers.callSetIDCompletionHandler(identifier, response: setIDResponse)
+        }
+        else if let setColorResponse = response as? SetColorResponse {
+            messageHandlers.callSetColorCompletionHandler(identifier, response: setColorResponse)
+        }
+        else if let sessionResponse = response as? SessionInfoResponse {
+            if(sessionResponse.success) {
+                updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: sessionResponse.info)
+            }
+        }
+        else if let setPredictionResponse = response as? SetPredictionResponse {
+            messageHandlers.callSetPredictionCompletionHandler(identifier, response: setPredictionResponse)
+        }
+        else if let readOverTemperatureResponse = response as? ReadOverTemperatureResponse {
+            messageHandlers.callReadOverTemperatureCompletionHandler(identifier, response: readOverTemperatureResponse)
+        }
+        */
+    }
+    
+    func handleNodeUARTRequest(identifier: UUID, request: NodeRequest) {
+        print("Received Request from Node: \(request)")
+        /*
+        if let logResponse = response as? LogResponse {
+            updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
+        }
+        else if let setIDResponse = response as? SetIDResponse {
+            messageHandlers.callSetIDCompletionHandler(identifier, response: setIDResponse)
+        }
+        else if let setColorResponse = response as? SetColorResponse {
+            messageHandlers.callSetColorCompletionHandler(identifier, response: setColorResponse)
+        }
+        else if let sessionResponse = response as? SessionInfoResponse {
+            if(sessionResponse.success) {
+                updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: sessionResponse.info)
+            }
+        }
+        else if let setPredictionResponse = response as? SetPredictionResponse {
+            messageHandlers.callSetPredictionCompletionHandler(identifier, response: setPredictionResponse)
+        }
+        else if let readOverTemperatureResponse = response as? ReadOverTemperatureResponse {
+            messageHandlers.callReadOverTemperatureCompletionHandler(identifier, response: readOverTemperatureResponse)
+        }
+        */
     }
 }

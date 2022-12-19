@@ -27,6 +27,7 @@ SOFTWARE.
 import Foundation
 import SwiftUI
 import NordicDFU
+import CoreBluetooth
 
 /// Singleton that provides list of detected Devices
 /// (either via Bluetooth or from a list in the Cloud)
@@ -95,9 +96,9 @@ public class DeviceManager : ObservableObject {
         devices[device.uniqueIdentifier] = device
     }
     
-    /// Removes all found devices from the list.
-    func clearDevices() {
-        devices.removeAll(keepingCapacity: false)
+    /// Removes device from the list.
+    func clearDevice(device: Device) {
+        devices.removeValue(forKey: device.uniqueIdentifier)
     }
     
     /// Returns list of probes
@@ -392,6 +393,22 @@ extension DeviceManager : BleManagerDelegate {
         probe.updateProbeStatus(deviceStatus: status, hopCount: hopCount)
     }
     
+    func handleBootloaderAdvertising(advertisingName: String, rssi: NSNumber, peripheral: CBPeripheral) {
+        // If Bootloader is associated with currently running DFU,
+        // then check if DFU needs to be restarted
+        if let uniqueIdentifier = DFUManager.shared.uniqueIdentifierFrom(advertisingName: advertisingName) {
+            if let device = devices[uniqueIdentifier] {
+                DFUManager.shared.checkForStuckDFU(peripheral: peripheral, advertisingName: advertisingName, device: device)
+            }
+        }
+        else {
+            // If Bootloader is NOT associated with a currently running DFU,
+            // then send data to Device manager to save device and start DFU
+            let device = BootloaderDevice(advertisingName: advertisingName,  RSSI: rssi, identifier: peripheral.identifier)
+            addDevice(device: device)
+            BleManager.shared.retryFirmwareUpdate(device: device)
+        }
+    }
     
     /// Searches for or creates a Device record for the Probe represented by specified AdvertisingData.
     /// - param advertising - Advertising data for the specified Probe

@@ -34,6 +34,7 @@ class DFUManager {
     static let shared = DFUManager()
     
     private struct DFU {
+        let uniqueIdentifier: String
         let firmware: DFUFirmware
         let startedAt: Date
     }
@@ -44,75 +45,11 @@ class DFUManager {
     private var defaultDisplayFirmware: DFUFirmware?
     private var defaultThermometerFirmware: DFUFirmware?
     
-    enum Constants {
+    private enum Constants {
         static let THERMOMETER_DFU_NAME = "Thermom_DFU_"
         static let DISPLAY_DFU_NAME = "Display_DFU_"
         
         static let RETRY_TIME_DELAY = 10 // seconds
-    }
-    
-    func startDFU(peripheral: CBPeripheral, device: Device, firmware: DFUFirmware) -> DFUServiceController? {
-        let initiator = DFUServiceInitiator().with(firmware: firmware)
-        
-        initiator.delegate = device
-        initiator.progressDelegate = device
-        
-        // Uncomment this to receive feedback from Nordic DFU library
-//        initiator.logger = device
-        
-        let typeName = (device is Probe) ? Constants.THERMOMETER_DFU_NAME : Constants.DISPLAY_DFU_NAME
-        
-        // Add random value to advertising name
-        let advertisingName = typeName + String(format: "%05d", arc4random_uniform(100000))
-        
-        // Set the DFU bootloader advertising name
-        initiator.alternativeAdvertisingName = advertisingName
-        
-        runningDFUs[advertisingName] = DFU(firmware: firmware, startedAt: Date())
-        
-        return initiator.start(target: peripheral)
-    }
-    
-    func retryDfuOnBootloader(peripheral: CBPeripheral, advertisingName: String) {
-        if let runningDFU = runningDFUs[advertisingName] {
-            
-            // If more than 10 seconds have elapsed, then restart the DFU
-            let differenceInSeconds = Int(Date().timeIntervalSince(runningDFU.startedAt))
-            if(differenceInSeconds > Constants.RETRY_TIME_DELAY) {
-                restartDfu(firmware: runningDFU.firmware,
-                           advertisingName: advertisingName,
-                           peripheral: peripheral)
-            }
-        }
-        else {
-            // Device is in bootloader, but DFU was not started by this app instance
-            
-            // Use advertising name to determine if device is Display or Thermometer
-            // and restart DFU with the default file for each device type
-            
-            if advertisingName.contains(Constants.DISPLAY_DFU_NAME),
-               let firmware = defaultDisplayFirmware {
-                restartDfu(firmware: firmware,
-                           advertisingName: advertisingName,
-                           peripheral: peripheral)
-                
-            } else if advertisingName.contains(Constants.THERMOMETER_DFU_NAME),
-                      let firmware = defaultThermometerFirmware {
-                
-                restartDfu(firmware: firmware,
-                           advertisingName: advertisingName,
-                           peripheral: peripheral)
-            }
-        }
-    }
-    
-    private func restartDfu(firmware: DFUFirmware, advertisingName: String, peripheral: CBPeripheral) {
-        let initiator = DFUServiceInitiator().with(firmware: firmware)
-        
-        // Initialize DFU start time
-        runningDFUs[advertisingName] = DFU(firmware: firmware, startedAt: Date())
-        
-        _ = initiator.start(target: peripheral)
     }
     
     func setDisplayDFU(_ displayDFUFile: URL?) {
@@ -131,6 +68,100 @@ class DFUManager {
             defaultThermometerFirmware = try DFUFirmware(urlToZipFile: dfuFile)
         }
         catch { }
+    }
+    
+    func uniqueIdentifierFrom(advertisingName: String) -> String? {
+        return runningDFUs[advertisingName]?.uniqueIdentifier
+    }
+    
+    static func bootloaderTypeFrom(advertisingName: String) -> CombustionProductType {
+        if(advertisingName.contains(Constants.THERMOMETER_DFU_NAME)) {
+            return CombustionProductType.probe
+        }
+        
+        if(advertisingName.contains(Constants.DISPLAY_DFU_NAME)) {
+            return CombustionProductType.display
+        }
+        
+        return .unknown
+    }
+    
+    func startDFU(peripheral: CBPeripheral, device: Device, firmware: DFUFirmware) -> DFUServiceController? {
+        // Generate advertising name to use for bootloader during DFU
+        let advertisingName = dfuAdvertisingName(for: device)
+        
+        return runDfu(peripheral: peripheral,
+                      device: device,
+                      advertisingName: advertisingName,
+                      firmware: firmware)
+    }
+    
+    
+    func checkForStuckDFU(peripheral: CBPeripheral, advertisingName: String, device: Device) {
+        if let runningDFU = runningDFUs[advertisingName] {
+            // If more than 10 seconds have elapsed, then restart the DFU
+            let differenceInSeconds = Int(Date().timeIntervalSince(runningDFU.startedAt))
+            if(differenceInSeconds > Constants.RETRY_TIME_DELAY) {
+                _ = runDfu(peripheral: peripheral,
+                           device: device,
+                           advertisingName: advertisingName,
+                           firmware: runningDFU.firmware)
+            }
+        }
+    }
+    
+    func retryDfuOnBootloader(peripheral: CBPeripheral, device: BootloaderDevice) {
+        // Device is in bootloader, but DFU was not started by this app instance
+        
+        // Use advertising name to determine if device is Display or Thermometer
+        // and restart DFU with the default file for each device type
+        if let firmware = firmwareForBootloader(device) {
+            _ = runDfu(peripheral: peripheral,
+                       device: device,
+                       advertisingName: device.advertisingName,
+                       firmware: firmware)
+        }
+    }
+    
+    private func dfuAdvertisingName(for device: Device) -> String {
+        let typeName = (device is Probe) ? Constants.THERMOMETER_DFU_NAME : Constants.DISPLAY_DFU_NAME
+        
+        // Add random value to advertising name
+        return typeName + String(format: "%05d", arc4random_uniform(100000))
+    }
+    
+    private func runDfu(peripheral: CBPeripheral,
+                        device: Device,
+                        advertisingName: String,
+                        firmware: DFUFirmware) -> DFUServiceController?  {
+        let initiator = DFUServiceInitiator().with(firmware: firmware)
+        
+        initiator.delegate = device
+        initiator.progressDelegate = device
+        
+        // Uncomment this to receive feedback from Nordic DFU library
+        initiator.logger = device
+        
+        // Set the DFU bootloader advertising name
+        initiator.alternativeAdvertisingName = advertisingName
+        
+        runningDFUs[advertisingName] = DFU(uniqueIdentifier: device.uniqueIdentifier,
+                                           firmware: firmware,
+                                           startedAt: Date())
+        
+        return initiator.start(target: peripheral)
+    }
+    
+    private func firmwareForBootloader(_ device: BootloaderDevice) -> DFUFirmware? {
+        if device.advertisingName.contains(Constants.DISPLAY_DFU_NAME) {
+            return defaultDisplayFirmware
+        }
+
+        if device.advertisingName.contains(Constants.THERMOMETER_DFU_NAME) {
+            return defaultThermometerFirmware
+        }
+
+        return nil
     }
     
 }

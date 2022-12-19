@@ -42,7 +42,7 @@ public class Device : ObservableObject {
         /// Attempt to connect to device failed
         case failed
     }
-    
+
     /// String representation of BLE device identifier (UUID), if able to see this device's
     /// adveritsing messages directly.
     public var bleIdentifier: String?
@@ -148,6 +148,10 @@ public class Device : ObservableObject {
         
         return true
     }
+    
+    func dfuComplete() {
+        // Nothing to do on base implementation
+    }
 }
     
 extension Device {
@@ -202,6 +206,10 @@ extension Device: Hashable {
 extension Device: DFUServiceDelegate {
     public func dfuStateDidChange(to state: DFUState) {
         dfuState = state
+        
+        if(dfuState == .completed) {
+            dfuComplete()
+        }
     }
     
     public func dfuError(_ error: DFUError, didOccurWithMessage message: String) {

@@ -90,7 +90,7 @@ public class Device : ObservableObject {
     }
     
     /// Minimum possible value for RSSI
-    private let MIN_RSSI = -128
+    static internal let MIN_RSSI = -128
     
     
     /// DFU Upload progress
@@ -111,7 +111,7 @@ public class Device : ObservableObject {
         if let RSSI = RSSI {
             self.rssi = RSSI.intValue
         } else {
-            self.rssi = MIN_RSSI
+            self.rssi = Device.MIN_RSSI
         }
     }
     

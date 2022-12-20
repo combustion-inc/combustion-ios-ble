@@ -92,6 +92,13 @@ class BleManager : NSObject {
         }
     }
     
+    func sendRequest(identifier: String, request: NodeRequest) {
+        if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
+            let uartChar = uartCharacteristics[identifier] {
+            connectionPeripheral.writeValue(request.data, for: uartChar, type: .withoutResponse)
+        }
+    }
+    
     func startFirmwareUpdate(device: Device, dfu: DFUFirmware) -> DFUServiceController? {
         guard let bleIdentifier = device.bleIdentifier, let connectedPeripheral = getConnectedPeripheral(identifier: bleIdentifier) else { return nil }
         

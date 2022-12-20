@@ -42,12 +42,12 @@ class NodeProbeStatusRequest: NodeRequest {
         }
         
         // Parse Probe Status
-        let probeStatusRaw = data.subdata(in: (sequenceByteIndex + 4)..<(sequenceByteIndex + 31))
+        let probeStatusRaw = data.subdata(in: (sequenceByteIndex + 4)..<(sequenceByteIndex + 34))
         if let ps = ProbeStatus(fromData: probeStatusRaw) {
             self.probeStatus = ps
         }
         
-        let hopCountRaw = data.subdata(in: (sequenceByteIndex + 31)..<(sequenceByteIndex + 32))
+        let hopCountRaw = data.subdata(in: (sequenceByteIndex + 34)..<(sequenceByteIndex + 35))
         let hopCountInteger = hopCountRaw.withUnsafeBytes {
             $0.load(as: UInt8.self)
         }

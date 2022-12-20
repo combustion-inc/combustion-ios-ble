@@ -54,6 +54,11 @@ public class MeatNetNode: Device {
     func updateNetworkedProbe(probe : Probe) {
         probes[probe.serialNumber] = probe
     }
+    
+    /// Returns probe associated with the specified serial number, if it's in this list.
+    func getNetworkedProbe(serialNumber: UInt32) -> Probe? {
+        return probes[serialNumber]
+    }
 
 
 }

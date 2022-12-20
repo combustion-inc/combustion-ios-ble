@@ -52,11 +52,16 @@ public class MessageHandlers {
     private var setPredictionCompletionHandlers : [String: MessageSentHandler] = [:]
     private var readOverTemperatureCompletionHandlers : [String: MessageSentHandler] = [:]
     
+    // Node handlers
+    private var setNodePredictionCompletionHandlers : [String: MessageSentHandler] = [:]
+    
     func checkForTimeout() {
         checkForMessageTimeout(messageHandlers: &setIDCompletionHandlers)
         checkForMessageTimeout(messageHandlers: &setColorCompletionHandlers)
         checkForMessageTimeout(messageHandlers: &setPredictionCompletionHandlers)
         checkForMessageTimeout(messageHandlers: &readOverTemperatureCompletionHandlers)
+        
+        checkForMessageTimeout(messageHandlers: &setNodePredictionCompletionHandlers)
     }
     
     func clearHandlersForDevice(_ identifier: UUID) {
@@ -64,6 +69,8 @@ public class MessageHandlers {
         setIDCompletionHandlers.removeValue(forKey: identifier.uuidString)
         setPredictionCompletionHandlers.removeValue(forKey: identifier.uuidString)
         readOverTemperatureCompletionHandlers.removeValue(forKey: identifier.uuidString)
+        
+        setNodePredictionCompletionHandlers.removeValue(forKey: identifier.uuidString)
     }
     
     func addSetIDCompletionHandler(_ device: Device, completionHandler: @escaping SuccessCompletionHandler) {
@@ -147,5 +154,25 @@ public class MessageHandlers {
     private func callSuccessCompletionHandler(identifier: UUID, success: Bool, handlers: inout [String: MessageSentHandler]) {
         handlers[identifier.uuidString]?.successHandler?(success)
         handlers.removeValue(forKey: identifier.uuidString)
+    }
+}
+
+///////////////////////////////////
+/// MARK - MeatNet Node completion handlers
+///////////////////////////////////
+
+extension MessageHandlers {
+    func addNodeSetPredictionCompletionHandler(_ device: Device, completionHandler: @escaping SuccessCompletionHandler) {
+        if let bleIdentifier = device.bleIdentifier {
+            setNodePredictionCompletionHandlers[bleIdentifier] = MessageSentHandler(timeSent: Date(),
+                                                                                    successHandler: completionHandler,
+                                                                                    readOverTemperatureHandler: nil)
+        }
+    }
+    
+    func callNodeSetPredictionCompletionHandler(_ identifier: UUID, response: NodeSetPredictionResponse) {
+        callSuccessCompletionHandler(identifier: identifier,
+                                     success: response.success,
+                                     handlers: &setNodePredictionCompletionHandlers)
     }
 }

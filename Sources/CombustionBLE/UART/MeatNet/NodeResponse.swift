@@ -69,7 +69,7 @@ extension NodeResponse {
             return nil
         }
         
-        guard let messageType = NodeMessageType(rawValue: typeRaw) else {
+        guard let messageType = NodeMessageType(rawValue: (typeRaw & ~RESPONSE_TYPE_FLAG)) else {
             print("NodeResponse::fromData(): Unknown message type in response")
             return nil
         }

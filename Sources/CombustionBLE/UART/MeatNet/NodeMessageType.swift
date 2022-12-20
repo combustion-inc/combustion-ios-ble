@@ -1,9 +1,9 @@
-//  HopCount.swift
+//  NodeMessageType.swift
 
 /*--
 MIT License
 
-Copyright (c) 2022 Combustion Inc.
+Copyright (c) 2021 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,25 +26,21 @@ SOFTWARE.
 
 import Foundation
 
-public enum HopCount: UInt8, CaseIterable {
-    case hop1 = 0x00
-    case hop2 = 0x01
-    case hop3 = 0x02
-    case hop4 = 0x03
-}
-
-extension HopCount {
-    private enum Constants {
-        static let HOP_COUNT_MASK: UInt8 = 0x3
-        static let HOP_COUNT_SHIFT: UInt8 = 6
-    }
+enum NodeMessageType: UInt8  {
+    case setID = 1
+    case setColor = 2
+    case sessionInfo = 3
+    case log = 4
+    case setPrediction = 5
+    case readOverTemperature = 6
     
-    static func from(networkInfoByte: UInt8) -> HopCount {
-        let rawHopCount = (networkInfoByte >> Constants.HOP_COUNT_SHIFT) & Constants.HOP_COUNT_MASK
-        return HopCount(rawValue: rawHopCount) ?? .hop1
-    }
-    
-    static func defaultValues() -> HopCount {
-        return .hop1
-    }
+    case connected = 0x40
+    case disconnected = 0x41
+    case readNodeList = 0x42
+    case readNetworkTopology = 0x43
+    case probeSessionChanged = 0x44
+    case probeStatus = 0x45
+    case probeFirmwareRevision = 0x46
+    case probeHardwareRevision = 0x47
+    case probeModelInformation = 0x48
 }

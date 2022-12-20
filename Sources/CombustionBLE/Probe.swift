@@ -64,6 +64,8 @@ public class Probe : Device {
     /// Time at which prediction was last updated
     private var lastPredictionUpdateTime = Date()
     
+   
+    
     public struct VirtualTemperatures {
         public let coreTemperature: Double
         public let surfaceTemperature: Double
@@ -100,15 +102,20 @@ public class Probe : Device {
     
     /// Time at which probe instant read was last updated
     internal var lastInstantRead: Date?
+   
+    /// Last hop count that updated Instant Read (nil = direct from Probe)
+    internal var lastInstantReadHopCount : HopCount? = nil
     
-    init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
+    
+    
+    init(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, identifier: UUID?) {
         serialNumber = advertising.serialNumber
         id = advertising.modeId.id
         color = advertising.modeId.color
         
-        super.init(identifier: identifier, RSSI: RSSI)
+        super.init(uniqueIdentifier: String(advertising.serialNumber), bleIdentifier: identifier, RSSI: RSSI)
         
-        updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI)
+        updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI, bleIdentifier: identifier)
     }
     
     override func updateConnectionState(_ state: ConnectionState) {
@@ -141,13 +148,28 @@ extension Probe {
         
         /// Prediction is considered stale after 15 seconds
         static let PREDICTION_STALE_TIMEOUT = 15.0
+          
+        /// Number of seconds to ignore other lower-priority (higher hop count) sources of information
+        static let INSTANT_READ_LOCK_TIMEOUT = 1.0
     }
     
     
-    func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber) {
+    /// Updates this Probe with data from an advertisement message.
+    /// - param advertising: Advertising data either directly from the Probe, or related via a MeatNet Node
+    /// - param isConnectable: Whether Probe is connectable (not present if via Node)
+    /// - param RSSI: Signal strength (not present if via Node)
+    /// - param bleIdentifier: BLE UUID (not present if via Node)
+    func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, bleIdentifier: UUID?) {
         // Always update probe RSSI and isConnectable flag
-        self.rssi = RSSI.intValue
-        self.isConnectable = isConnectable
+        if let RSSI = RSSI {
+            self.rssi = RSSI.intValue
+        }
+        if let isConnectable = isConnectable {
+            self.isConnectable = isConnectable
+        }
+        if let bleIdentifier = bleIdentifier {
+            self.bleIdentifier = bleIdentifier.uuidString
+        }
         
         // Only update rest of data if not connected to probe.  Otherwise, rely on status
         // notifications to update data
@@ -157,7 +179,9 @@ extension Probe {
                 currentTemperatures = advertising.temperatures
             }
             else if(advertising.modeId.mode == .instantRead ){
-                updateInstantRead(advertising.temperatures.values[0])
+                // Update Instant Read temperature, providing hop count information to prioritize it.
+                updateInstantRead(advertising.temperatures.values[0],
+                                  hopCount: (advertising.type == .probe) ? nil : advertising.hopCount)
             }
             
 
@@ -171,7 +195,7 @@ extension Probe {
     }
     
     /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.
-    func updateProbeStatus(deviceStatus: ProbeStatus) {
+    func updateProbeStatus(deviceStatus: ProbeStatus, hopCount: HopCount? = nil) {
         minSequenceNumber = deviceStatus.minSequenceNumber
         maxSequenceNumber = deviceStatus.maxSequenceNumber
         id = deviceStatus.modeId.id
@@ -189,13 +213,15 @@ extension Probe {
             addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus))
         }
         else if(deviceStatus.modeId.mode == .instantRead ){
-            updateInstantRead(deviceStatus.temperatures.values[0])
+            // Update Instnant Read temperature, including hop count information.
+            updateInstantRead(deviceStatus.temperatures.values[0], hopCount: hopCount)
         }
         
         // Check for missing records
         if let current = getCurrentTemperatureLog() {
             if let missingSequence = current.firstMissingIndex(sequenceRangeStart: deviceStatus.minSequenceNumber,
-                                                                      sequenceRangeEnd: deviceStatus.maxSequenceNumber) {
+                                                               sequenceRangeEnd: deviceStatus.maxSequenceNumber) {
+                
                 // Track that the app is not up to date with the probe
                 logsUpToDate = false
                 
@@ -240,9 +266,41 @@ extension Probe {
         return temperatureLogs.first(where: { $0.sessionInformation.sessionID == sessionInformation?.sessionID } )
     }
     
-    private func updateInstantRead(_ instantReadValue: Double) {
-        lastInstantRead = Date()
-        instantReadTemperature = instantReadValue
+    /// Determines whether to update Instant Read based on the hop count of the data.
+    /// - param hopCount: Hop Count of information source (nil = direct from Probe)
+    private func shouldUpdateInstantRead(hopCount: HopCount?) -> Bool {
+        // If hopCount is nil, this is direct from a Probe and we should always update.
+        guard let hopCount = hopCount else { return true }
+        
+        // If we haven't received Instant Read data for more than the lockout period, we should always update.
+        guard let lastInstantRead = lastInstantRead, (Date().timeIntervalSince(lastInstantRead) < Constants.INSTANT_READ_LOCK_TIMEOUT) else { return true }
+        
+        // If we're in the lockout period and the last hop count was nil (i.e. direct from a Probe),
+        // we should NOT update.
+        guard let lastInstantReadHopCount = lastInstantReadHopCount else { return false }
+        
+        // Compare hop counts and see if we should update.
+        if hopCount.rawValue <= lastInstantReadHopCount.rawValue {
+            // This hop count is equal or better priority than the last, so update.
+            return true
+        } else {
+            // This hop is lower priority than the last, so do not update.
+            return false
+        }
+    }
+    
+    /// Updates the Instant Read temperature. May be ignored if hop count is too high.
+    /// - param instantReadValue: New value of Instant Read temperature.
+    /// - param hopCount: Hop Count of information source (nil = direct from Probe)
+    private func updateInstantRead(_ instantReadValue: Double, hopCount: HopCount? = nil) {
+        if(shouldUpdateInstantRead(hopCount: hopCount)) {
+            print("Updating instant read, date=\(Date()), hopCount=\(String(describing: hopCount))")
+            lastInstantRead = Date()
+            lastInstantReadHopCount = hopCount
+            instantReadTemperature = instantReadValue
+        } else {
+            print("NOT updating instant read, date=\(Date()), hopCount=\(String(describing: hopCount))")
+        }
     }
     
     private func updateVirtualTemperatures() {

@@ -1,9 +1,9 @@
-//  HopCount.swift
+//  NodeUARTMessage.swift
 
 /*--
 MIT License
 
-Copyright (c) 2022 Combustion Inc.
+Copyright (c) 2021 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,25 +26,29 @@ SOFTWARE.
 
 import Foundation
 
-public enum HopCount: UInt8, CaseIterable {
-    case hop1 = 0x00
-    case hop2 = 0x01
-    case hop3 = 0x02
-    case hop4 = 0x03
-}
-
-extension HopCount {
-    private enum Constants {
-        static let HOP_COUNT_MASK: UInt8 = 0x3
-        static let HOP_COUNT_SHIFT: UInt8 = 6
-    }
-    
-    static func from(networkInfoByte: UInt8) -> HopCount {
-        let rawHopCount = (networkInfoByte >> Constants.HOP_COUNT_SHIFT) & Constants.HOP_COUNT_MASK
-        return HopCount(rawValue: rawHopCount) ?? .hop1
-    }
-    
-    static func defaultValues() -> HopCount {
-        return .hop1
+/// Class representing a Combustion BLE Node UART request.
+class NodeUARTMessage {
+    static func fromData(_ data : Data) -> [NodeUARTMessage] {
+        var messages = [NodeUARTMessage]()
+        
+        var numberBytesRead = 0
+        
+        while(numberBytesRead < data.count) {
+            let bytesToDecode = data.subdata(in: numberBytesRead..<data.count)
+            if let response = NodeResponse.responseFromData(bytesToDecode) {
+                messages.append(response)
+                numberBytesRead += (response.payLoadLength + NodeResponse.HEADER_LENGTH)
+                
+            } else if let request = NodeRequest.requestFromData(bytesToDecode) {
+                messages.append(request)
+                numberBytesRead += (request.payLoadLength + NodeRequest.HEADER_LENGTH)
+            }
+            else {
+                // Found invalid response, break out of while loop
+                break
+            }
+        }
+        
+        return messages
     }
 }

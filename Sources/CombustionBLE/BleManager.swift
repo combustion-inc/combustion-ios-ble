@@ -35,7 +35,7 @@ protocol BleManagerDelegate: AnyObject {
     func didDisconnectFrom(identifier: UUID)
     func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID)
     func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus)
-    func handleUARTResponse(identifier: UUID, response: Response)
+    func handleUARTData(identifier: UUID, data: Data)
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String)
     func updateDeviceHwRevision(identifier: UUID, hwRevision: String)
     func updateDeviceSerialNumber(identifier: UUID, serialNumber: String)
@@ -93,7 +93,7 @@ class BleManager : NSObject {
     }
     
     func startFirmwareUpdate(device: Device, dfu: DFUFirmware) -> DFUServiceController? {
-        guard let connectedPeripheral = getConnectedPeripheral(identifier: device.identifier) else { return nil }
+        guard let bleIdentifier = device.bleIdentifier, let connectedPeripheral = getConnectedPeripheral(identifier: bleIdentifier) else { return nil }
         
         return DFUManager.shared.startDFU(peripheral: connectedPeripheral, device: device, firmware: dfu)
     }
@@ -286,10 +286,6 @@ extension BleManager: CBPeripheralDelegate {
     }
     
     private func handleUartData(data: Data, identifier: UUID) {
-        let responses = Response.fromData(data)
-        
-        for response in responses {
-            delegate?.handleUARTResponse(identifier: identifier, response: response)
-        }
+        delegate?.handleUARTData(identifier: identifier, data: data)
     }
 }

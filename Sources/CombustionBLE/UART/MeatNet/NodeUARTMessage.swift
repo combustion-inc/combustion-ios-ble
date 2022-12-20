@@ -39,7 +39,7 @@ class NodeUARTMessage {
                 messages.append(response)
                 numberBytesRead += (response.payLoadLength + NodeResponse.HEADER_LENGTH)
                 
-            }else if let request = NodeRequest.requestFromData(bytesToDecode) {
+            } else if let request = NodeRequest.requestFromData(bytesToDecode) {
                 messages.append(request)
                 numberBytesRead += (request.payLoadLength + NodeRequest.HEADER_LENGTH)
             }

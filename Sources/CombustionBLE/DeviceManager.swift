@@ -311,9 +311,14 @@ extension DeviceManager : BleManagerDelegate {
     }
     
     func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus) {
-        // TODO - Update from Nodes as well
+        // Update Probe Device from direct status notification
         guard let probe = findDeviceByBleIdentifier(bleIdentifier: identifier) as? Probe else { return }
         probe.updateProbeStatus(deviceStatus: status)
+    }
+    
+    func updateDeviceWithNodeStatus(serialNumber: UInt32, status: ProbeStatus, hopCount: HopCount) {
+        guard let probe = devices[String(serialNumber)] as? Probe else { return }
+        probe.updateProbeStatus(deviceStatus: status, hopCount: hopCount)
     }
     
     
@@ -534,6 +539,13 @@ extension DeviceManager : BleManagerDelegate {
     
     func handleNodeUARTRequest(identifier: UUID, request: NodeRequest) {
         print("Received Request from Node: \(request)")
+        if let statusRequest = request as? NodeProbeStatusRequest, let probeStatus = statusRequest.probeStatus, let hopCount = statusRequest.hopCount {
+            // Update the Probe based on the information that was received
+            updateDeviceWithNodeStatus(serialNumber: statusRequest.serialNumber,
+                                       status: probeStatus,
+                                       hopCount: hopCount)
+        }
+        
         /*
         if let logResponse = response as? LogResponse {
             updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)

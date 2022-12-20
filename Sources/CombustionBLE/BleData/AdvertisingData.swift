@@ -45,6 +45,8 @@ struct AdvertisingData {
     let modeId: ModeId
     /// Battery Status and Virtual Sensors
     let batteryStatusVirtualSensors: BatteryStatusVirtualSensors
+    /// Network Information
+    let hopCount: HopCount
 }
 
 extension AdvertisingData {
@@ -56,6 +58,7 @@ extension AdvertisingData {
         static let TEMPERATURE_RANGE = 7..<20
         static let MODE_COLOR_ID_RANGE = 20..<21
         static let DEVICE_STATUS_RANGE = 21..<22
+        static let NETWORK_INFO_RANGE = 22..<23
         
         static let COMBUSTION_VENDOR_ID = 0x09C7
     }
@@ -113,6 +116,15 @@ extension AdvertisingData {
         } else {
             batteryStatusVirtualSensors = BatteryStatusVirtualSensors.defaultValues()
         }
+        
+        // Decode network information
+        if(data.count >= 23) {
+            let byte = data.subdata(in: Constants.NETWORK_INFO_RANGE)[0]
+            hopCount = HopCount.from(networkInfoByte: byte)
+        } else {
+            hopCount = HopCount.defaultValues()
+            
+        }
     }
 }
 
@@ -125,6 +137,7 @@ extension AdvertisingData {
         serialNumber = fakeSerial
         modeId = ModeId.defaultValues()
         batteryStatusVirtualSensors = BatteryStatusVirtualSensors.defaultValues()
+        hopCount = HopCount.defaultValues()
     }
     
     // Fake data initializer for Simulated Probe
@@ -134,5 +147,6 @@ extension AdvertisingData {
         serialNumber = fakeSerial
         modeId = ModeId.defaultValues()
         batteryStatusVirtualSensors = BatteryStatusVirtualSensors.defaultValues()
+        hopCount = HopCount.defaultValues()
     }
 }

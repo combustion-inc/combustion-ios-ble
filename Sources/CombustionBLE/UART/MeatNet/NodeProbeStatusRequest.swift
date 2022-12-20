@@ -34,7 +34,7 @@ class NodeProbeStatusRequest: NodeRequest {
     var hopCount: HopCount? = nil
     
     init(data: Data, requestId: UInt32, payloadLength: Int) {
-        let sequenceByteIndex = Response.HEADER_LENGTH
+        let sequenceByteIndex = NodeRequest.HEADER_LENGTH
         
         let serialNumberRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 4))
         self.serialNumber = serialNumberRaw.withUnsafeBytes {

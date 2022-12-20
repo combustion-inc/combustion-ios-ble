@@ -39,8 +39,12 @@ extension HopCount {
         static let HOP_COUNT_SHIFT: UInt8 = 6
     }
     
-    static func from(deviceStatusByte: UInt8) -> HopCount {
-        let rawHopCount = (deviceStatusByte >> Constants.HOP_COUNT_SHIFT) & Constants.HOP_COUNT_MASK
+    static func from(networkInfoByte: UInt8) -> HopCount {
+        let rawHopCount = (networkInfoByte >> Constants.HOP_COUNT_SHIFT) & Constants.HOP_COUNT_MASK
         return HopCount(rawValue: rawHopCount) ?? .hop1
+    }
+    
+    static func defaultValues() -> HopCount {
+        return .hop1
     }
 }

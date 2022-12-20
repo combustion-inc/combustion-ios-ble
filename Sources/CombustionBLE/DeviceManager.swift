@@ -599,29 +599,6 @@ extension DeviceManager : BleManagerDelegate {
         if let setPredictionResponse = response as? NodeSetPredictionResponse {
             messageHandlers.callNodeSetPredictionCompletionHandler(identifier, response: setPredictionResponse)
         }
-        
-        /*
-        if let logResponse = response as? LogResponse {
-            updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
-        }
-        else if let setIDResponse = response as? SetIDResponse {
-            messageHandlers.callSetIDCompletionHandler(identifier, response: setIDResponse)
-        }
-        else if let setColorResponse = response as? SetColorResponse {
-            messageHandlers.callSetColorCompletionHandler(identifier, response: setColorResponse)
-        }
-        else if let sessionResponse = response as? SessionInfoResponse {
-            if(sessionResponse.success) {
-                updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: sessionResponse.info)
-            }
-        }
-        else if let setPredictionResponse = response as? SetPredictionResponse {
-            messageHandlers.callSetPredictionCompletionHandler(identifier, response: setPredictionResponse)
-        }
-        else if let readOverTemperatureResponse = response as? ReadOverTemperatureResponse {
-            messageHandlers.callReadOverTemperatureCompletionHandler(identifier, response: readOverTemperatureResponse)
-        }
-        */
     }
     
     func handleNodeUARTRequest(identifier: UUID, request: NodeRequest) {

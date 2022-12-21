@@ -33,6 +33,7 @@ protocol BleManagerDelegate: AnyObject {
     func didConnectTo(identifier: UUID)
     func didFailToConnectTo(identifier: UUID)
     func didDisconnectFrom(identifier: UUID)
+    func handleBootloaderAdvertising(advertisingName: String, rssi: NSNumber, peripheral: CBPeripheral)
     func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID)
     func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus)
     func handleUARTData(identifier: UUID, data: Data)
@@ -105,6 +106,20 @@ class BleManager : NSObject {
         return DFUManager.shared.startDFU(peripheral: connectedPeripheral, device: device, firmware: dfu)
     }
     
+    func retryFirmwareUpdate(device: BootloaderDevice) {
+        guard let bleIdentifier = device.bleIdentifier else { return }
+        
+        // Find booloader ble peripheral
+        let uuid = UUID(uuidString: bleIdentifier )
+        let devicePeripherals = peripherals.filter { $0.identifier == uuid }
+        guard let peripheral = devicePeripherals.first else {
+            // print("Failed to find peripherals")
+            return
+        }
+
+        DFUManager.shared.retryDfuOnBootloader(peripheral: peripheral, device: device)
+    }
+    
     private func getConnectedPeripheral(identifier: String) -> CBPeripheral? {
         let uuid = UUID(uuidString: identifier)
         let devicePeripherals = peripherals.filter { $0.identifier == uuid }
@@ -142,8 +157,13 @@ extension BleManager: CBCentralManagerDelegate{
         let manufatureData: Data = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data ?? Data()
         let isConnectable = advertisementData[CBAdvertisementDataIsConnectable] as? Bool ?? false
         
-        if let name = advertisementData[CBAdvertisementDataLocalNameKey] as? String {
-            DFUManager.shared.retryDfuOnBootloader(peripheral: peripheral, advertisingName: name)
+        if let advName = advertisementData[CBAdvertisementDataLocalNameKey] as? String,
+           DFUManager.bootloaderTypeFrom(advertisingName: advName) != .unknown {
+            
+            // Store peripheral reference for later use
+            peripherals.insert(peripheral)
+            
+            delegate?.handleBootloaderAdvertising(advertisingName: advName, rssi: RSSI, peripheral: peripheral)
         }
         else if let advData = AdvertisingData(fromData: manufatureData)  {
             // Store peripheral reference for later use

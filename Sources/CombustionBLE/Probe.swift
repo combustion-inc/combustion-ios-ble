@@ -105,7 +105,15 @@ public class Probe : Device {
    
     /// Last hop count that updated Instant Read (nil = direct from Probe)
     internal var lastInstantReadHopCount : HopCount? = nil
+     
     
+    /// Time at which probe 'normal mode' info (raw temperatures etc.) was last updated
+    internal var lastNormalMode: Date?
+   
+    /// Last hop count that updated 'normal mode' info (nil = direct from Probe)
+    internal var lastNormalModeHopCount : HopCount? = nil
+    
+       
     
     
     init(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, identifier: UUID?) {
@@ -149,8 +157,11 @@ extension Probe {
         /// Prediction is considered stale after 15 seconds
         static let PREDICTION_STALE_TIMEOUT = 15.0
           
-        /// Number of seconds to ignore other lower-priority (higher hop count) sources of information
+        /// Number of seconds to ignore other lower-priority (higher hop count) sources of information for Instant Read
         static let INSTANT_READ_LOCK_TIMEOUT = 1.0
+        
+        /// Number of seconds to ignore other lower-priority (higher hop count) sources of information for Normal Mode
+        static let NORMAL_MODE_LOCK_TIMEOUT = 5.0
     }
     
     
@@ -176,49 +187,88 @@ extension Probe {
         if(connectionState != .connected)
         {
             if(advertising.modeId.mode == .normal) {
-                currentTemperatures = advertising.temperatures
+                // If we should update normal mode, do so, but since this is Advertising info
+                // and does not contain Prediction information, DO NOT lock it out. We want to
+                // ensure the Prediction info gets updated over a Status notification if one
+                // comes in.
+                if(shouldUpdateNormalMode(advertising.hopCount) {
+                    currentTemperatures = advertising.temperatures
+                    
+                    id = advertising.modeId.id
+                    color = advertising.modeId.color
+                    batteryStatus = advertising.batteryStatusVirtualSensors.batteryStatus
+                    virtualSensors = advertising.batteryStatusVirtualSensors.virtualSensors
+                    
+                    lastUpdateTime = Date()
+                }
+            
             }
             else if(advertising.modeId.mode == .instantRead ){
                 // Update Instant Read temperature, providing hop count information to prioritize it.
-                updateInstantRead(advertising.temperatures.values[0],
-                                  hopCount: (advertising.type == .probe) ? nil : advertising.hopCount)
+                if(updateInstantRead(advertising.temperatures.values[0],
+                                  id: advertising.modeId.id,
+                                  color: advertising.modeId.color,
+                                  batteryStatus: advertising.batteryStatusVirtualSensors.batteryStatus,
+                                  hopCount: (advertising.type == .probe) ? nil : advertising.hopCount)) {
+                    
+                    lastUpdateTime = Date()
+                }
+
             }
             
-
-            id = advertising.modeId.id
-            color = advertising.modeId.color
-            batteryStatus = advertising.batteryStatusVirtualSensors.batteryStatus
-            virtualSensors = advertising.batteryStatusVirtualSensors.virtualSensors
-            
-            lastUpdateTime = Date()
         }
     }
     
     /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.
     func updateProbeStatus(deviceStatus: ProbeStatus, hopCount: HopCount? = nil) {
-        minSequenceNumber = deviceStatus.minSequenceNumber
-        maxSequenceNumber = deviceStatus.maxSequenceNumber
-        id = deviceStatus.modeId.id
-        color = deviceStatus.modeId.color
-        batteryStatus = deviceStatus.batteryStatusVirtualSensors.batteryStatus
+                   
+        var updated : Bool = false
         
         if(deviceStatus.modeId.mode == .normal) {
-            // Prediction status and virtual sensors are only transmitter in "Normal" status updated
-            predictionStatus = deviceStatus.predictionStatus
-            lastPredictionUpdateTime = Date()
-            virtualSensors = deviceStatus.batteryStatusVirtualSensors.virtualSensors
-            
-            // Log the temperature data point for "Normal" status updates
-            currentTemperatures = deviceStatus.temperatures
-            addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus))
+            if(shouldUpdateNormalMode(hopCount: hopCount)) {
+                // Update ID, Color, Battery Status
+                id = deviceStatus.modeId.id
+                color = deviceStatus.modeId.color
+                batteryStatus = deviceStatus.batteryStatusVirtualSensors.batteryStatus
+                
+                // Update sequence numbers
+                minSequenceNumber = deviceStatus.minSequenceNumber
+                maxSequenceNumber = deviceStatus.maxSequenceNumber
+         
+                // Prediction status and Virtual Sensors are only transmitter in "Normal" status updates
+                predictionStatus = deviceStatus.predictionStatus
+                lastPredictionUpdateTime = Date()
+                virtualSensors = deviceStatus.batteryStatusVirtualSensors.virtualSensors
+                
+                // Log the temperature data point for "Normal" status updates
+                currentTemperatures = deviceStatus.temperatures
+                addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus))
+                
+                // Update normal mode update info for hop count lockout
+                lastNormalMode = Date()
+                lastNormalModeHopCount = hopCount
+                
+                // Track that info was updated
+                updated = true
+            }
+
         }
         else if(deviceStatus.modeId.mode == .instantRead ){
-            // Update Instnant Read temperature, including hop count information.
-            updateInstantRead(deviceStatus.temperatures.values[0], hopCount: hopCount)
+            // Update Instant Read temperature, including hop count information.
+            updated = updateInstantRead(deviceStatus.temperatures.values[0],
+                                        id: deviceStatus.modeid.id,
+                                        color: deviceStatus.modeid.color,
+                                        batteryStatus: deviceStatus.batteryStatusVirtualSensors.batteryStatus,
+                                        hopCount: hopCount)
+            if updated {
+                // Also update sequence numbers if Instant Read was updated
+                minSequenceNumber = deviceStatus.minSequenceNumber
+                maxSequenceNumber = deviceStatus.maxSequenceNumber
+            }
         }
         
         // Check for missing records
-        if let current = getCurrentTemperatureLog() {
+        if updated, let current = getCurrentTemperatureLog() {
             if let missingSequence = current.firstMissingIndex(sequenceRangeStart: deviceStatus.minSequenceNumber,
                                                                sequenceRangeEnd: deviceStatus.maxSequenceNumber) {
                 
@@ -289,17 +339,57 @@ extension Probe {
         }
     }
     
+    
+    /// Determines whether to update Normal Mode info based on the hop count of the data.
+    /// - param hopCount: Hop Count of information source (nil = direct from Probe)
+    private func shouldUpdateNormalMode(hopCount: HopCount?) -> Bool {
+        // If hopCount is nil, this is direct from a Probe and we should always update.
+        guard let hopCount = hopCount else { return true }
+        
+        // If we haven't received Normal Mode data for more than the lockout period, we should always update.
+        guard let lastNormalMode = lastNormalMode, (Date().timeIntervalSince(lastNormalMode) < Constants.NORMAL_MODE_LOCK_TIMEOUT) else { return true }
+        
+        // If we're in the lockout period and the last hop count was nil (i.e. direct from a Probe),
+        // we should NOT update.
+        guard let lastNormalModeHopCount = lastNormalModeHopCount else { return false }
+        
+        // Compare hop counts and see if we should update.
+        if hopCount.rawValue <= lastNormalModeHopCount.rawValue {
+            // This hop count is equal or better priority than the last, so update.
+            return true
+        } else {
+            // This hop is lower priority than the last, so do not update.
+            return false
+        }
+    }
+    
+    
     /// Updates the Instant Read temperature. May be ignored if hop count is too high.
     /// - param instantReadValue: New value of Instant Read temperature.
+    /// - param id: Probe ID included with message
+    /// - param color: Probe Color included with message
+    /// - param batteryStatus: Probe Battery Status included with message
     /// - param hopCount: Hop Count of information source (nil = direct from Probe)
-    private func updateInstantRead(_ instantReadValue: Double, hopCount: HopCount? = nil) {
+    /// - return true if updated, false if not
+    private func updateInstantRead(_ instantReadValue: Double,
+                                   id: ProbeID,
+                                   color: ProbeColor,
+                                   batteryStatus: BatteryStatus,
+                                   hopCount: HopCount? = nil) -> Bool {
         if(shouldUpdateInstantRead(hopCount: hopCount)) {
             print("Updating instant read, date=\(Date()), hopCount=\(String(describing: hopCount))")
             lastInstantRead = Date()
             lastInstantReadHopCount = hopCount
             instantReadTemperature = instantReadValue
+            id = id
+            color = color
+            batteryStatus = batteryStatus
+            
+            return true
+            
         } else {
             print("NOT updating instant read, date=\(Date()), hopCount=\(String(describing: hopCount))")
+            return false
         }
     }
     

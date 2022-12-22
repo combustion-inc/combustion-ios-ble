@@ -191,7 +191,7 @@ extension Probe {
                 // and does not contain Prediction information, DO NOT lock it out. We want to
                 // ensure the Prediction info gets updated over a Status notification if one
                 // comes in.
-                if(shouldUpdateNormalMode(advertising.hopCount) {
+                if(shouldUpdateNormalMode(hopCount: advertising.hopCount)) {
                     currentTemperatures = advertising.temperatures
                     
                     id = advertising.modeId.id
@@ -203,13 +203,13 @@ extension Probe {
                 }
             
             }
-            else if(advertising.modeId.mode == .instantRead ){
+            else if(advertising.modeId.mode == .instantRead) {
                 // Update Instant Read temperature, providing hop count information to prioritize it.
                 if(updateInstantRead(advertising.temperatures.values[0],
-                                  id: advertising.modeId.id,
-                                  color: advertising.modeId.color,
-                                  batteryStatus: advertising.batteryStatusVirtualSensors.batteryStatus,
-                                  hopCount: (advertising.type == .probe) ? nil : advertising.hopCount)) {
+                                     probeId: advertising.modeId.id,
+                                     probeColor: advertising.modeId.color,
+                                     probeBatteryStatus: advertising.batteryStatusVirtualSensors.batteryStatus,
+                                     hopCount: (advertising.type == .probe) ? nil : advertising.hopCount)) {
                     
                     lastUpdateTime = Date()
                 }
@@ -256,9 +256,9 @@ extension Probe {
         else if(deviceStatus.modeId.mode == .instantRead ){
             // Update Instant Read temperature, including hop count information.
             updated = updateInstantRead(deviceStatus.temperatures.values[0],
-                                        id: deviceStatus.modeid.id,
-                                        color: deviceStatus.modeid.color,
-                                        batteryStatus: deviceStatus.batteryStatusVirtualSensors.batteryStatus,
+                                        probeId: deviceStatus.modeId.id,
+                                        probeColor: deviceStatus.modeId.color,
+                                        probeBatteryStatus: deviceStatus.batteryStatusVirtualSensors.batteryStatus,
                                         hopCount: hopCount)
             if updated {
                 // Also update sequence numbers if Instant Read was updated
@@ -366,24 +366,24 @@ extension Probe {
     
     /// Updates the Instant Read temperature. May be ignored if hop count is too high.
     /// - param instantReadValue: New value of Instant Read temperature.
-    /// - param id: Probe ID included with message
-    /// - param color: Probe Color included with message
-    /// - param batteryStatus: Probe Battery Status included with message
+    /// - param probeId: Probe ID included with message
+    /// - param probeColor: Probe Color included with message
+    /// - param probeBatteryStatus: Probe Battery Status included with message
     /// - param hopCount: Hop Count of information source (nil = direct from Probe)
     /// - return true if updated, false if not
     private func updateInstantRead(_ instantReadValue: Double,
-                                   id: ProbeID,
-                                   color: ProbeColor,
-                                   batteryStatus: BatteryStatus,
+                                   probeId: ProbeID,
+                                   probeColor: ProbeColor,
+                                   probeBatteryStatus: BatteryStatus,
                                    hopCount: HopCount? = nil) -> Bool {
         if(shouldUpdateInstantRead(hopCount: hopCount)) {
             print("Updating instant read, date=\(Date()), hopCount=\(String(describing: hopCount))")
             lastInstantRead = Date()
             lastInstantReadHopCount = hopCount
             instantReadTemperature = instantReadValue
-            id = id
-            color = color
-            batteryStatus = batteryStatus
+            id = probeId
+            color = probeColor
+            batteryStatus = probeBatteryStatus
             
             return true
             

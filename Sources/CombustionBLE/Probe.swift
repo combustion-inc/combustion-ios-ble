@@ -65,13 +65,11 @@ public class Probe : Device {
         }
     }
     
-    @Published public private(set) var predictionStatus: PredictionStatus?
+    @Published public private(set) var predictionInfo: PredictionInfo?
     @Published public private(set) var predictionStale = false
     
     /// Time at which prediction was last updated
     private var lastPredictionUpdateTime = Date()
-    
-   
     
     public struct VirtualTemperatures {
         public let coreTemperature: Double
@@ -82,9 +80,9 @@ public class Probe : Device {
     @Published public private(set) var virtualTemperatures: VirtualTemperatures?
     
     public var hasActivePrediction: Bool {
-        guard let status = predictionStatus else { return false }
+        guard let info = predictionInfo else { return false }
         
-        return status.predictionMode != .none
+        return info.predictionMode != .none
     }
     
     /// Stores historical values of probe temperatures
@@ -261,9 +259,8 @@ extension Probe {
                 minSequenceNumber = deviceStatus.minSequenceNumber
                 maxSequenceNumber = deviceStatus.maxSequenceNumber
          
-                // Prediction status and Virtual Sensors are only transmitter in "Normal" status updates
-                predictionStatus = deviceStatus.predictionStatus
-                lastPredictionUpdateTime = Date()
+                // Prediction status and Virtual Sensors are only transmitted in "Normal" status updates
+                updatePredictionStatus(deviceStatus.predictionStatus, sequenceNumber: deviceStatus.maxSequenceNumber)
                 virtualSensors = deviceStatus.batteryStatusVirtualSensors.virtualSensors
                 
                 // Log the temperature data point for "Normal" status updates
@@ -447,7 +444,7 @@ extension Probe {
                                    probeBatteryStatus: BatteryStatus,
                                    hopCount: HopCount? = nil) -> Bool {
         if(shouldUpdateInstantRead(hopCount: hopCount)) {
-            print("Updating instant read, date=\(Date()), hopCount=\(String(describing: hopCount))")
+//            print("Updating instant read, date=\(Date()), hopCount=\(String(describing: hopCount))")
             lastInstantRead = Date()
             lastInstantReadHopCount = hopCount
             instantReadTemperature = instantReadValue
@@ -458,9 +455,20 @@ extension Probe {
             return true
             
         } else {
-            print("NOT updating instant read, date=\(Date()), hopCount=\(String(describing: hopCount))")
+//            print("NOT updating instant read, date=\(Date()), hopCount=\(String(describing: hopCount))")
             return false
         }
+    }
+    
+    private func updatePredictionStatus(_ predictionStatus: PredictionStatus?, sequenceNumber: UInt32) {
+        // Update prediction information with latest prediction status from probe
+        predictionInfo = PredictionInfo.fromStatus(predictionStatus,
+                                                   previousInfo: predictionInfo,
+                                                   sequenceNumber: sequenceNumber)
+        
+        // TODO setup timer for linearization
+        
+        lastPredictionUpdateTime = Date()
     }
     
     private func updateVirtualTemperatures() {
@@ -483,23 +491,5 @@ extension Probe {
         virtualTemperatures = VirtualTemperatures(coreTemperature: core,
                                                   surfaceTemperature: surface,
                                                   ambientTemperature: ambient)
-    }
-    
-    ///////////////////////
-    // Current value functions
-    ///////////////////////
-    
-    /// Converts the specified temperature to Celsius or Fahrenheit
-    /// - param celsius: True for celsius, false for fahrenheit
-    /// - returns: Requested temperature value
-    static public func temperatureInCelsius(_ temperature: Double?, celsius: Bool) -> Double? {
-        guard let temperature = temperature else { return nil }
-        
-        if !celsius {
-            // Convert to fahrenheit
-            return fahrenheit(celsius: temperature)
-        }
-                    
-        return temperature
     }
 }

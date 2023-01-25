@@ -29,9 +29,16 @@ import Foundation
 
 /// Struct containing info about a Probe device.
 public class Probe : Device {
+
     
     /// Probe serial number
     @Published public private(set) var serialNumber: UInt32
+        
+    /// Returns serial number formatted as a string
+    public var serialNumberString : String {
+        return String(format: "%08X", serialNumber)
+    }
+ 
     
     @Published public private(set) var currentTemperatures: ProbeTemperatures? {
         didSet {
@@ -85,7 +92,7 @@ public class Probe : Device {
     
     /// Pretty-formatted device name
     public var name: String {
-        return String(format: "%08X", serialNumber)
+        return serialNumberString
     }
     
     /// Integer representation of device MAC address
@@ -97,6 +104,13 @@ public class Probe : Device {
     public var macAddressString: String {
         return String(format: "%012llX", macAddress)
     }
+    
+    /// Whether or not probe is overheating
+    @Published public private(set) var overheating: Bool = false
+    
+    /// Array of sensor indexes that are overheating
+    @Published public private(set) var overheatingSensors: [Int] = []
+    
     
     private var sessionInformation: SessionInformation?
     
@@ -112,9 +126,8 @@ public class Probe : Device {
    
     /// Last hop count that updated 'normal mode' info (nil = direct from Probe)
     internal var lastNormalModeHopCount : HopCount? = nil
-    
-       
-    
+
+   
     
     init(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, identifier: UUID?) {
         serialNumber = advertising.serialNumber
@@ -162,6 +175,16 @@ extension Probe {
         
         /// Number of seconds to ignore other lower-priority (higher hop count) sources of information for Normal Mode
         static let NORMAL_MODE_LOCK_TIMEOUT = 5.0
+        
+        
+        /// Overheating thresholds (in degrees C) for T1 and T2
+        static let OVERHEATING_T1_T2_THRESHOLD = 105.0
+        /// Overheating thresholds (in degrees C) for T3
+        static let OVERHEATING_T3_THRESHOLD = 115.0
+        /// Overheating thresholds (in degrees C) for T4
+        static let OVERHEATING_T4_THRESHOLD = 125.0
+        /// Overheating thresholds (in degrees C) for T5-T8
+        static let OVERHEATING_T5_T8_THRESHOLD = 300.0
     }
     
     
@@ -198,6 +221,9 @@ extension Probe {
                     color = advertising.modeId.color
                     batteryStatus = advertising.batteryStatusVirtualSensors.batteryStatus
                     virtualSensors = advertising.batteryStatusVirtualSensors.virtualSensors
+                    
+                    // Check if the probe is overheating
+                    checkOverheating()
                     
                     lastUpdateTime = Date()
                 }
@@ -243,6 +269,9 @@ extension Probe {
                 // Log the temperature data point for "Normal" status updates
                 currentTemperatures = deviceStatus.temperatures
                 addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus))
+                
+                // Check if the probe is overheating
+                checkOverheating()
                 
                 // Update normal mode update info for hop count lockout
                 lastNormalMode = Date()
@@ -296,6 +325,47 @@ extension Probe {
     /// Processes an incoming log response (response to a manual request for prior messages)
     func processLogResponse(logResponse: LogResponse) {
         addDataToLog(LoggedProbeDataPoint.fromLogResponse(logResponse: logResponse))
+    }
+    
+    /// Checks if the probe is currently exceeding any temperature thresholds.
+    func checkOverheating() {
+        guard let currentTemperatures = currentTemperatures else { return }
+        
+        var anyOverTemp = false
+        
+        var overheatingSensorList : [Int] = []
+            
+        // Check T1-T2
+        for i in 1...2 {
+            if currentTemperatures.values[i] >= Constants.OVERHEATING_T1_T2_THRESHOLD {
+                anyOverTemp = true
+                overheatingSensorList.append(i)
+            }
+        }
+        
+        // Check T3
+        if currentTemperatures.values[2] >= Constants.OVERHEATING_T3_THRESHOLD {
+            anyOverTemp = true
+            overheatingSensorList.append(2)
+        }
+        
+        // Check T4
+        if currentTemperatures.values[3] >= Constants.OVERHEATING_T4_THRESHOLD {
+            anyOverTemp = true
+            overheatingSensorList.append(3)
+        }
+        
+        // Check T5-T8
+        for i in 4...7 {
+            if currentTemperatures.values[i] >= Constants.OVERHEATING_T5_T8_THRESHOLD {
+                anyOverTemp = true
+                overheatingSensorList.append(i)
+            }
+        }
+        
+        // Update observable variables
+        self.overheating = anyOverTemp
+        self.overheatingSensors = overheatingSensorList
     }
     
     private func addDataToLog(_ dataPoint: LoggedProbeDataPoint) {

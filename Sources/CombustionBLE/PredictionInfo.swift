@@ -34,7 +34,7 @@ public struct PredictionInfo {
     public let predictionSetPointTemperature: Double
     public let estimatedCoreTemperature: Double
     
-    public let secondRemainings: UInt?
+    public let secondsRemaining: UInt?
     public let percentThroughCook: Int
 }
 
@@ -60,7 +60,7 @@ extension PredictionInfo {
                            sequenceNumber: UInt32) -> PredictionInfo? {
         guard let status = predictionStatus else { return nil}
         
-        let secondsRemainings = secondRemainings(predictionStatus: status,
+        let secondsRemaining = secondsRemaining(predictionStatus: status,
                                                previousInfo: previousInfo,
                                                sequenceNumber: sequenceNumber)
         
@@ -69,18 +69,18 @@ extension PredictionInfo {
                               predictionType: status.predictionType,
                               predictionSetPointTemperature: status.predictionSetPointTemperature,
                               estimatedCoreTemperature: status.estimatedCoreTemperature,
-                              secondRemainings: secondsRemainings,
+                              secondsRemaining: secondsRemaining,
                               percentThroughCook: percentThroughCook(predictionStatus: status))
     }
     
 
-    private static func secondRemainings(predictionStatus: PredictionStatus,
+    private static func secondsRemaining(predictionStatus: PredictionStatus,
                                         previousInfo: PredictionInfo?,
                                         sequenceNumber: UInt32) -> UInt? {
         // Do not return a value if above max seconds remaining
         guard predictionStatus.predictionValueSeconds <= Constants.MAX_PREDICTION_TIME else { return nil }
         
-        let previousSecondsRemaining = previousInfo?.secondRemainings
+        let previousSecondsRemaining = previousInfo?.secondsRemaining
         
         if(predictionStatus.predictionValueSeconds > Constants.LOW_RESOLUTION_CUTOFF_SECONDS) {
             // If the prediction is longer than the low-resolution cutoff, only update every few samples

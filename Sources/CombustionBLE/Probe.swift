@@ -29,7 +29,6 @@ import Foundation
 
 /// Struct containing info about a Probe device.
 public class Probe : Device {
-
     
     /// Probe serial number
     @Published public private(set) var serialNumber: UInt32
@@ -38,7 +37,6 @@ public class Probe : Device {
     public var serialNumberString : String {
         return String(format: "%08X", serialNumber)
     }
- 
     
     @Published public private(set) var currentTemperatures: ProbeTemperatures? {
         didSet {
@@ -67,9 +65,6 @@ public class Probe : Device {
     
     @Published public private(set) var predictionInfo: PredictionInfo?
     @Published public private(set) var predictionStale = false
-    
-    /// Time at which prediction was last updated
-    private var lastPredictionUpdateTime = Date()
     
     public struct VirtualTemperatures {
         public let coreTemperature: Double
@@ -125,9 +120,11 @@ public class Probe : Device {
     /// Last hop count that updated 'normal mode' info (nil = direct from Probe)
     internal var lastNormalModeHopCount : HopCount? = nil
 
+    private var predictionManager: PredictionManager
    
-    
     init(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, identifier: UUID?) {
+        predictionManager = PredictionManager()
+        
         serialNumber = advertising.serialNumber
         id = advertising.modeId.id
         color = advertising.modeId.color
@@ -135,6 +132,8 @@ public class Probe : Device {
         super.init(uniqueIdentifier: String(advertising.serialNumber), bleIdentifier: identifier, RSSI: RSSI)
         
         updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI, bleIdentifier: identifier)
+        
+        predictionManager.delegate = self
     }
     
     override func updateConnectionState(_ state: ConnectionState) {
@@ -153,7 +152,8 @@ public class Probe : Device {
             instantReadTemperature = nil
         }
         
-        predictionStale = Date().timeIntervalSince(lastPredictionUpdateTime) > Constants.PREDICTION_STALE_TIMEOUT
+        // Update prediction stale flag
+        predictionStale = predictionManager.isPredictionStale()
         
         super.updateDeviceStale()
     }
@@ -164,9 +164,6 @@ extension Probe {
     private enum Constants {
         /// Instant read is considered stale after 5 seconds
         static let INSTANT_READ_STALE_TIMEOUT = 5.0
-        
-        /// Prediction is considered stale after 15 seconds
-        static let PREDICTION_STALE_TIMEOUT = 15.0
           
         /// Number of seconds to ignore other lower-priority (higher hop count) sources of information for Instant Read
         static let INSTANT_READ_LOCK_TIMEOUT = 1.0
@@ -260,7 +257,8 @@ extension Probe {
                 maxSequenceNumber = deviceStatus.maxSequenceNumber
          
                 // Prediction status and Virtual Sensors are only transmitted in "Normal" status updates
-                updatePredictionStatus(deviceStatus.predictionStatus, sequenceNumber: deviceStatus.maxSequenceNumber)
+                predictionManager.updatePredictionStatus(deviceStatus.predictionStatus,
+                                                         sequenceNumber: deviceStatus.maxSequenceNumber)
                 virtualSensors = deviceStatus.batteryStatusVirtualSensors.virtualSensors
                 
                 // Log the temperature data point for "Normal" status updates
@@ -460,17 +458,6 @@ extension Probe {
         }
     }
     
-    private func updatePredictionStatus(_ predictionStatus: PredictionStatus?, sequenceNumber: UInt32) {
-        // Update prediction information with latest prediction status from probe
-        predictionInfo = PredictionInfo.fromStatus(predictionStatus,
-                                                   previousInfo: predictionInfo,
-                                                   sequenceNumber: sequenceNumber)
-        
-        // TODO setup timer for linearization
-        
-        lastPredictionUpdateTime = Date()
-    }
-    
     private func updateVirtualTemperatures() {
         guard let virtualSensors = virtualSensors,
               let currentTemperatures = currentTemperatures else {
@@ -491,5 +478,11 @@ extension Probe {
         virtualTemperatures = VirtualTemperatures(coreTemperature: core,
                                                   surfaceTemperature: surface,
                                                   ambientTemperature: ambient)
+    }
+}
+
+extension Probe: PredictionManagerDelegate {
+    func publishPredictionInfo(info: PredictionInfo?) {
+        self.predictionInfo = info
     }
 }

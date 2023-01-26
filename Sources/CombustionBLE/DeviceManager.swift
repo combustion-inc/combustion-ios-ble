@@ -611,7 +611,7 @@ extension DeviceManager : BleManagerDelegate {
     ///////////////////////////////////////
     
     func handleNodeUARTResponse(identifier: UUID, response: NodeResponse) {
-        print("Received Response from Node: \(response)")
+//        print("Received Response from Node: \(response)")
         
         if let setPredictionResponse = response as? NodeSetPredictionResponse {
             messageHandlers.callNodeSetPredictionCompletionHandler(identifier, response: setPredictionResponse)
@@ -619,7 +619,7 @@ extension DeviceManager : BleManagerDelegate {
     }
     
     func handleNodeUARTRequest(identifier: UUID, request: NodeRequest) {
-        print("Received Request from Node: \(request)")
+//        print("Received Request from Node: \(request)")
         if let statusRequest = request as? NodeProbeStatusRequest, let probeStatus = statusRequest.probeStatus, let hopCount = statusRequest.hopCount {
             // Update the Probe based on the information that was received
             updateDeviceWithNodeStatus(serialNumber: statusRequest.serialNumber,

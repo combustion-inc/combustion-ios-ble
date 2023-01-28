@@ -99,7 +99,7 @@ public class Device : ObservableObject {
     private var dfuServiceController: DFUServiceController? = nil
     
     /// Time at which device was last updated
-    internal var lastUpdateTime = Date()
+    @Published public internal(set) var lastUpdateTime = Date()
     
     public init(uniqueIdentifier: String, bleIdentifier: UUID?, RSSI: NSNumber?) {
         self.uniqueIdentifier = uniqueIdentifier

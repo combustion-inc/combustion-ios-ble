@@ -104,6 +104,9 @@ public class Probe : Device {
     /// Array of sensor indexes that are overheating
     @Published public private(set) var overheatingSensors: [Int] = []
     
+    /// Tracks the most recent time a status notification was received.
+    @Published public internal(set) var lastStatusNotificationTime = Date()
+    
     
     private var sessionInformation: SessionInformation?
     
@@ -309,7 +312,10 @@ extension Probe {
             }
         }
 
+        // Update most recent status notification time
+        lastStatusNotificationTime = Date()
         
+        // Update time of most recent update of any type
         lastUpdateTime = Date()
     }
     

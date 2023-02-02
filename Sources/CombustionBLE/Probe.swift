@@ -64,7 +64,6 @@ public class Probe : Device {
     }
     
     @Published public private(set) var predictionInfo: PredictionInfo?
-    @Published public private(set) var predictionStale = false
     
     public struct VirtualTemperatures {
         public let coreTemperature: Double
@@ -107,6 +106,9 @@ public class Probe : Device {
     /// Tracks the most recent time a status notification was received.
     @Published public internal(set) var lastStatusNotificationTime = Date()
     
+    /// Tracks whether status notification data has become stale.
+    @Published public private(set) var statusNotificationsStale = false
+    
     
     private var sessionInformation: SessionInformation?
     
@@ -148,6 +150,11 @@ public class Probe : Device {
         super.updateConnectionState(state)
     }
     
+    func updateStatusNotificationsStale() {
+        statusNotificationsStale = Date().timeIntervalSince(lastStatusNotificationTime) > Constants.STATUS_NOTIFICATION_STALE_TIMEOUT
+    }
+    
+    /// Updates whether the device is stale. Called on a timer interval by DeviceManager.
     override func updateDeviceStale() {
         // Clear instantReadTemperature if its been longer than timeout since last update
         if let lastInstantRead = lastInstantRead,
@@ -155,8 +162,8 @@ public class Probe : Device {
             instantReadTemperature = nil
         }
         
-        // Update prediction stale flag
-        predictionStale = predictionManager.isPredictionStale()
+        // Update whether status notifications are stale
+        updateStatusNotificationsStale()
         
         super.updateDeviceStale()
     }
@@ -173,6 +180,9 @@ extension Probe {
         
         /// Number of seconds to ignore other lower-priority (higher hop count) sources of information for Normal Mode
         static let NORMAL_MODE_LOCK_TIMEOUT = 5.0
+        
+        /// Number of seconds after which status notifications should be considered stale.
+        static let STATUS_NOTIFICATION_STALE_TIMEOUT = 16.0
         
         
         /// Overheating thresholds (in degrees C) for T1 and T2
@@ -314,6 +324,8 @@ extension Probe {
 
         // Update most recent status notification time
         lastStatusNotificationTime = Date()
+        // Update whether status notifications are stale
+        updateStatusNotificationsStale()
         
         // Update time of most recent update of any type
         lastUpdateTime = Date()

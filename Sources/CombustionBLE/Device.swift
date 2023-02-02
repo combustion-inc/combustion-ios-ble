@@ -129,6 +129,7 @@ public class Device : ObservableObject {
         }
     }
     
+    /// Updates whether the device is stale. Called on a timer interval by DeviceManager.
     func updateDeviceStale() {
         stale = Date().timeIntervalSince(lastUpdateTime) > Constants.STALE_TIMEOUT
         

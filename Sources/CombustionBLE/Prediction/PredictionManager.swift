@@ -180,6 +180,10 @@ class PredictionManager {
         guard let previousInfo = previousPredictionInfo else { return }
 
         currentLinearizationMs -= linearizationTimerUpdateValue
+        // Don't let the linerization value go below 0 or the UInt conversion will crash.
+        if(currentLinearizationMs < 0.0) {
+            currentLinearizationMs = 0.0
+        }
         
         let secondsRemaining = UInt(currentLinearizationMs / 1000.0)
         

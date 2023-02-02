@@ -58,9 +58,6 @@ class PredictionManager {
     
     weak var delegate: PredictionManagerDelegate?
 
-    /// Time at which prediction was last updated
-    private var lastPredictionUpdateTime = Date()
-    
     private var previousPredictionInfo: PredictionInfo?
     private var previousSequenceNumber: UInt32?
     
@@ -69,17 +66,7 @@ class PredictionManager {
     private var currentLinearizationMs: Double = 0
     
     private var linearizationTimer = Timer()
-    
-    func isPredictionStale() -> Bool {
-        let predictionStale = Date().timeIntervalSince(lastPredictionUpdateTime) > Constants.PREDICTION_STALE_TIMEOUT
-        
-        // If the prediction is now stale, then stop the linearization timer
-        if(predictionStale) {
-            clearLinearizationTimer()
-        }
-        
-        return predictionStale
-    }
+    private var staleTimer = Timer()
     
     func updatePredictionStatus(_ predictionStatus: PredictionStatus?, sequenceNumber: UInt32) {
         // Ignore calls with duplicate predictionStatus
@@ -99,7 +86,14 @@ class PredictionManager {
         // Publish new prediction info
         publishPredictionInfo(predictionInfo)
         
-        lastPredictionUpdateTime = Date()
+        // Clear previous staleness timer.
+        staleTimer.invalidate()
+        // Restart 'staleness' timer.
+        let intervalSeconds = Constants.PREDICTION_STALE_TIMEOUT;
+        staleTimer = Timer.scheduledTimer(withTimeInterval: intervalSeconds, repeats: false, block: { _ in
+            // If updates have gone stale (not arrived in some time), restart the timer.
+            self.clearLinearizationTimer()
+        })
     }
     
     private func infoFromStatus(_ predictionStatus: PredictionStatus?,

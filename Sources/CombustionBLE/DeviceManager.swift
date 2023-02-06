@@ -454,6 +454,9 @@ extension DeviceManager : BleManagerDelegate {
                 if let node = devices[uniqueIdentifier] as? MeatNetNode {
                     node.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
                     
+                    // If MeatNet is enabled, try to connect to all Nodes.
+                    node.connect()
+                    
                     // Also update the probe associated with this advertising data
                     if let probe = updateProbeWithAdvertising(advertising: advertising, isConnectable: nil, rssi: nil, identifier: nil) {
                         node.updateNetworkedProbe(probe: probe)
@@ -464,7 +467,7 @@ extension DeviceManager : BleManagerDelegate {
                     addDevice(device: node)
                     
                     // If MeatNet is enabled, try to connect to all Nodes.
-                    connectToDevice(node)
+                    node.connect()
                     
                     // Also update the probe associated with this advertising data
                     if let probe = updateProbeWithAdvertising(advertising: advertising, isConnectable: nil, rssi: nil, identifier: nil) {

@@ -35,6 +35,10 @@ public enum VirtualCoreSensor: UInt8 {
     case T6 = 0x05
     
     static let MASK: UInt8 = 0x7
+    
+    public func temperatureFrom(_ temperatures: ProbeTemperatures) -> Double {
+        return temperatures.values[Int(self.rawValue)]
+    }
 }
 
 public enum VirtualSurfaceSensor: UInt8 {
@@ -44,6 +48,12 @@ public enum VirtualSurfaceSensor: UInt8 {
     case T7 = 0x03
     
     static let MASK: UInt8 = 0x3
+    
+    public func temperatureFrom(_ temperatures: ProbeTemperatures) -> Double {
+        // Surface range is T4 - T7, therefore add 3
+        let surfaceSensorNumber = Int(self.rawValue) + 3
+        return temperatures.values[surfaceSensorNumber]
+    }
 }
 
 public enum VirtualAmbientSensor: UInt8 {
@@ -53,6 +63,12 @@ public enum VirtualAmbientSensor: UInt8 {
     case T8 = 0x03
     
     static let MASK: UInt8 = 0x3
+    
+    public func temperatureFrom(_ temperatures: ProbeTemperatures) -> Double {
+        // Ambient range is T5 - T8, therefore add 4
+        let ambientSensorNumber = Int(self.rawValue) + 4
+        return temperatures.values[ambientSensorNumber]
+    }
 }
 
 public struct VirtualSensors {

@@ -49,7 +49,7 @@ public struct CSV {
         output.append("")
         
         // Header
-        output.append("Timestamp,SessionID,SequenceNumber,T1,T2,T3,T4,T5,T6,T7,T8,PredictionState,VirtualCoreSensor,VirtualSurfaceSensor,VirtualAmbientSensor")
+        output.append("Timestamp,SessionID,SequenceNumber,T1,T2,T3,T4,T5,T6,T7,T8,VirtualCoreSensor,VirtualCoreTemperature,VirtualSurfaceSensor,VirtualSurfaceTemperature,VirtualAmbientSensor,VirtualAmbientTemperature,PredictionState,PredictionSetPoint,PredictionValueSeconds,EstimatedCoreTemperature")
         
         // Add temperature data points
         if let firstSessionStart = probe.temperatureLogs.first?.startTime?.timeIntervalSince1970 {
@@ -69,7 +69,7 @@ public struct CSV {
                         timeStamp = dataPointSeconds + sessionStartTimeDiff
                     }
                     
-                    output.append(String(format: "%.3f,%u,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d,%d,%d,%d",
+                    output.append(String(format: "%.3f,%u,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d,%.2f,%d,%.2f,%d,%.2f,%d,%.2f,%d,%.2f",
                                          timeStamp,
                                          session.id,
                                          dataPoint.sequenceNum,
@@ -77,10 +77,17 @@ public struct CSV {
                                          dataPoint.temperatures.values[2], dataPoint.temperatures.values[3],
                                          dataPoint.temperatures.values[4], dataPoint.temperatures.values[5],
                                          dataPoint.temperatures.values[6], dataPoint.temperatures.values[7],
-                                         dataPoint.virtualSensorsPredictionState.predictionState.rawValue,
-                                         dataPoint.virtualSensorsPredictionState.virtualSensors.virtualCore.rawValue,
-                                         dataPoint.virtualSensorsPredictionState.virtualSensors.virtualSurface.rawValue,
-                                         dataPoint.virtualSensorsPredictionState.virtualSensors.virtualAmbient.rawValue))
+                                         dataPoint.virtualCore.rawValue,
+                                         dataPoint.virtualCore.temperatureFrom(dataPoint.temperatures),
+                                         dataPoint.virtualSurface.rawValue,
+                                         dataPoint.virtualSurface.temperatureFrom(dataPoint.temperatures),
+                                         dataPoint.virtualAmbient.rawValue,
+                                         dataPoint.virtualAmbient.temperatureFrom(dataPoint.temperatures),
+                                         dataPoint.predictionState.rawValue,
+                                         dataPoint.predictionSetPointTemperature,
+                                         dataPoint.predictionValueSeconds,
+                                         dataPoint.estimatedCoreTemperature
+                                        ))
                 }
             }
         }

@@ -483,15 +483,9 @@ extension Probe {
             return
         }
         
-        let core = currentTemperatures.values[Int(virtualSensors.virtualCore.rawValue)]
-        
-        // Surface range is T4 - T7, therefore add 3
-        let surfaceSensorNumber = Int(virtualSensors.virtualSurface.rawValue) + 3
-        let surface = currentTemperatures.values[surfaceSensorNumber]
-        
-        // Ambient range is T5 - T8, therefore add 4
-        let ambientSensorNumber = Int(virtualSensors.virtualAmbient.rawValue) + 4
-        let ambient =  currentTemperatures.values[ambientSensorNumber]
+        let core = virtualSensors.virtualCore.temperatureFrom(currentTemperatures)
+        let surface = virtualSensors.virtualSurface.temperatureFrom(currentTemperatures)
+        let ambient = virtualSensors.virtualAmbient.temperatureFrom(currentTemperatures)
         
         virtualTemperatures = VirtualTemperatures(coreTemperature: core,
                                                   surfaceTemperature: surface,

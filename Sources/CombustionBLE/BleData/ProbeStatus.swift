@@ -39,7 +39,7 @@ struct ProbeStatus {
     /// Battery Status and Virtual Sensors
     let batteryStatusVirtualSensors: BatteryStatusVirtualSensors
     // Prediction Status
-    let predictionStatus: PredictionStatus?
+    let predictionStatus: PredictionStatus
 }
 
 extension ProbeStatus {
@@ -54,7 +54,7 @@ extension ProbeStatus {
     }
     
     init?(fromData data: Data) {
-        guard data.count >= Constants.TEMPERATURE_RANGE.endIndex else { return nil }
+        guard data.count >= Constants.PREDICTION_STATUS_RANGE.endIndex else { return nil }
         
         let minRaw = data.subdata(in: Constants.MIN_SEQ_RANGE)
         minSequenceNumber = minRaw.withUnsafeBytes {
@@ -70,28 +70,16 @@ extension ProbeStatus {
         let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
         temperatures = ProbeTemperatures.fromRawData(data: tempData)
         
-        // Decode ModeId byte if present
-        if(data.count >= Constants.MODE_COLOR_ID_RANGE.endIndex) {
-            let byte = data.subdata(in: Constants.MODE_COLOR_ID_RANGE)[0]
-            modeId = ModeId.fromByte(byte)
-        } else {
-            modeId = ModeId.defaultValues()
-        }
+        // Decode ModeId byte
+        let byte = data.subdata(in: Constants.MODE_COLOR_ID_RANGE)[0]
+        modeId = ModeId.fromByte(byte)
         
-        // Decode battery status & virutal sensors if present
-        if(data.count >= Constants.DEVICE_STATUS_RANGE.endIndex) {
-            let byte = data.subdata(in: Constants.DEVICE_STATUS_RANGE)[0]
-            batteryStatusVirtualSensors = BatteryStatusVirtualSensors.fromByte(byte)
-        } else {
-            batteryStatusVirtualSensors = BatteryStatusVirtualSensors.defaultValues()
-        }
-
-        // Decode Prediction Status if present
-        if(data.count >= Constants.PREDICTION_STATUS_RANGE.endIndex) {
-            let bytes = [UInt8](data.subdata(in: Constants.PREDICTION_STATUS_RANGE))
-            predictionStatus = PredictionStatus.fromBytes(bytes)
-        } else {
-            predictionStatus = nil
-        }
+        // Decode battery status & virutal sensors
+        let batteryByte = data.subdata(in: Constants.DEVICE_STATUS_RANGE)[0]
+        batteryStatusVirtualSensors = BatteryStatusVirtualSensors.fromByte(batteryByte)
+        
+        // Decode Prediction Status
+        let bytes = [UInt8](data.subdata(in: Constants.PREDICTION_STATUS_RANGE))
+        predictionStatus = PredictionStatus.fromBytes(bytes)
     }
 }

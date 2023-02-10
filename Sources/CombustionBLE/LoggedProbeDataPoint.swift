@@ -29,6 +29,7 @@ import Foundation
 public struct LoggedProbeDataPoint: Equatable {
     public let sequenceNum: UInt32
     public let temperatures: ProbeTemperatures
+    public let virtualSensorsPredictionState: VirtualSensorsPredictionState
 }
 
 /// Record representing a logged temperature data point retrieved from a probe
@@ -37,13 +38,20 @@ extension LoggedProbeDataPoint {
     /// Generates a LoggedProbeDataPoint from a previously-parsed DeviceStatus record.
     /// - parameter ProbeStatus: ProbeStatus instance
     static func fromDeviceStatus(deviceStatus: ProbeStatus) -> LoggedProbeDataPoint {
+        let virtualSensors = deviceStatus.batteryStatusVirtualSensors.virtualSensors
+        let predictionState = deviceStatus.predictionStatus.predictionState
+        let virtualSensorsPredictionState = VirtualSensorsPredictionState(predictionState: predictionState,
+                                                                              virtualSensors: virtualSensors)
+
         return LoggedProbeDataPoint(sequenceNum: deviceStatus.maxSequenceNumber,
-                                    temperatures: deviceStatus.temperatures)
+                                    temperatures: deviceStatus.temperatures,
+                                    virtualSensorsPredictionState: virtualSensorsPredictionState)
     }
     
     static func fromLogResponse(logResponse: LogResponse) -> LoggedProbeDataPoint {
         return LoggedProbeDataPoint(sequenceNum: logResponse.sequenceNumber,
-                                    temperatures: logResponse.temperatures)
+                                    temperatures: logResponse.temperatures,
+                                    virtualSensorsPredictionState: logResponse.virtualSensorsPredictionState)
     }
 }
 
@@ -66,7 +74,16 @@ extension LoggedProbeDataPoint {
             400.0
         ]
         let temperatures = ProbeTemperatures (values: values)
-        return LoggedProbeDataPoint(sequenceNum: S.sequenceNum, temperatures: temperatures)
+        
+        let virtualSensors = VirtualSensors(virtualCore: .T1,
+                                            virtualSurface: .T4,
+                                            virtualAmbient: .T8)
+        let virtualSensorsPredictionState = VirtualSensorsPredictionState(predictionState: PredictionState.cooking,
+                                                                          virtualSensors: virtualSensors)
+        
+        return LoggedProbeDataPoint(sequenceNum: S.sequenceNum,
+                                    temperatures: temperatures,
+                                    virtualSensorsPredictionState: virtualSensorsPredictionState)
     }
 }
 

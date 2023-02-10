@@ -26,9 +26,9 @@ SOFTWARE.
 
 import Foundation
 
-struct VirtualSensorsPredictionState {
-    let predictionState: PredictionState
-    let virtualSensors: VirtualSensors
+public struct VirtualSensorsPredictionState {
+    public let predictionState: PredictionState
+    public let virtualSensors: VirtualSensors
 }
 
 extension VirtualSensorsPredictionState {

@@ -29,6 +29,15 @@ import Foundation
 public struct LoggedProbeDataPoint: Equatable {
     public let sequenceNum: UInt32
     public let temperatures: ProbeTemperatures
+    public let virtualCore: VirtualCoreSensor
+    public let virtualSurface: VirtualSurfaceSensor
+    public let virtualAmbient: VirtualAmbientSensor
+    public let predictionState: PredictionState
+    public let predictionMode: PredictionMode
+    public let predictionType: PredictionType
+    public let predictionSetPointTemperature: Double
+    public let predictionValueSeconds: UInt
+    public let estimatedCoreTemperature: Double
 }
 
 /// Record representing a logged temperature data point retrieved from a probe
@@ -38,12 +47,30 @@ extension LoggedProbeDataPoint {
     /// - parameter ProbeStatus: ProbeStatus instance
     static func fromDeviceStatus(deviceStatus: ProbeStatus) -> LoggedProbeDataPoint {
         return LoggedProbeDataPoint(sequenceNum: deviceStatus.maxSequenceNumber,
-                                    temperatures: deviceStatus.temperatures)
+                                    temperatures: deviceStatus.temperatures,
+                                    virtualCore: deviceStatus.batteryStatusVirtualSensors.virtualSensors.virtualCore,
+                                    virtualSurface: deviceStatus.batteryStatusVirtualSensors.virtualSensors.virtualSurface,
+                                    virtualAmbient: deviceStatus.batteryStatusVirtualSensors.virtualSensors.virtualAmbient,
+                                    predictionState: deviceStatus.predictionStatus.predictionState,
+                                    predictionMode: deviceStatus.predictionStatus.predictionMode,
+                                    predictionType: deviceStatus.predictionStatus.predictionType,
+                                    predictionSetPointTemperature: deviceStatus.predictionStatus.predictionSetPointTemperature,
+                                    predictionValueSeconds: deviceStatus.predictionStatus.predictionValueSeconds,
+                                    estimatedCoreTemperature: deviceStatus.predictionStatus.estimatedCoreTemperature)
     }
     
     static func fromLogResponse(logResponse: LogResponse) -> LoggedProbeDataPoint {
         return LoggedProbeDataPoint(sequenceNum: logResponse.sequenceNumber,
-                                    temperatures: logResponse.temperatures)
+                                    temperatures: logResponse.temperatures,
+                                    virtualCore: logResponse.predictionLog.virtualSensors.virtualCore,
+                                    virtualSurface: logResponse.predictionLog.virtualSensors.virtualSurface,
+                                    virtualAmbient: logResponse.predictionLog.virtualSensors.virtualAmbient,
+                                    predictionState: logResponse.predictionLog.predictionState,
+                                    predictionMode: logResponse.predictionLog.predictionMode,
+                                    predictionType: logResponse.predictionLog.predictionType,
+                                    predictionSetPointTemperature: logResponse.predictionLog.predictionSetPointTemperature,
+                                    predictionValueSeconds: UInt(logResponse.predictionLog.predictionValueSeconds),
+                                    estimatedCoreTemperature: logResponse.predictionLog.estimatedCoreTemperature)
     }
 }
 
@@ -66,7 +93,18 @@ extension LoggedProbeDataPoint {
             400.0
         ]
         let temperatures = ProbeTemperatures (values: values)
-        return LoggedProbeDataPoint(sequenceNum: S.sequenceNum, temperatures: temperatures)
+        
+        return LoggedProbeDataPoint(sequenceNum: S.sequenceNum,
+                                    temperatures: temperatures,
+                                    virtualCore: .T1,
+                                    virtualSurface: .T5,
+                                    virtualAmbient: .T8,
+                                    predictionState: .cooking,
+                                    predictionMode: .removalAndResting,
+                                    predictionType: .removal,
+                                    predictionSetPointTemperature: 54.4,
+                                    predictionValueSeconds: 600,
+                                    estimatedCoreTemperature: 30.0)
     }
 }
 

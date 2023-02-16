@@ -29,16 +29,16 @@ import Foundation
 class LogResponse: Response {
     
     enum Constants {
-        static let MINIMUM_PAYLOAD_LENGTH = 17
+        static let MINIMUM_PAYLOAD_LENGTH = 19
         
         static let SEQUENCE_RANGE = Response.HEADER_LENGTH..<(Response.HEADER_LENGTH + 4)
         static let TEMPERATURE_RANGE = (Response.HEADER_LENGTH + 4)..<(Response.HEADER_LENGTH + 17)
-        static let SENSOR_RANGE = (Response.HEADER_LENGTH + 17)..<(Response.HEADER_LENGTH + 19)
+        static let PREDICTION_LOG_RANGE = (Response.HEADER_LENGTH + 17)..<(Response.HEADER_LENGTH + 24)
     }
     
     let sequenceNumber: UInt32
     let temperatures: ProbeTemperatures
-    let virtualSensorsPredictionState: VirtualSensorsPredictionState?
+    let predictionLog: PredictionLog
     
     init(data: Data, success: Bool, payloadLength: Int) {
         let sequenceRaw = data.subdata(in: Constants.SEQUENCE_RANGE)
@@ -50,17 +50,9 @@ class LogResponse: Response {
         let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
         temperatures = ProbeTemperatures.fromRawData(data: tempData)
         
-        // Virtual sensors and Prediction state
-        if(payloadLength >= 19) {
-            let sensorData = data.subdata(in: Constants.SENSOR_RANGE)
-            let sensorValue = sensorData.withUnsafeBytes {
-                $0.load(as: UInt16.self)
-            }
-            virtualSensorsPredictionState = VirtualSensorsPredictionState.fromBytes(sensorValue)
-        }
-        else {
-            virtualSensorsPredictionState = nil
-        }
+        // Prediction Log
+        let predictionLogData = data.subdata(in: Constants.PREDICTION_LOG_RANGE)
+        predictionLog = PredictionLog.fromRaw(data: predictionLogData)
 
         super.init(success: success, payLoadLength: payloadLength)
     }

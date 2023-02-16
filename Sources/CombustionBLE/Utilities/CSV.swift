@@ -39,7 +39,7 @@ public struct CSV {
         
         output.append("Combustion Inc. Probe Data")
         output.append("App: iOS \(appVersion)")
-        output.append("CSV version: 3")
+        output.append("CSV version: 4")
         output.append("Probe S/N: \(String(format: "%4X", probe.serialNumber))")
         output.append("Probe FW version: \(probe.firmareVersion ?? "??")")
         output.append("Probe HW revision: \(probe.hardwareRevision ?? "??")")
@@ -49,7 +49,7 @@ public struct CSV {
         output.append("")
         
         // Header
-        output.append("Timestamp,SessionID,SequenceNumber,T1,T2,T3,T4,T5,T6,T7,T8")
+        output.append("Timestamp,SessionID,SequenceNumber,T1,T2,T3,T4,T5,T6,T7,T8,VirtualCoreTemperature,VirtualSurfaceTemperature,VirtualAmbientTemperature,EstimatedCoreTemperature,PredictionSetPoint,VirtualCoreSensor,VirtualSurfaceSensor,VirtualAmbientSensor,PredictionState,PredictionMode,PredictionType,PredictionValueSeconds")
         
         // Add temperature data points
         if let firstSessionStart = probe.temperatureLogs.first?.startTime?.timeIntervalSince1970 {
@@ -68,16 +68,28 @@ public struct CSV {
                         // Number of seconds between current data point and first session start
                         timeStamp = dataPointSeconds + sessionStartTimeDiff
                     }
-
                     
-                    output.append(String(format: "%.3f,%u,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f",
+                    output.append(String(format: "%.3f,%u,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d,%d,%d,%d,%d,%d,%d",
                                          timeStamp,
                                          session.id,
                                          dataPoint.sequenceNum,
                                          dataPoint.temperatures.values[0], dataPoint.temperatures.values[1],
                                          dataPoint.temperatures.values[2], dataPoint.temperatures.values[3],
                                          dataPoint.temperatures.values[4], dataPoint.temperatures.values[5],
-                                         dataPoint.temperatures.values[6], dataPoint.temperatures.values[7]))
+                                         dataPoint.temperatures.values[6], dataPoint.temperatures.values[7],
+                                         dataPoint.virtualCore.temperatureFrom(dataPoint.temperatures),
+                                         dataPoint.virtualSurface.temperatureFrom(dataPoint.temperatures),
+                                         dataPoint.virtualAmbient.temperatureFrom(dataPoint.temperatures),
+                                         dataPoint.estimatedCoreTemperature,
+                                         dataPoint.predictionSetPointTemperature,
+                                         dataPoint.virtualCore.rawValue,
+                                         dataPoint.virtualSurface.rawValue,
+                                         dataPoint.virtualAmbient.rawValue,
+                                         dataPoint.predictionState.rawValue,
+                                         dataPoint.predictionMode.rawValue,
+                                         dataPoint.predictionType.rawValue,
+                                         dataPoint.predictionValueSeconds
+                                        ))
                 }
             }
         }
@@ -96,7 +108,7 @@ public struct CSV {
         dateFormatter.dateFormat = "yyyy-MM-dd HH_mm_ss"
         let dateString = dateFormatter.string(from: date)
         
-        let filename = "Probe Data - \(String(format: "%4X", probe.serialNumber)) - \(dateString).csv"
+        let filename = "ProbeData_\(String(format: "%4X", probe.serialNumber))_\(dateString).csv"
         
         // Generate the CSV
         let csv = probeDataToCsv(probe: probe, appVersion: appVersion, date: date)
@@ -108,7 +120,6 @@ public struct CSV {
         
         do {
             try csv.write(to: csvURL, atomically: true, encoding: String.Encoding.utf8)
-            
         } catch {
             // Failed to write file, return nothing
             return nil

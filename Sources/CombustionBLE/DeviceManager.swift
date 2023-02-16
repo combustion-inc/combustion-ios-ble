@@ -531,7 +531,7 @@ extension DeviceManager : BleManagerDelegate {
     }
     
     func updateDeviceSerialNumber(identifier: UUID, serialNumber: String) {
-        if let timer = devices[identifier.uuidString] as? Display {
+        if let timer = findDeviceByBleIdentifier(bleIdentifier: identifier) as? Display {
             timer.serialNumberString = serialNumber
         }
     }
@@ -598,13 +598,13 @@ extension DeviceManager : BleManagerDelegate {
     private func updateDeviceWithLogResponse(identifier: UUID, logResponse: LogResponse) {
         guard logResponse.success else { return }
         
-        if let probe = devices[identifier.uuidString] as? Probe {
+        if let probe = findDeviceByBleIdentifier(bleIdentifier: identifier) as? Probe {
             probe.processLogResponse(logResponse: logResponse)
         }
     }
     
     private func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation) {
-        if let probe = devices[identifier.uuidString] as? Probe {
+        if let probe = findDeviceByBleIdentifier(bleIdentifier: identifier) as? Probe {
             probe.updateWithSessionInformation(sessionInformation)
         }
     }

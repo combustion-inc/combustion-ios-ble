@@ -38,11 +38,7 @@ public class Probe : Device {
         return String(format: "%08X", serialNumber)
     }
     
-    @Published public private(set) var currentTemperatures: ProbeTemperatures? {
-        didSet {
-            updateVirtualTemperatures()
-        }
-    }
+    @Published public private(set) var currentTemperatures: ProbeTemperatures?
     
     @Published public private(set) var instantReadTemperature: Double?
     
@@ -57,11 +53,7 @@ public class Probe : Device {
     
     @Published public private(set) var batteryStatus: BatteryStatus = .ok
     
-    @Published public private(set) var virtualSensors: VirtualSensors? {
-        didSet {
-            updateVirtualTemperatures()
-        }
-    }
+    @Published public private(set) var virtualSensors: VirtualSensors?
     
     @Published public private(set) var predictionInfo: PredictionInfo?
     
@@ -142,9 +134,11 @@ public class Probe : Device {
     }
     
     override func updateConnectionState(_ state: ConnectionState) {
-        // Clear session information on disconnect, since probe may have reset
+        // Clear session information and sequence numbers on on disconnect, since probe may have reset
         if (state == .disconnected) {
             sessionInformation = nil
+            maxSequenceNumber = nil
+            minSequenceNumber = nil
         }
         
         super.updateConnectionState(state)
@@ -215,27 +209,24 @@ extension Probe {
         
         // Only update rest of data if not connected to probe.  Otherwise, rely on status
         // notifications to update data
-        if(connectionState != .connected)
-        {
+        if(connectionState != .connected) {
             if(advertising.modeId.mode == .normal) {
                 // If we should update normal mode, do so, but since this is Advertising info
                 // and does not contain Prediction information, DO NOT lock it out. We want to
                 // ensure the Prediction info gets updated over a Status notification if one
                 // comes in.
                 if(shouldUpdateNormalMode(hopCount: advertising.hopCount)) {
-                    currentTemperatures = advertising.temperatures
+                    // Update ID, Color, Battery status
+                    updateIdColorBattery(probeId: advertising.modeId.id,
+                                         probeColor: advertising.modeId.color,
+                                         probeBatteryStatus: advertising.batteryStatusVirtualSensors.batteryStatus)
                     
-                    id = advertising.modeId.id
-                    color = advertising.modeId.color
-                    batteryStatus = advertising.batteryStatusVirtualSensors.batteryStatus
-                    virtualSensors = advertising.batteryStatusVirtualSensors.virtualSensors
-                    
-                    // Check if the probe is overheating
-                    checkOverheating()
+                    // Update temperatures, virtual sensors, and check for overheating
+                    updateTemperatures(temperatures: advertising.temperatures,
+                                       virtualSensors: advertising.batteryStatusVirtualSensors.virtualSensors)
                     
                     lastUpdateTime = Date()
                 }
-            
             }
             else if(advertising.modeId.mode == .instantRead) {
                 // Update Instant Read temperature, providing hop count information to prioritize it.
@@ -247,9 +238,7 @@ extension Probe {
                     
                     lastUpdateTime = Date()
                 }
-
             }
-            
         }
     }
     
@@ -259,27 +248,26 @@ extension Probe {
         var updated : Bool = false
         
         if(deviceStatus.modeId.mode == .normal) {
-            if(shouldUpdateNormalMode(hopCount: hopCount)) {
-                // Update ID, Color, Battery Status
-                id = deviceStatus.modeId.id
-                color = deviceStatus.modeId.color
-                batteryStatus = deviceStatus.batteryStatusVirtualSensors.batteryStatus
+            if(shouldUpdateNormalMode(hopCount: hopCount) && isNewProbeStatus(deviceStatus)) {
+                // Update ID, Color, Battery status
+                updateIdColorBattery(probeId: deviceStatus.modeId.id,
+                                     probeColor: deviceStatus.modeId.color,
+                                     probeBatteryStatus: deviceStatus.batteryStatusVirtualSensors.batteryStatus)
                 
                 // Update sequence numbers
                 minSequenceNumber = deviceStatus.minSequenceNumber
                 maxSequenceNumber = deviceStatus.maxSequenceNumber
          
-                // Prediction status and Virtual Sensors are only transmitted in "Normal" status updates
+                // Update prediction status
                 predictionManager.updatePredictionStatus(deviceStatus.predictionStatus,
                                                          sequenceNumber: deviceStatus.maxSequenceNumber)
-                virtualSensors = deviceStatus.batteryStatusVirtualSensors.virtualSensors
+                
+                // Update temperatures, virtual sensors, and check for overheating
+                updateTemperatures(temperatures: deviceStatus.temperatures,
+                                   virtualSensors: deviceStatus.batteryStatusVirtualSensors.virtualSensors)
                 
                 // Log the temperature data point for "Normal" status updates
-                currentTemperatures = deviceStatus.temperatures
                 addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus))
-                
-                // Check if the probe is overheating
-                checkOverheating()
                 
                 // Update normal mode update info for hop count lockout
                 lastNormalMode = Date()
@@ -288,7 +276,6 @@ extension Probe {
                 // Track that info was updated
                 updated = true
             }
-
         }
         else if(deviceStatus.modeId.mode == .instantRead ){
             // Update Instant Read temperature, including hop count information.
@@ -340,45 +327,19 @@ extension Probe {
         addDataToLog(LoggedProbeDataPoint.fromLogResponse(logResponse: logResponse))
     }
     
-    /// Checks if the probe is currently exceeding any temperature thresholds.
-    func checkOverheating() {
-        guard let currentTemperatures = currentTemperatures else { return }
+    private func isNewProbeStatus(_ deviceStatus: ProbeStatus) -> Bool {
+        guard let maxSequenceNumber = maxSequenceNumber else { return true }
         
-        var anyOverTemp = false
-        
-        var overheatingSensorList : [Int] = []
-            
-        // Check T1-T2
-        for i in 1...2 {
-            if currentTemperatures.values[i] >= Constants.OVERHEATING_T1_T2_THRESHOLD {
-                anyOverTemp = true
-                overheatingSensorList.append(i)
-            }
+        if(deviceStatus.maxSequenceNumber < maxSequenceNumber) {
+            return false
+        }
+        else if (deviceStatus.maxSequenceNumber == maxSequenceNumber) {
+            // Duplicate status messagea are sent when prediction is started.
+            // Therefore check if prediction set point has changed
+            return deviceStatus.predictionStatus.predictionSetPointTemperature != predictionInfo?.predictionSetPointTemperature
         }
         
-        // Check T3
-        if currentTemperatures.values[2] >= Constants.OVERHEATING_T3_THRESHOLD {
-            anyOverTemp = true
-            overheatingSensorList.append(2)
-        }
-        
-        // Check T4
-        if currentTemperatures.values[3] >= Constants.OVERHEATING_T4_THRESHOLD {
-            anyOverTemp = true
-            overheatingSensorList.append(3)
-        }
-        
-        // Check T5-T8
-        for i in 4...7 {
-            if currentTemperatures.values[i] >= Constants.OVERHEATING_T5_T8_THRESHOLD {
-                anyOverTemp = true
-                overheatingSensorList.append(i)
-            }
-        }
-        
-        // Update observable variables
-        self.overheating = anyOverTemp
-        self.overheatingSensors = overheatingSensorList
+        return true
     }
     
     private func addDataToLog(_ dataPoint: LoggedProbeDataPoint) {
@@ -464,9 +425,9 @@ extension Probe {
             lastInstantRead = Date()
             lastInstantReadHopCount = hopCount
             instantReadTemperature = instantReadValue
-            id = probeId
-            color = probeColor
-            batteryStatus = probeBatteryStatus
+            
+            // Update ID, Color, Battery status
+            updateIdColorBattery(probeId: probeId, probeColor: probeColor, probeBatteryStatus: probeBatteryStatus)
             
             return true
             
@@ -476,21 +437,74 @@ extension Probe {
         }
     }
     
-    private func updateVirtualTemperatures() {
-        guard let virtualSensors = virtualSensors,
-              let currentTemperatures = currentTemperatures else {
-            self.virtualTemperatures = nil
-            return
-        }
+    /// Updates the ID, Color, and battery status
+    /// - param probeId: New Probe ID
+    /// - param probeColor: New Probe Color
+    /// - param probeBatteryStatus: New Probe Battery Status
+    private func updateIdColorBattery(probeId: ProbeID, probeColor: ProbeColor, probeBatteryStatus: BatteryStatus) {
+        id = probeId
+        color = probeColor
+        batteryStatus = probeBatteryStatus
+    }
+    
+    private func updateTemperatures(temperatures: ProbeTemperatures, virtualSensors: VirtualSensors) {
+        self.currentTemperatures = temperatures
+        self.virtualSensors = virtualSensors
         
-        let core = virtualSensors.virtualCore.temperatureFrom(currentTemperatures)
-        let surface = virtualSensors.virtualSurface.temperatureFrom(currentTemperatures)
-        let ambient = virtualSensors.virtualAmbient.temperatureFrom(currentTemperatures)
+        // Update Virtual temperatures
+        let core = virtualSensors.virtualCore.temperatureFrom(temperatures)
+        let surface = virtualSensors.virtualSurface.temperatureFrom(temperatures)
+        let ambient = virtualSensors.virtualAmbient.temperatureFrom(temperatures)
         
         virtualTemperatures = VirtualTemperatures(coreTemperature: core,
                                                   surfaceTemperature: surface,
                                                   ambientTemperature: ambient)
+        
+        // Check if the probe is overheating
+        checkOverheating()
     }
+    
+    /// Checks if the probe is currently exceeding any temperature thresholds.
+    private func checkOverheating() {
+        guard let currentTemperatures = currentTemperatures else { return }
+        
+        var anyOverTemp = false
+        
+        var overheatingSensorList : [Int] = []
+            
+        // Check T1-T2
+        for i in 1...2 {
+            if currentTemperatures.values[i] >= Constants.OVERHEATING_T1_T2_THRESHOLD {
+                anyOverTemp = true
+                overheatingSensorList.append(i)
+            }
+        }
+        
+        // Check T3
+        if currentTemperatures.values[2] >= Constants.OVERHEATING_T3_THRESHOLD {
+            anyOverTemp = true
+            overheatingSensorList.append(2)
+        }
+        
+        // Check T4
+        if currentTemperatures.values[3] >= Constants.OVERHEATING_T4_THRESHOLD {
+            anyOverTemp = true
+            overheatingSensorList.append(3)
+        }
+        
+        // Check T5-T8
+        for i in 4...7 {
+            if currentTemperatures.values[i] >= Constants.OVERHEATING_T5_T8_THRESHOLD {
+                anyOverTemp = true
+                overheatingSensorList.append(i)
+            }
+        }
+        
+        // Update observable variables
+        self.overheating = anyOverTemp
+        self.overheatingSensors = overheatingSensorList
+    }
+    
 }
 
 extension Probe: PredictionManagerDelegate {

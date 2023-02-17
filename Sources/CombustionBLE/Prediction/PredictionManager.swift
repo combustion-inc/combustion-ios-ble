@@ -69,9 +69,13 @@ class PredictionManager {
     private var staleTimer = Timer()
     
     func updatePredictionStatus(_ predictionStatus: PredictionStatus?, sequenceNumber: UInt32) {
-        // Ignore calls with duplicate predictionStatus
-        if let previousSequence = previousSequenceNumber, previousSequence == sequenceNumber {
-            return
+        // Duplicate status messages are sent when prediction is started. Ignore the duplicate sequence number
+        // unless the prediction information has changed
+        if let previousSequence = previousSequenceNumber {
+            if (previousSequence == sequenceNumber &&
+                predictionStatus?.predictionSetPointTemperature == previousPredictionInfo?.predictionSetPointTemperature) {
+                return
+            }
         }
         
         // Stop the previous timer

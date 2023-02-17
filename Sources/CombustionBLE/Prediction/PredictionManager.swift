@@ -92,6 +92,7 @@ class PredictionManager {
         
         // Clear previous staleness timer.
         staleTimer.invalidate()
+        
         // Restart 'staleness' timer.
         let intervalSeconds = Constants.PREDICTION_STALE_TIMEOUT;
         staleTimer = Timer.scheduledTimer(withTimeInterval: intervalSeconds, repeats: false, block: { _ in
@@ -103,7 +104,7 @@ class PredictionManager {
     private func infoFromStatus(_ predictionStatus: PredictionStatus?,
                            sequenceNumber: UInt32) -> PredictionInfo? {
         guard let status = predictionStatus else { return nil }
-
+        
         let secondsRemaining = secondsRemaining(predictionStatus: status,
                                                 sequenceNumber: sequenceNumber)
         
@@ -216,6 +217,11 @@ class PredictionManager {
         // Minimum percentage is 0
         if(start > core) {
             return 0
+        }
+        
+        // This should never happen, but would cause a crash
+        if(end == start) {
+            return 100
         }
         
         return Int(((core - start) / (end - start)) * 100.0)

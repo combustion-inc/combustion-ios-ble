@@ -59,6 +59,7 @@ class PredictionManager {
     weak var delegate: PredictionManagerDelegate?
 
     private var previousPredictionInfo: PredictionInfo?
+    private var previousSequenceNumber: UInt32?
     
     private var linearizationTargetSeconds = 0
     private var linearizationTimerUpdateValue: Double = 0
@@ -68,17 +69,30 @@ class PredictionManager {
     private var staleTimer = Timer()
     
     func updatePredictionStatus(_ predictionStatus: PredictionStatus?, sequenceNumber: UInt32) {
+        // Duplicate status messages are sent when prediction is started. Ignore the duplicate sequence number
+        // unless the prediction information has changed
+        if let previousSequence = previousSequenceNumber {
+            if (previousSequence == sequenceNumber &&
+                predictionStatus?.predictionSetPointTemperature == previousPredictionInfo?.predictionSetPointTemperature) {
+                return
+            }
+        }
+        
         // Stop the previous timer
         clearLinearizationTimer()
         
         // Update prediction information with latest prediction status from probe
         let predictionInfo = infoFromStatus(predictionStatus, sequenceNumber: sequenceNumber)
         
+        // Save sequence number to check for duplicates
+        previousSequenceNumber = sequenceNumber
+        
         // Publish new prediction info
         publishPredictionInfo(predictionInfo)
         
         // Clear previous staleness timer.
         staleTimer.invalidate()
+        
         // Restart 'staleness' timer.
         let intervalSeconds = Constants.PREDICTION_STALE_TIMEOUT;
         staleTimer = Timer.scheduledTimer(withTimeInterval: intervalSeconds, repeats: false, block: { _ in
@@ -171,6 +185,7 @@ class PredictionManager {
         guard let previousInfo = previousPredictionInfo else { return }
 
         currentLinearizationMs -= linearizationTimerUpdateValue
+        
         // Don't let the linerization value go below 0 or the UInt conversion will crash.
         if(currentLinearizationMs < 0.0) {
             currentLinearizationMs = 0.0

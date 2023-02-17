@@ -244,11 +244,14 @@ extension Probe {
     
     /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.
     func updateProbeStatus(deviceStatus: ProbeStatus, hopCount: HopCount? = nil) {
-                   
+        // Ignore status messages that have a sequence count lower than any previously
+        // received status messages
+        guard !isOldStatus(deviceStatus) else { return }
+        
         var updated : Bool = false
         
         if(deviceStatus.modeId.mode == .normal) {
-            if(shouldUpdateNormalMode(hopCount: hopCount) && isNewProbeStatus(deviceStatus)) {
+            if(shouldUpdateNormalMode(hopCount: hopCount)) {
                 // Update ID, Color, Battery status
                 updateIdColorBattery(probeId: deviceStatus.modeId.id,
                                      probeColor: deviceStatus.modeId.color,
@@ -327,19 +330,10 @@ extension Probe {
         addDataToLog(LoggedProbeDataPoint.fromLogResponse(logResponse: logResponse))
     }
     
-    private func isNewProbeStatus(_ deviceStatus: ProbeStatus) -> Bool {
-        guard let maxSequenceNumber = maxSequenceNumber else { return true }
+    private func isOldStatus(_ deviceStatus: ProbeStatus) -> Bool {
+        guard let maxSequenceNumber = maxSequenceNumber else { return false }
         
-        if(deviceStatus.maxSequenceNumber < maxSequenceNumber) {
-            return false
-        }
-        else if (deviceStatus.maxSequenceNumber == maxSequenceNumber) {
-            // Duplicate status messagea are sent when prediction is started.
-            // Therefore check if prediction set point has changed
-            return deviceStatus.predictionStatus.predictionSetPointTemperature != predictionInfo?.predictionSetPointTemperature
-        }
-        
-        return true
+        return (deviceStatus.maxSequenceNumber < maxSequenceNumber)
     }
     
     private func addDataToLog(_ dataPoint: LoggedProbeDataPoint) {

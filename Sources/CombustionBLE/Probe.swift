@@ -49,8 +49,8 @@ public class Probe : Device {
     @Published public private(set) var minSequenceNumber: UInt32?
     @Published public private(set) var maxSequenceNumber: UInt32?
     
-    /// Tracks whether all logs on probe have been synced to the app
-    @Published public private(set) var logsUpToDate = false
+    /// Tracks what percent of logs on probe have been synced to the app
+    @Published public private(set) var percentOfLogsSynced: Int = 0
     
     @Published public private(set) var id: ProbeID
     @Published public private(set) var color: ProbeColor
@@ -308,17 +308,10 @@ extension Probe {
         if updated, let current = getCurrentTemperatureLog() {
             if let missingSequence = current.firstMissingIndex(sequenceRangeStart: deviceStatus.minSequenceNumber,
                                                                sequenceRangeEnd: deviceStatus.maxSequenceNumber) {
-                
-                // Track that the app is not up to date with the probe
-                logsUpToDate = false
-                
                 // Request missing records
                 DeviceManager.shared.requestLogsFrom(self,
                                                      minSequence: missingSequence,
                                                      maxSequence: deviceStatus.maxSequenceNumber)
-            } else {
-                // If there were no gaps, mark that the logs are up to date
-                logsUpToDate = true
             }
         }
 
@@ -391,6 +384,11 @@ extension Probe {
             let log = ProbeTemperatureLog(sessionInfo: sessionInformation)
             log.appendDataPoint(dataPoint: dataPoint)
             temperatureLogs.append(log)
+        }
+        
+        if let current = getCurrentTemperatureLog(), let maxSequenceNumber = maxSequenceNumber {
+            // Update the percent of logs that have been transfered from the device
+            percentOfLogsSynced = Int(Double(current.totalCount) / Double(maxSequenceNumber) * 100)
         }
     }
     

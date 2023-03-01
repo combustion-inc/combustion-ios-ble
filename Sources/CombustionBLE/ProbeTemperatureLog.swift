@@ -41,6 +41,10 @@ public class ProbeTemperatureLog : ObservableObject {
         }
     }
     
+    var totalCount: Int {
+        return dataPoints.count + dataPointAccumulator.count
+    }
+    
     /// Approximate start time of the session
     public var startTime: Date? = nil
     

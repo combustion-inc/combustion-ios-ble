@@ -386,9 +386,19 @@ extension Probe {
             temperatureLogs.append(log)
         }
         
+        // Update the percent of logs that have been transfered from the device
         if let current = getCurrentTemperatureLog(), let maxSequenceNumber = maxSequenceNumber {
-            // Update the percent of logs that have been transfered from the device
-            percentOfLogsSynced = Int(Double(current.totalCount) / Double(maxSequenceNumber) * 100)
+            let numberLogsOnProbe = maxSequenceNumber + 1
+            
+            var numberOfSyncedLogs = 0
+            if(current.totalCount > numberLogsOnProbe) {
+                numberOfSyncedLogs = Int(numberLogsOnProbe)
+            }
+            else {
+                numberOfSyncedLogs = current.totalCount
+            }
+            
+            percentOfLogsSynced = Int(Double(numberOfSyncedLogs) / Double(numberLogsOnProbe) * 100)
         }
     }
     

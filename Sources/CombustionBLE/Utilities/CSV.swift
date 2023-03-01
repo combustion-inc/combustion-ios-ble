@@ -69,27 +69,29 @@ public struct CSV {
                         timeStamp = dataPointSeconds + sessionStartTimeDiff
                     }
                     
-                    output.append(String(format: "%.3f,%u,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d,%d,%d,%d,%d,%d,%d",
-                                         timeStamp,
-                                         session.id,
-                                         dataPoint.sequenceNum,
-                                         dataPoint.temperatures.values[0], dataPoint.temperatures.values[1],
-                                         dataPoint.temperatures.values[2], dataPoint.temperatures.values[3],
-                                         dataPoint.temperatures.values[4], dataPoint.temperatures.values[5],
-                                         dataPoint.temperatures.values[6], dataPoint.temperatures.values[7],
-                                         dataPoint.virtualCore.temperatureFrom(dataPoint.temperatures),
-                                         dataPoint.virtualSurface.temperatureFrom(dataPoint.temperatures),
-                                         dataPoint.virtualAmbient.temperatureFrom(dataPoint.temperatures),
-                                         dataPoint.estimatedCoreTemperature,
-                                         dataPoint.predictionSetPointTemperature,
-                                         dataPoint.virtualCore.rawValue,
-                                         dataPoint.virtualSurface.rawValue,
-                                         dataPoint.virtualAmbient.rawValue,
-                                         dataPoint.predictionState.rawValue,
-                                         dataPoint.predictionMode.rawValue,
-                                         dataPoint.predictionType.rawValue,
-                                         dataPoint.predictionValueSeconds
-                                        ))
+                    var values = String(format: "%.3f,%u,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,",
+                                      timeStamp,
+                                      session.id,
+                                      dataPoint.sequenceNum,
+                                      dataPoint.temperatures.values[0], dataPoint.temperatures.values[1],
+                                      dataPoint.temperatures.values[2], dataPoint.temperatures.values[3],
+                                      dataPoint.temperatures.values[4], dataPoint.temperatures.values[5],
+                                      dataPoint.temperatures.values[6], dataPoint.temperatures.values[7],
+                                      dataPoint.virtualCore.temperatureFrom(dataPoint.temperatures),
+                                      dataPoint.virtualSurface.temperatureFrom(dataPoint.temperatures),
+                                      dataPoint.virtualAmbient.temperatureFrom(dataPoint.temperatures),
+                                      dataPoint.estimatedCoreTemperature,
+                                      dataPoint.predictionSetPointTemperature)
+                    
+                    values += "\(dataPoint.virtualCore),"
+                    values += "\(dataPoint.virtualSurface),"
+                    values += "\(dataPoint.virtualAmbient),"
+                    values += "\(dataPoint.predictionState.toString()),"
+                    values += "\(dataPoint.predictionMode.toString()),"
+                    values += "\(dataPoint.predictionType.toString()),"
+                    values += "\(dataPoint.predictionValueSeconds)"
+                    
+                    output.append(values)
                 }
             }
         }

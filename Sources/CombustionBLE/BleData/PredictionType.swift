@@ -33,4 +33,17 @@ public enum PredictionType: UInt8, CaseIterable {
     case reserved = 0x03
     
     static let MASK: UInt8 = 0x3
+    
+    func toString() -> String {
+         switch(self) {
+         case .none:
+             return "None"
+         case .removal:
+             return "Removal"
+         case .resting:
+             return "Resting"
+         case .reserved:
+             return "Reserved"
+         }
+     }
 }

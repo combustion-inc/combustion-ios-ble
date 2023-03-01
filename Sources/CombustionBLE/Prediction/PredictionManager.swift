@@ -64,6 +64,7 @@ class PredictionManager {
     private var linearizationTargetSeconds = 0
     private var linearizationTimerUpdateValue: Double = 0
     private var currentLinearizationMs: Double = 0
+    private var runningLinearization = false
     
     private var linearizationTimer = Timer()
     private var staleTimer = Timer()
@@ -131,6 +132,8 @@ class PredictionManager {
         
         if(predictionStatus.predictionValueSeconds > Constants.LOW_RESOLUTION_CUTOFF_SECONDS) {
             
+            runningLinearization = false
+            
             // If the prediction is longer than the low-resolution cutoff, only update every few samples
             // (unless we don't yet have a value), using modulo to sync with other apps, Displays etc.
             if previousSecondsRemaining == nil || (UInt(sequenceNumber) % Constants.PREDICTION_TIME_UPDATE_COUNT) == 0 {
@@ -162,13 +165,14 @@ class PredictionManager {
                 linearizationTargetSeconds = Int(predictionStatus.predictionValueSeconds - predictionUpdateRateSeconds)
             }
 
-            if previousPredictionInfo?.predictionState == .predicting {
-                let intervalCount = Constants.PREDICTION_STATUS_RATE_MS / Constants.LINEARIZATION_UPDATE_RATE_MS
-                linearizationTimerUpdateValue = (currentLinearizationMs - (Double(linearizationTargetSeconds) * 1000.0)) / intervalCount
-            }
-            else {
+            if !runningLinearization {
+                // If not already running linearization, then initialize values
                 currentLinearizationMs = Double(predictionStatus.predictionValueSeconds) * 1000.0
                 linearizationTimerUpdateValue = Constants.LINEARIZATION_UPDATE_RATE_MS
+            }
+            else {
+                let intervalCount = Constants.PREDICTION_STATUS_RATE_MS / Constants.LINEARIZATION_UPDATE_RATE_MS
+                linearizationTimerUpdateValue = (currentLinearizationMs - (Double(linearizationTargetSeconds) * 1000.0)) / intervalCount
             }
             
             // Setup a linearization timer
@@ -176,6 +180,8 @@ class PredictionManager {
             linearizationTimer = Timer.scheduledTimer(withTimeInterval: intervalSeconds, repeats: true, block: { _ in
                 self.updatePredictionSeconds()
             })
+            
+            runningLinearization = true
             
             return UInt(currentLinearizationMs / 1000.0)
         }
@@ -185,6 +191,7 @@ class PredictionManager {
         guard let previousInfo = previousPredictionInfo else { return }
 
         currentLinearizationMs -= linearizationTimerUpdateValue
+        
         // Don't let the linerization value go below 0 or the UInt conversion will crash.
         if(currentLinearizationMs < 0.0) {
             currentLinearizationMs = 0.0

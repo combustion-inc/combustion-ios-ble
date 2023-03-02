@@ -434,6 +434,11 @@ extension DeviceManager : BleManagerDelegate {
             }
         }
         
+        // If MeatNet is enabled, try to connect to all probes
+        if(meatNetEnabled) {
+            foundProbe?.connect()
+        }
+        
         return foundProbe
     }
     

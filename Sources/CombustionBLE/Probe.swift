@@ -50,7 +50,7 @@ public class Probe : Device {
     @Published public private(set) var maxSequenceNumber: UInt32?
     
     /// Tracks what percent of logs on probe have been synced to the app
-    @Published public private(set) var percentOfLogsSynced: Int = 0
+    @Published public private(set) var percentOfLogsSynced: Int?
     
     @Published public private(set) var id: ProbeID
     @Published public private(set) var color: ProbeColor
@@ -277,7 +277,7 @@ extension Probe {
                 // Log the temperature data point for "Normal" status updates
                 currentTemperatures = deviceStatus.temperatures
                 addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus))
-                
+        
                 // Check if the probe is overheating
                 checkOverheating()
                 
@@ -306,8 +306,14 @@ extension Probe {
         
         // Check for missing records
         if updated, let current = getCurrentTemperatureLog() {
-            if let missingSequence = current.firstMissingIndex(sequenceRangeStart: deviceStatus.minSequenceNumber,
-                                                               sequenceRangeEnd: deviceStatus.maxSequenceNumber) {
+            // Save the first missing sequence number
+            let firstMissingSequenceNumber = current.firstMissingIndex(sequenceRangeStart: deviceStatus.minSequenceNumber,
+                                                                   sequenceRangeEnd: deviceStatus.maxSequenceNumber)
+            
+            // Update the percent of logs that have been transfered from the device
+            updateLogPercent(firstMissingSequenceNumber: firstMissingSequenceNumber)
+            
+            if let missingSequence = firstMissingSequenceNumber {
                 // Request missing records
                 DeviceManager.shared.requestLogsFrom(self,
                                                      minSequence: missingSequence,
@@ -385,20 +391,20 @@ extension Probe {
             log.appendDataPoint(dataPoint: dataPoint)
             temperatureLogs.append(log)
         }
+    }
+    
+    private func updateLogPercent(firstMissingSequenceNumber: UInt32?) {
+        guard let maxSequenceNumber = maxSequenceNumber,
+        let minSequenceNumber = minSequenceNumber else { return }
         
-        // Update the percent of logs that have been transfered from the device
-        if let current = getCurrentTemperatureLog(), let maxSequenceNumber = maxSequenceNumber {
-            let numberLogsOnProbe = maxSequenceNumber + 1
+        if let firstMissingSequenceNumber = firstMissingSequenceNumber {
+            let numberLogsOnProbe = Int(maxSequenceNumber - minSequenceNumber + 1)
+            let numberOfLogsFromProbe = firstMissingSequenceNumber - minSequenceNumber
             
-            var numberOfSyncedLogs = 0
-            if(current.totalCount > numberLogsOnProbe) {
-                numberOfSyncedLogs = Int(numberLogsOnProbe)
-            }
-            else {
-                numberOfSyncedLogs = current.totalCount
-            }
-            
-            percentOfLogsSynced = Int(Double(numberOfSyncedLogs) / Double(numberLogsOnProbe) * 100)
+            percentOfLogsSynced = Int(Double(numberOfLogsFromProbe) / Double(numberLogsOnProbe) * 100)
+        }
+        else {
+            percentOfLogsSynced = 100
         }
     }
     

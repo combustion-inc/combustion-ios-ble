@@ -399,7 +399,9 @@ extension Probe {
         
         if let firstMissingSequenceNumber = firstMissingSequenceNumber {
             let numberLogsOnProbe = Int(maxSequenceNumber - minSequenceNumber + 1)
-            percentOfLogsSynced = Int(Double(firstMissingSequenceNumber) / Double(numberLogsOnProbe) * 100)
+            let numberOfLogsFromProbe = firstMissingSequenceNumber - minSequenceNumber
+            
+            percentOfLogsSynced = Int(Double(numberOfLogsFromProbe) / Double(numberLogsOnProbe) * 100)
         }
         else {
             percentOfLogsSynced = 100

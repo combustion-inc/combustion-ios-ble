@@ -55,7 +55,7 @@ class NodeProbeStatusRequest: NodeRequest {
             self.hopCount = hc
         }
         
-        super.init(requestId: requestId, payLoadLength: payloadLength)
+        super.init(requestId: requestId, payloadLength: payloadLength)
     }
 }
 

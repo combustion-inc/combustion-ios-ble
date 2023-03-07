@@ -38,7 +38,7 @@ enum NodeMessageType: UInt8  {
     case disconnected = 0x41
     case readNodeList = 0x42
     case readNetworkTopology = 0x43
-    case probeSessionChanged = 0x44
+    case readProbeList = 0x44
     case probeStatus = 0x45
     case probeFirmwareRevision = 0x46
     case probeHardwareRevision = 0x47

@@ -56,7 +56,7 @@ class SessionInfoResponse: Response {
         
         info = SessionInformation(sessionID: sessionID, samplePeriod: samplePeriod)
 
-        super.init(success: success, payLoadLength: payloadLength)
+        super.init(success: success, payloadLength: payloadLength)
     }
 }
 

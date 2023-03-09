@@ -120,6 +120,7 @@ extension NodeResponse {
         
         // Invalid number of bytes
         if(data.count < responseLength) {
+            print("Bad number of bytes")
             return nil
         }
         
@@ -136,6 +137,12 @@ extension NodeResponse {
             return NodeReadSessionInfoResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .setPrediction:
             return NodeSetPredictionResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .probeFirmwareRevision:
+            return NodeReadFirmwareRevisionResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .probeHardwareRevision:
+            return NodeReadHardwareRevisionResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .probeModelInformation:
+            return NodeReadModelInfoResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
 //        case .readOverTemperature:
 //            return NodeReadOverTemperatureResponse(data: data, success: success, payloadLength: Int(payloadLength))
         default:

@@ -63,19 +63,69 @@ public class ProbeTemperatureLog : ObservableObject {
         sessionInformation = sessionInfo
     }
     
-    /// Finds the first missing sequence number in the specified range of sequence numbers.
+    /// Finds the missing sequence number range in the specified range of sequence numbers.
     /// - parameter sequenceRangeStart: First sequence number to search for
     /// - parameter sequenceRangeEnd: Last sequence number to search for
-    func firstMissingIndex(sequenceRangeStart: UInt32, sequenceRangeEnd: UInt32) -> UInt32? {
-        var found : UInt32? = nil
+    /// - returns: Range of the lowest to highest missing sequence numbers.
+    func missingRange(sequenceRangeStart: UInt32, sequenceRangeEnd: UInt32) -> ClosedRange<UInt32>? {
+        var missingRange : ClosedRange<UInt32>? = nil
+        
+        var lowerBound : UInt32? = nil
+        
+        // Find the lower bound
         for search in sequenceRangeStart...sequenceRangeEnd {
             if dataPointsDict[search] == nil {
                 // Record was missing so we're done searching
-                found = search
+                lowerBound = search
                 break
             }
         }
-        return found
+        
+        if let lowerBound = lowerBound {
+            // If a lower bound was found, find the upper bound.
+            var upperBound : UInt32? = nil
+            
+            if lowerBound < sequenceRangeEnd {
+                for search in (lowerBound+1...sequenceRangeEnd).reversed() {
+                    if dataPointsDict[search] == nil {
+                        // Record was missing so we're done searching
+                        upperBound = search
+                        break
+                    }
+                }
+            }
+            
+            if let upperBound = upperBound {
+                // If an upper bound was found, update the return range.
+                missingRange = lowerBound ... upperBound
+            } else {
+                // If not, grab everything from the lower bound on
+                missingRange = lowerBound ... sequenceRangeEnd
+            }
+        }
+        
+        return missingRange
+    }
+    
+    
+    /// Calculates the number of logs that have been received in the specified range of sequence numbers.
+    /// - parameter range: Range of sequence numbers to check
+    /// - returns number of log records received in that range.
+    func logsInRange(sequenceNumbers: ClosedRange<UInt32>) -> Int {
+        var records = 0
+        
+        // Find index of lowest element >= min
+        if(!dataPointsDict.isEmpty) {
+            if let min = dataPointsDict.keys.firstIndex(where: { $0 >= sequenceNumbers.lowerBound } ) {
+                // Find index of highest element <= max
+                if let max = dataPointsDict.keys.lastIndex(where: { $0 <= sequenceNumbers.upperBound } ) {
+                    
+                    records = max-min+1
+                }
+            }
+        }
+       
+        return records
     }
     
     /// Inserts data points from the accumulator into the

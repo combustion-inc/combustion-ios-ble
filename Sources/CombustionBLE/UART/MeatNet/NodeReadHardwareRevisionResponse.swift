@@ -1,4 +1,4 @@
-//  NodeReadSessionInfoResponse.swift
+//  NodeReadHardwareRevisionResponse.swift
 
 /*--
 MIT License
@@ -26,49 +26,38 @@ SOFTWARE.
 
 import Foundation
 
-class NodeReadSessionInfoResponse: NodeResponse {
+class NodeReadHardwareRevisionResponse: NodeResponse {
     
     enum Constants {
-        static let MINIMUM_PAYLOAD_LENGTH = 10
+        static let MINIMUM_PAYLOAD_LENGTH = 20
         
         static let SERIAL_RANGE = NodeResponse.HEADER_LENGTH..<(NodeResponse.HEADER_LENGTH + 4)
-        static let SESSION_ID_RANGE = (NodeResponse.HEADER_LENGTH + 4)..<(NodeResponse.HEADER_LENGTH + 8)
-        static let SAMPLE_PERIOD_RANGE = (NodeResponse.HEADER_LENGTH + 8)..<(NodeResponse.HEADER_LENGTH + 10)
+        static let HW_REVISION_RANGE = (NodeResponse.HEADER_LENGTH + 4)..<(NodeResponse.HEADER_LENGTH + 20)
     }
     
     let probeSerialNumber: UInt32
+    let hwRevision: String
     
-    let info: SessionInformation
-
     init(data: Data, success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
         let serialRaw = data.subdata(in: Constants.SERIAL_RANGE)
         probeSerialNumber = serialRaw.withUnsafeBytes {
             $0.load(as: UInt32.self)
         }
         
-        let sessionIdRaw = data.subdata(in: Constants.SESSION_ID_RANGE)
-        let sessionId = sessionIdRaw.withUnsafeBytes {
-            $0.load(as: UInt32.self)
-        }
-        
-        let samplePeriodRaw = data.subdata(in: Constants.SAMPLE_PERIOD_RANGE)
-        let samplePeriod = samplePeriodRaw.withUnsafeBytes {
-            $0.load(as: UInt16.self)
-        }
-        
-        info = SessionInformation(sessionID: sessionId, samplePeriod: samplePeriod)
+        let hwRevisionRaw = data.subdata(in: Constants.HW_REVISION_RANGE)
+        hwRevision = String(decoding: hwRevisionRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))
         
         super.init(success: success, requestId: requestId, responseId: responseId, payloadLength: payloadLength)
     }
 }
 
-extension NodeReadSessionInfoResponse {
+extension NodeReadHardwareRevisionResponse {
 
-    static func fromRaw(data: Data, success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) -> NodeReadSessionInfoResponse? {
+    static func fromRaw(data: Data, success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) -> NodeReadHardwareRevisionResponse? {
         if(payloadLength < Constants.MINIMUM_PAYLOAD_LENGTH) {
             return nil
         }
             
-        return NodeReadSessionInfoResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: payloadLength)
+        return NodeReadHardwareRevisionResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: payloadLength)
     }
 }

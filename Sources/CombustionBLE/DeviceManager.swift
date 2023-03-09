@@ -201,11 +201,26 @@ public class DeviceManager : ObservableObject {
     /// - parameter minSequence: Minimum sequence number to request
     /// - parameter maxSequence: Maximum sequence number to request
     func requestLogsFrom(_ device: Device, minSequence: UInt32, maxSequence: UInt32) {
-        let request = LogRequest(minSequence: minSequence,
-                                 maxSequence: maxSequence)
-        // TODO - Request logs via Node.
-        if let device = device as? Probe, let bleIdentifier = device.bleIdentifier {
-            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+        if let device = device as? Probe {
+            let targetDevice = getBestRouteToProbe(serialNumber: device.serialNumber)
+            
+            if let probe = targetDevice as? Probe, let bleIdentifier = probe.bleIdentifier {
+            
+                // Request logs directly from Probe.
+                let request = LogRequest(minSequence: minSequence,
+                                         maxSequence: maxSequence)
+                
+                BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+                
+            } else if let node = targetDevice as? MeatNetNode, let bleIdentifier = node.bleIdentifier {
+                // If the best route is through a Node, send it that way.
+                
+                // Send request to device
+                let request = NodeReadLogsRequest(serialNumber: device.serialNumber,
+                                                  minSequence: minSequence,
+                                                  maxSequence: maxSequence)
+                BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+            }
         }
     }
     
@@ -328,6 +343,84 @@ public class DeviceManager : ObservableObject {
            
         }
     }
+    
+    
+    /// Sends a request to the probe to read the session information.
+    ///
+    /// - parameter device: Device to read session info
+    /// - parameter completionHandler: Completion handler to be called operation is complete
+    public func readSessionInfo(probe: Probe) {
+        
+        let targetDevice = getBestRouteToProbe(serialNumber: probe.serialNumber)
+        
+        if let targetProbe = targetDevice as? Probe, let bleIdentifier = targetProbe.bleIdentifier {
+            // If the best route is directly to the Probe, send it that way.
+         
+            // Send request to device
+            let request = SessionInfoRequest()
+            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+            
+        } else if let node = targetDevice as? MeatNetNode, let bleIdentifier = node.bleIdentifier {
+            // If the best route is through a Node, send it that way.
+            
+            // Send request to device
+            let request = NodeReadSessionInfoRequest(serialNumber: probe.serialNumber)
+            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+        }
+    }
+    
+    /// Sends request to the device to read the probe firmware version.
+    ///
+    /// - parameter probe: Probe for which to read firmware version
+    public func readFirmwareVersion(probe: Probe) {
+        if let targetDevice = getBestRouteToProbe(serialNumber: probe.serialNumber) {
+            if let targetProbe = targetDevice as? Probe, let bleIdentifier = targetProbe.bleIdentifier {
+                // If the best route is directly to the Probe, send it that way.
+                BleManager.shared.readFirmwareRevision(identifier: bleIdentifier)
+            } else if let node = targetDevice as? MeatNetNode, let bleIdentifier = node.bleIdentifier {
+                // If the best route is through a Node, send it that way.
+                
+                let request = NodeReadFirmwareRevisionRequest(serialNumber: probe.serialNumber)
+                BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+            }
+        }
+    }
+    
+    /// Sends request to the device to read the probe hardware version.
+    ///
+    /// - parameter probe: Probe for which to read hardware version
+    public func readHardwareVersion(probe: Probe) {
+        if let targetDevice = getBestRouteToProbe(serialNumber: probe.serialNumber) {
+            if let targetProbe = targetDevice as? Probe, let bleIdentifier = targetProbe.bleIdentifier {
+                // If the best route is directly to the Probe, send it that way.
+                BleManager.shared.readHardwareRevision(identifier: bleIdentifier)
+            } else if let node = targetDevice as? MeatNetNode, let bleIdentifier = node.bleIdentifier {
+                // If the best route is through a Node, send it that way.
+                
+                let request = NodeReadHardwareRevisionRequest(serialNumber: probe.serialNumber)
+                BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+            }
+        }
+    }
+    
+    /// Sends request to the device to read the probe model info.
+    ///
+    /// - parameter probe: Probe for which to read model info.
+    public func readModelInfo(probe: Probe) {
+        if let targetDevice = getBestRouteToProbe(serialNumber: probe.serialNumber) {
+            if let targetProbe = targetDevice as? Probe, let bleIdentifier = targetProbe.bleIdentifier {
+                // If the best route is directly to the Probe, send it that way.
+                BleManager.shared.readModelNumber(identifier: bleIdentifier)
+            } else if let node = targetDevice as? MeatNetNode, let bleIdentifier = node.bleIdentifier {
+                // If the best route is through a Node, send it that way.
+                
+                let request = NodeReadModelInfoRequest(serialNumber: probe.serialNumber)
+                BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+            }
+        }
+    }
+    
+    
     
     /// Sends a request to the device to read Over Temperature flag
     ///
@@ -547,6 +640,12 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
+    func updateDeviceModelInfo(identifier: UUID, modelInfo: String) {
+        if let device = findDeviceByBleIdentifier(bleIdentifier: identifier)  {
+            device.updateSkuAndLot(modelInfo: modelInfo)
+        }
+    }
+    
     /// Processes data received over UART, which could be Responses and/or Requests depending on the source.
     func handleUARTData(identifier: UUID, data: Data) {
         if let device = findDeviceByBleIdentifier(bleIdentifier: identifier) {
@@ -623,6 +722,27 @@ extension DeviceManager : BleManagerDelegate {
         
         if let setPredictionResponse = response as? NodeSetPredictionResponse {
             messageHandlers.callNodeSetPredictionCompletionHandler(identifier, response: setPredictionResponse)
+        } else if let readFirmwareResponse = response as? NodeReadFirmwareRevisionResponse {
+            if let probe = findProbeBySerialNumber(serialNumber: readFirmwareResponse.probeSerialNumber) {
+                probe.firmareVersion = readFirmwareResponse.fwRevision
+            }
+        } else if let readHardwareResponse = response as? NodeReadHardwareRevisionResponse {
+            if let probe = findProbeBySerialNumber(serialNumber: readHardwareResponse.probeSerialNumber) {
+                probe.hardwareRevision = readHardwareResponse.hwRevision
+            }
+        } else if let readModelInfoResponse = response as? NodeReadModelInfoResponse {
+            if let probe = findProbeBySerialNumber(serialNumber: readModelInfoResponse.probeSerialNumber) {
+                probe.updateSkuAndLot(modelInfo: readModelInfoResponse.modelInfo)
+            }
+        } else if let sessionInfoResponse = response as? NodeReadSessionInfoResponse {
+            if let probe = findProbeBySerialNumber(serialNumber: sessionInfoResponse.probeSerialNumber) {
+                probe.updateWithSessionInformation(sessionInfoResponse.info)
+            }
+        } else if let readLogsResponse = response as? NodeReadLogsResponse {
+            if let probe = findProbeBySerialNumber(serialNumber: readLogsResponse.probeSerialNumber) {
+                probe.processLogResponse(logResponse: readLogsResponse)
+            }
+            
         }
     }
     

@@ -57,6 +57,12 @@ public class Device : ObservableObject {
     /// Device hardware revision
     @Published public internal(set) var hardwareRevision: String?
     
+    /// Device SKU
+    @Published public internal(set) var sku: String?
+    
+    /// Device lot #
+    @Published public internal(set) var manufacturingLot: String?
+    
     /// Current connection state of device
     @Published public internal(set) var connectionState: ConnectionState = .disconnected
     
@@ -152,6 +158,16 @@ public class Device : ObservableObject {
     
     func dfuComplete() {
         // Nothing to do on base implementation
+    }
+    
+    /// Updates SKU and Lot number based on Model Info string.
+    func updateSkuAndLot(modelInfo: String) {
+        // Parse the SKU and lot number, which are delimited by a ':'
+        let parts = modelInfo.components(separatedBy: ":")
+        if parts.count == 2 {
+            self.sku = parts[0]
+            self.manufacturingLot = parts[1]
+        }
     }
 }
     

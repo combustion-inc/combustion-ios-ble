@@ -72,6 +72,20 @@ extension LoggedProbeDataPoint {
                                     predictionValueSeconds: UInt(logResponse.predictionLog.predictionValueSeconds),
                                     estimatedCoreTemperature: logResponse.predictionLog.estimatedCoreTemperature)
     }
+    
+    static func fromLogResponse(logResponse: NodeReadLogsResponse) -> LoggedProbeDataPoint {
+        return LoggedProbeDataPoint(sequenceNum: logResponse.sequenceNumber,
+                                    temperatures: logResponse.temperatures,
+                                    virtualCore: logResponse.predictionLog.virtualSensors.virtualCore,
+                                    virtualSurface: logResponse.predictionLog.virtualSensors.virtualSurface,
+                                    virtualAmbient: logResponse.predictionLog.virtualSensors.virtualAmbient,
+                                    predictionState: logResponse.predictionLog.predictionState,
+                                    predictionMode: logResponse.predictionLog.predictionMode,
+                                    predictionType: logResponse.predictionLog.predictionType,
+                                    predictionSetPointTemperature: logResponse.predictionLog.predictionSetPointTemperature,
+                                    predictionValueSeconds: UInt(logResponse.predictionLog.predictionValueSeconds),
+                                    estimatedCoreTemperature: logResponse.predictionLog.estimatedCoreTemperature)
+    }
 }
 
 

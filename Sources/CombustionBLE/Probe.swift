@@ -110,7 +110,7 @@ public class Probe : Device {
     @Published public private(set) var statusNotificationsStale = false
     
     
-    private var sessionInformation: SessionInformation?
+    @Published public private(set) var sessionInformation: SessionInformation?
     
     /// Time at which probe instant read was last updated
     internal var lastInstantRead: Date?
@@ -253,6 +253,28 @@ extension Probe {
         }
     }
     
+    /// Requests any missing data.
+    func requestMissingData() {
+        if sessionInformation == nil {
+            DeviceManager.shared.readSessionInfo(probe: self)
+        }
+        
+        if firmareVersion == nil {
+            // Request the firmware version
+            DeviceManager.shared.readFirmwareVersion(probe: self)
+        }
+        
+        if hardwareRevision == nil {
+            // Request the hardware version
+            DeviceManager.shared.readHardwareVersion(probe: self)
+        }
+        
+        if manufacturingLot == nil || sku == nil {
+            // Request the model info
+            DeviceManager.shared.readModelInfo(probe: self)
+        }
+    }
+    
     /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.
     func updateProbeStatus(deviceStatus: ProbeStatus, hopCount: HopCount? = nil) {
                    
@@ -304,20 +326,25 @@ extension Probe {
             }
         }
         
+        // Request any other missing data (firmware version etc.)
+        requestMissingData()
+        
         // Check for missing records
         if updated, let current = getCurrentTemperatureLog() {
-            // Save the first missing sequence number
-            let firstMissingSequenceNumber = current.firstMissingIndex(sequenceRangeStart: deviceStatus.minSequenceNumber,
-                                                                   sequenceRangeEnd: deviceStatus.maxSequenceNumber)
             
             // Update the percent of logs that have been transfered from the device
-            updateLogPercent(firstMissingSequenceNumber: firstMissingSequenceNumber)
+            updateLogPercent()
             
-            if let missingSequence = firstMissingSequenceNumber {
+            // Save the first missing range of sequence numbers.
+            // Don't request the current sequence number as it should come via status notifications.
+            let missingRange = current.missingRange(sequenceRangeStart: deviceStatus.minSequenceNumber,
+                                                    sequenceRangeEnd: deviceStatus.maxSequenceNumber)
+            
+            if let missingRange = missingRange {
                 // Request missing records
                 DeviceManager.shared.requestLogsFrom(self,
-                                                     minSequence: missingSequence,
-                                                     maxSequence: deviceStatus.maxSequenceNumber)
+                                                     minSequence: missingRange.lowerBound,
+                                                     maxSequence: missingRange.upperBound)
             }
         }
 
@@ -338,6 +365,13 @@ extension Probe {
     func processLogResponse(logResponse: LogResponse) {
         addDataToLog(LoggedProbeDataPoint.fromLogResponse(logResponse: logResponse))
     }
+    
+    /// Processes an incoming node log response (response to a manual request for prior messages)
+    func processLogResponse(logResponse: NodeReadLogsResponse) {
+        addDataToLog(LoggedProbeDataPoint.fromLogResponse(logResponse: logResponse))
+    }
+    
+    
     
     /// Checks if the probe is currently exceeding any temperature thresholds.
     func checkOverheating() {
@@ -393,18 +427,18 @@ extension Probe {
         }
     }
     
-    private func updateLogPercent(firstMissingSequenceNumber: UInt32?) {
+    private func updateLogPercent() {
         guard let maxSequenceNumber = maxSequenceNumber,
-        let minSequenceNumber = minSequenceNumber else { return }
+              let minSequenceNumber = minSequenceNumber,
+              let currentLog = getCurrentTemperatureLog() else { return }
         
-        if let firstMissingSequenceNumber = firstMissingSequenceNumber {
-            let numberLogsOnProbe = Int(maxSequenceNumber - minSequenceNumber + 1)
-            let numberOfLogsFromProbe = firstMissingSequenceNumber - minSequenceNumber
-            
-            percentOfLogsSynced = Int(Double(numberOfLogsFromProbe) / Double(numberLogsOnProbe) * 100)
-        }
-        else {
+        let numberLogsFromProbe = currentLog.logsInRange(sequenceNumbers: minSequenceNumber ... maxSequenceNumber)
+        let numberLogsOnProbe = Int(maxSequenceNumber - minSequenceNumber + 1)
+        
+        if(numberLogsOnProbe == numberLogsFromProbe) {
             percentOfLogsSynced = 100
+        } else {
+            percentOfLogsSynced = Int(Double(numberLogsFromProbe) / Double(numberLogsOnProbe) * 100)
         }
     }
     

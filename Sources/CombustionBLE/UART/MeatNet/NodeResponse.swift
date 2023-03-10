@@ -33,14 +33,14 @@ class NodeResponse : NodeUARTMessage {
     static let RESPONSE_TYPE_FLAG : UInt8 = 0x80
     
     let success: Bool
-    let payLoadLength: Int
+    let payloadLength: Int
     
     let requestId: UInt32
     let responseId: UInt32
     
-    init(success: Bool, requestId: UInt32, responseId: UInt32, payLoadLength: Int) {
+    init(success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
         self.success = success
-        self.payLoadLength = payLoadLength
+        self.payloadLength = payloadLength
         self.requestId = requestId
         self.responseId = responseId
     }
@@ -120,22 +120,29 @@ extension NodeResponse {
         
         // Invalid number of bytes
         if(data.count < responseLength) {
+            print("Bad number of bytes")
             return nil
         }
         
         // print("Success: \(success), payloadLength: \(payloadLength)")
         
         switch messageType {
-//        case .log:
-//            return NodeLogResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
+        case .log:
+            return NodeReadLogsResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
 //        case .setID:
-//            return NodeSetIDResponse(success: success, payLoadLength: Int(payloadLength))
+//            return NodeSetIDResponse(success: success, payloadLength: Int(payloadLength))
 //        case .setColor:
-//            return NodeSetColorResponse(success: success, payLoadLength: Int(payloadLength))
-//        case .sessionInfo:
-//            return NodeSessionInfoResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
+//            return NodeSetColorResponse(success: success, payloadLength: Int(payloadLength))
+        case .sessionInfo:
+            return NodeReadSessionInfoResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .setPrediction:
-            return NodeSetPredictionResponse(success: success, requestId: requestId, responseId: responseId, payLoadLength: Int(payloadLength))
+            return NodeSetPredictionResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .probeFirmwareRevision:
+            return NodeReadFirmwareRevisionResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .probeHardwareRevision:
+            return NodeReadHardwareRevisionResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .probeModelInformation:
+            return NodeReadModelInfoResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
 //        case .readOverTemperature:
 //            return NodeReadOverTemperatureResponse(data: data, success: success, payloadLength: Int(payloadLength))
         default:

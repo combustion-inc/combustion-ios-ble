@@ -1,4 +1,4 @@
-//  NodeUARTMessage.swift
+//  NodeReadLogsRequest.swift
 
 /*--
 MIT License
@@ -26,29 +26,19 @@ SOFTWARE.
 
 import Foundation
 
-/// Class representing a Combustion BLE Node UART request.
-class NodeUARTMessage {
-    static func fromData(_ data : Data) -> [NodeUARTMessage] {
-        var messages = [NodeUARTMessage]()
+class NodeReadLogsRequest: NodeRequest {
+    init(serialNumber: UInt32, minSequence: UInt32, maxSequence: UInt32) {
+        var payload = Data()
+        var serialNumberBytes = serialNumber
+        payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
         
-        var numberBytesRead = 0
+        var min = minSequence
+        payload.append(Data(bytes: &min, count: MemoryLayout.size(ofValue: min)))
         
-        while(numberBytesRead < data.count) {
-            let bytesToDecode = data.subdata(in: numberBytesRead..<data.count)
-            if let response = NodeResponse.responseFromData(bytesToDecode) {
-                messages.append(response)
-                numberBytesRead += (response.payloadLength + NodeResponse.HEADER_LENGTH)
-                
-            } else if let request = NodeRequest.requestFromData(bytesToDecode) {
-                messages.append(request)
-                numberBytesRead += (request.payloadLength + NodeRequest.HEADER_LENGTH)
-                
-            } else {
-                // Found invalid response, break out of while loop
-                break
-            }
-        }
+        var max = maxSequence
+        payload.append(Data(bytes: &max, count: MemoryLayout.size(ofValue: max)))
         
-        return messages
+        super.init(outgoingPayload: payload, type: .log)
     }
 }
+

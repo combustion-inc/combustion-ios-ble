@@ -30,11 +30,11 @@ class Response {
     static let HEADER_LENGTH = 7
     
     let success: Bool
-    let payLoadLength: Int
+    let payloadLength: Int
     
-    init(success: Bool, payLoadLength: Int) {
+    init(success: Bool, payloadLength: Int) {
         self.success = success
-        self.payLoadLength = payLoadLength
+        self.payloadLength = payloadLength
     }
 }
 
@@ -48,7 +48,7 @@ extension Response {
             let bytesToDecode = data.subdata(in: numberBytesRead..<data.count)
             if let response = responseFromData(bytesToDecode) {
                 responses.append(response)
-                numberBytesRead += (response.payLoadLength + Response.HEADER_LENGTH)
+                numberBytesRead += (response.payloadLength + Response.HEADER_LENGTH)
             }
             else {
                 // Found invalid response, break out of while loop
@@ -121,13 +121,13 @@ extension Response {
         case .log:
             return LogResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
         case .setID:
-            return SetIDResponse(success: success, payLoadLength: Int(payloadLength))
+            return SetIDResponse(success: success, payloadLength: Int(payloadLength))
         case .setColor:
-            return SetColorResponse(success: success, payLoadLength: Int(payloadLength))
+            return SetColorResponse(success: success, payloadLength: Int(payloadLength))
         case .sessionInfo:
             return SessionInfoResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
         case .setPrediction:
-            return SetPredictionResponse(success: success, payLoadLength: Int(payloadLength))
+            return SetPredictionResponse(success: success, payloadLength: Int(payloadLength))
         case .readOverTemperature:
             return ReadOverTemperatureResponse(data: data, success: success, payloadLength: Int(payloadLength))
         }

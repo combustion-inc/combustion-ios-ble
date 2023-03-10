@@ -38,7 +38,7 @@ class NodeRequest : NodeUARTMessage {
     var requestId : UInt32
     
     /// Length of payload
-    let payLoadLength: Int
+    let payloadLength: Int
     
     /// Constructor for generating a new Request object.
     /// - parameter payloadLength: Length of payload of message
@@ -73,15 +73,15 @@ class NodeRequest : NodeUARTMessage {
         // Message Type, payload length, payload
         data.append(crcData)
         
-        self.payLoadLength = outgoingPayload.count
+        self.payloadLength = outgoingPayload.count
     }
     
     
     /// Constructor for an incoming Request object (from MeatNet).
     /// - parameter requestId: Request ID of this message from the Network
     /// - parameter payloadLength: Length of this message's payload
-    init(requestId: UInt32, payLoadLength: Int) {
-        self.payLoadLength = payLoadLength
+    init(requestId: UInt32, payloadLength: Int) {
+        self.payloadLength = payloadLength
         self.requestId = requestId
     }
     
@@ -151,9 +151,9 @@ extension NodeRequest {
 //        case .log:
 //            return NodeLogResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
 //        case .setID:
-//            return NodeSetIDResponse(success: success, payLoadLength: Int(payloadLength))
+//            return NodeSetIDResponse(success: success, payloadLength: Int(payloadLength))
 //        case .setColor:
-//            return NodeSetColorResponse(success: success, payLoadLength: Int(payloadLength))
+//            return NodeSetColorResponse(success: success, payloadLength: Int(payloadLength))
 //        case .sessionInfo:
 //            return NodeSessionInfoResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
         case .probeStatus:

@@ -46,6 +46,8 @@ public class SimulatedProbe: Probe {
             self?.updateFakeStatus()
         }
         
+        self.connectionState = .connected
+        
         // Set fake session information
         let fakeSessionInfo = SessionInformation(sessionID: UInt32.random(in: 0..<UInt32.max), samplePeriod: 1000)
         updateWithSessionInformation(fakeSessionInfo)

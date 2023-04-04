@@ -44,6 +44,11 @@ public class Probe : Device {
         }
     }
     
+    /// Filtered Instant Read reading in Celsius.
+    @Published public private(set) var instantReadCelsius: Double?
+    /// Filtered Instant Read reading in Fahrenheit.
+    @Published public private(set) var instantReadFahrenheit: Double?
+    /// Deprecated. Legacy value - raw, unfiltered instant read reading.
     @Published public private(set) var instantReadTemperature: Double?
     
     @Published public private(set) var minSequenceNumber: UInt32?
@@ -126,9 +131,12 @@ public class Probe : Device {
     internal var lastNormalModeHopCount : HopCount? = nil
 
     private var predictionManager: PredictionManager
+    
+    private var instantReadFilter: InstantReadFilter
    
     init(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, identifier: UUID?) {
         predictionManager = PredictionManager()
+        instantReadFilter = InstantReadFilter()
         
         serialNumber = advertising.serialNumber
         id = advertising.modeId.id
@@ -157,8 +165,9 @@ public class Probe : Device {
     /// Updates whether the device is stale. Called on a timer interval by DeviceManager.
     override func updateDeviceStale() {
         // Clear instantReadTemperature if its been longer than timeout since last update
-        if let lastInstantRead = lastInstantRead,
-           Date().timeIntervalSince(lastInstantRead) > Constants.INSTANT_READ_STALE_TIMEOUT {
+        if let lastInstantRead = lastInstantRead, Date().timeIntervalSince(lastInstantRead) > Constants.INSTANT_READ_STALE_TIMEOUT {
+            instantReadCelsius = nil
+            instantReadFahrenheit = nil
             instantReadTemperature = nil
         }
         
@@ -508,10 +517,18 @@ extension Probe {
                                    probeBatteryStatus: BatteryStatus,
                                    hopCount: HopCount? = nil) -> Bool {
         if(shouldUpdateInstantRead(hopCount: hopCount)) {
-//            print("Updating instant read, date=\(Date()), hopCount=\(String(describing: hopCount))")
+            // Update hop count
             lastInstantRead = Date()
             lastInstantReadHopCount = hopCount
+            // Update Instant Read filter
+            instantReadFilter.addReading(temperatureInCelsius: instantReadValue)
+            // Update legacy instant read value
             instantReadTemperature = instantReadValue
+            // Update filtered Celsius value
+            instantReadCelsius = instantReadFilter.values?.0
+            // Update filtered Fahrenheit value
+            instantReadFahrenheit = instantReadFilter.values?.1
+            
             id = probeId
             color = probeColor
             batteryStatus = probeBatteryStatus

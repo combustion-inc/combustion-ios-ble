@@ -121,14 +121,14 @@ public class Probe : Device {
     internal var lastInstantRead: Date?
    
     /// Last hop count that updated Instant Read (nil = direct from Probe)
-    internal var lastInstantReadHopCount : HopCount? = nil
+    @Published public private(set) var lastInstantReadHopCount : HopCount? = nil
      
     
     /// Time at which probe 'normal mode' info (raw temperatures etc.) was last updated
     internal var lastNormalMode: Date?
    
     /// Last hop count that updated 'normal mode' info (nil = direct from Probe)
-    internal var lastNormalModeHopCount : HopCount? = nil
+    @Published public private(set) var lastNormalModeHopCount : HopCount? = nil
 
     private var predictionManager: PredictionManager
     

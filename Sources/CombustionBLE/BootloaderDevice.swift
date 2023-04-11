@@ -22,6 +22,8 @@ public class BootloaderDevice : Device {
     }
     
     override func dfuComplete() {
+        super.dfuComplete()
+        
         // When DFU is complete, remove this device from Device Manager
         DeviceManager.shared.clearDevice(device: self)
     }

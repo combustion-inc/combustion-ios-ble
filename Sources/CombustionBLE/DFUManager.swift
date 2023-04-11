@@ -123,6 +123,18 @@ class DFUManager {
         }
     }
     
+    func clearCompletedDFU(device: Device) {
+        // Find the running DFU for specified device
+        let dfuTuple = runningDFUs.first { (_, value) in
+            value.uniqueIdentifier == device.uniqueIdentifier
+        }
+
+        // Remove from runningDFUs dictionary if found
+        if let key = dfuTuple?.key {
+            runningDFUs.removeValue(forKey: key)
+        }
+    }
+    
     private func dfuAdvertisingName(for device: Device) -> String {
         let typeName = (device is Probe) ? Constants.THERMOMETER_DFU_NAME : Constants.DISPLAY_DFU_NAME
         

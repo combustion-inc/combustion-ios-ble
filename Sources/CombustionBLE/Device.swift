@@ -156,8 +156,9 @@ public class Device : ObservableObject {
         return true
     }
     
+    /// Called when DFU has completed
     func dfuComplete() {
-        // Nothing to do on base implementation
+        DFUManager.shared.clearCompletedDFU(device: self)
     }
     
     /// Updates SKU and Lot number based on Model Info string.

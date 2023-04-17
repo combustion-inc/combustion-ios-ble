@@ -30,7 +30,7 @@ public enum BatteryStatus: UInt8 {
     case ok = 0x00
     case low = 0x01
     
-    static let MASK: UInt8 = 0x3
+    static let MASK: UInt8 = 0x1
 }
 
 struct BatteryStatusVirtualSensors {

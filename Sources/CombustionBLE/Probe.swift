@@ -297,7 +297,7 @@ extension Probe {
         var updated : Bool = false
         
         if(deviceStatus.modeId.mode == .normal) {
-            if(shouldUpdateNormalMode(hopCount: hopCount)) {
+            if(shouldUpdateNormalMode(hopCount: hopCount) && !isOldStatusUpdate(deviceStatus)) {
                 // Update ID, Color, Battery Status
                 id = deviceStatus.modeId.id
                 color = deviceStatus.modeId.color
@@ -459,6 +459,20 @@ extension Probe {
     // Find the ProbeTemperatureLog that matches current session ID
     private func getCurrentTemperatureLog() -> ProbeTemperatureLog? {
         return temperatureLogs.first(where: { $0.sessionInformation.sessionID == sessionInformation?.sessionID } )
+    }
+    
+    
+    /// Determins whether the device status has already been received
+    /// - param deviceStatus: Device status to check
+    private func isOldStatusUpdate(_ deviceStatus: ProbeStatus) -> Bool {
+        if let currentTemperatureLog = getCurrentTemperatureLog() {
+            // Check current temperature log for status sequence number
+            return currentTemperatureLog.dataPoints.contains(where: { $0.sequenceNum == deviceStatus.maxSequenceNumber })
+        }
+        else {
+            // This status belongs to a new session, therefore its not old
+            return false
+        }
     }
     
     /// Determines whether to update Instant Read based on the hop count of the data.

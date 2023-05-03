@@ -114,7 +114,7 @@ public class Probe : Device {
     /// Tracks whether status notification data has become stale.
     @Published public private(set) var statusNotificationsStale = false
     
-    
+    /// Current session information
     @Published public private(set) var sessionInformation: SessionInformation?
     
     /// Time at which probe instant read was last updated
@@ -123,7 +123,6 @@ public class Probe : Device {
     /// Last hop count that updated Instant Read (nil = direct from Probe)
     @Published public private(set) var lastInstantReadHopCount : HopCount? = nil
      
-    
     /// Time at which probe 'normal mode' info (raw temperatures etc.) was last updated
     internal var lastNormalMode: Date?
    
@@ -133,6 +132,9 @@ public class Probe : Device {
     private var predictionManager: PredictionManager
     
     private var instantReadFilter: InstantReadFilter
+    
+    /// Timer for periodically requesting session information
+    private var sessionRequestTimer = Timer()
    
     init(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, identifier: UUID?) {
         predictionManager = PredictionManager()
@@ -147,6 +149,11 @@ public class Probe : Device {
         updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI, bleIdentifier: identifier)
         
         predictionManager.delegate = self
+        
+        // Start timer to re-request session information every 3 minutes
+        sessionRequestTimer = Timer.scheduledTimer(withTimeInterval: 180, repeats: true, block: { [weak self] _ in
+            self?.requestSessionInformation()
+        })
     }
     
     override func updateConnectionState(_ state: ConnectionState) {
@@ -380,8 +387,6 @@ extension Probe {
         addDataToLog(LoggedProbeDataPoint.fromLogResponse(logResponse: logResponse))
     }
     
-    
-    
     /// Checks if the probe is currently exceeding any temperature thresholds.
     func checkOverheating() {
         guard let currentTemperatures = currentTemperatures else { return }
@@ -555,6 +560,10 @@ extension Probe {
         virtualTemperatures = VirtualTemperatures(coreTemperature: core,
                                                   surfaceTemperature: surface,
                                                   ambientTemperature: ambient)
+    }
+    
+    private func requestSessionInformation() {
+        DeviceManager.shared.readSessionInfo(probe: self)
     }
 }
 

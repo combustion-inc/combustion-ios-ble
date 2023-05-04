@@ -38,11 +38,7 @@ public class Probe : Device {
         return String(format: "%08X", serialNumber)
     }
     
-    @Published public private(set) var currentTemperatures: ProbeTemperatures? {
-        didSet {
-            updateVirtualTemperatures()
-        }
-    }
+    @Published public private(set) var currentTemperatures: ProbeTemperatures?
     
     /// Filtered Instant Read reading in Celsius.
     @Published public private(set) var instantReadCelsius: Double?
@@ -62,11 +58,7 @@ public class Probe : Device {
     
     @Published public private(set) var batteryStatus: BatteryStatus = .ok
     
-    @Published public private(set) var virtualSensors: VirtualSensors? {
-        didSet {
-            updateVirtualTemperatures()
-        }
-    }
+    @Published public private(set) var virtualSensors: VirtualSensors?
     
     @Published public private(set) var predictionInfo: PredictionInfo?
     
@@ -239,19 +231,17 @@ extension Probe {
                 // ensure the Prediction info gets updated over a Status notification if one
                 // comes in.
                 if(shouldUpdateNormalMode(hopCount: advertising.hopCount)) {
-                    currentTemperatures = advertising.temperatures
+                    // Update ID, Color, Battery status
+                    updateIdColorBattery(probeId: advertising.modeId.id,
+                                         probeColor: advertising.modeId.color,
+                                         probeBatteryStatus: advertising.batteryStatusVirtualSensors.batteryStatus)
                     
-                    id = advertising.modeId.id
-                    color = advertising.modeId.color
-                    batteryStatus = advertising.batteryStatusVirtualSensors.batteryStatus
-                    virtualSensors = advertising.batteryStatusVirtualSensors.virtualSensors
-                    
-                    // Check if the probe is overheating
-                    checkOverheating()
+                    // Update temperatures, virtual sensors, and check for overheating
+                    updateTemperatures(temperatures: advertising.temperatures,
+                                       virtualSensors: advertising.batteryStatusVirtualSensors.virtualSensors)
                     
                     lastUpdateTime = Date()
                 }
-            
             }
             else if(advertising.modeId.mode == .instantRead) {
                 // Update Instant Read temperature, providing hop count information to prioritize it.
@@ -298,26 +288,25 @@ extension Probe {
         
         if(deviceStatus.modeId.mode == .normal) {
             if(shouldUpdateNormalMode(hopCount: hopCount) && !isOldStatusUpdate(deviceStatus)) {
-                // Update ID, Color, Battery Status
-                id = deviceStatus.modeId.id
-                color = deviceStatus.modeId.color
-                batteryStatus = deviceStatus.batteryStatusVirtualSensors.batteryStatus
+                // Update ID, Color, Battery status
+                updateIdColorBattery(probeId: deviceStatus.modeId.id,
+                                     probeColor: deviceStatus.modeId.color,
+                                     probeBatteryStatus: deviceStatus.batteryStatusVirtualSensors.batteryStatus)
                 
                 // Update sequence numbers
                 minSequenceNumber = deviceStatus.minSequenceNumber
                 maxSequenceNumber = deviceStatus.maxSequenceNumber
          
-                // Prediction status and Virtual Sensors are only transmitted in "Normal" status updates
+                // Update prediction status
                 predictionManager.updatePredictionStatus(deviceStatus.predictionStatus,
                                                          sequenceNumber: deviceStatus.maxSequenceNumber)
-                virtualSensors = deviceStatus.batteryStatusVirtualSensors.virtualSensors
+                
+                // Update temperatures, virtual sensors, and check for overheating
+                updateTemperatures(temperatures: deviceStatus.temperatures,
+                                   virtualSensors: deviceStatus.batteryStatusVirtualSensors.virtualSensors)
                 
                 // Log the temperature data point for "Normal" status updates
-                currentTemperatures = deviceStatus.temperatures
                 addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus))
-        
-                // Check if the probe is overheating
-                checkOverheating()
                 
                 // Update normal mode update info for hop count lockout
                 lastNormalMode = Date()
@@ -326,7 +315,6 @@ extension Probe {
                 // Track that info was updated
                 updated = true
             }
-
         }
         else if(deviceStatus.modeId.mode == .instantRead ){
             // Update Instant Read temperature, including hop count information.
@@ -388,7 +376,7 @@ extension Probe {
     }
     
     /// Checks if the probe is currently exceeding any temperature thresholds.
-    func checkOverheating() {
+    private func checkOverheating() {
         guard let currentTemperatures = currentTemperatures else { return }
         
         var anyOverTemp = false
@@ -548,9 +536,8 @@ extension Probe {
             // Update filtered Fahrenheit value
             instantReadFahrenheit = instantReadFilter.values?.1
             
-            id = probeId
-            color = probeColor
-            batteryStatus = probeBatteryStatus
+            // Update ID, Color, Battery status
+            updateIdColorBattery(probeId: probeId, probeColor: probeColor, probeBatteryStatus: probeBatteryStatus)
             
             return true
             
@@ -558,6 +545,33 @@ extension Probe {
 //            print("NOT updating instant read, date=\(Date()), hopCount=\(String(describing: hopCount))")
             return false
         }
+    }
+    
+    /// Updates the ID, Color, and battery status
+    /// - param probeId: New Probe ID
+    /// - param probeColor: New Probe Color
+    /// - param probeBatteryStatus: New Probe Battery Status
+    private func updateIdColorBattery(probeId: ProbeID, probeColor: ProbeColor, probeBatteryStatus: BatteryStatus) {
+        id = probeId
+        color = probeColor
+        batteryStatus = probeBatteryStatus
+    }
+    
+    private func updateTemperatures(temperatures: ProbeTemperatures, virtualSensors: VirtualSensors) {
+        self.currentTemperatures = temperatures
+        self.virtualSensors = virtualSensors
+        
+        // Update Virtual temperatures
+        let core = virtualSensors.virtualCore.temperatureFrom(temperatures)
+        let surface = virtualSensors.virtualSurface.temperatureFrom(temperatures)
+        let ambient = virtualSensors.virtualAmbient.temperatureFrom(temperatures)
+        
+        virtualTemperatures = VirtualTemperatures(coreTemperature: core,
+                                                  surfaceTemperature: surface,
+                                                  ambientTemperature: ambient)
+        
+        // Check if the probe is overheating
+        checkOverheating()
     }
     
     private func updateVirtualTemperatures() {

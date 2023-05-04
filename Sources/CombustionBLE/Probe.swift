@@ -223,8 +223,7 @@ extension Probe {
         
         // Only update rest of data if not connected to probe.  Otherwise, rely on status
         // notifications to update data
-        if(connectionState != .connected)
-        {
+        if(connectionState != .connected) {
             if(advertising.modeId.mode == .normal) {
                 // If we should update normal mode, do so, but since this is Advertising info
                 // and does not contain Prediction information, DO NOT lock it out. We want to
@@ -253,14 +252,12 @@ extension Probe {
                     
                     lastUpdateTime = Date()
                 }
-
             }
-            
         }
     }
     
     /// Requests any missing data.
-    func requestMissingData() {
+    private func requestMissingData() {
         if sessionInformation == nil {
             DeviceManager.shared.readSessionInfo(probe: self)
         }
@@ -283,11 +280,14 @@ extension Probe {
     
     /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.
     func updateProbeStatus(deviceStatus: ProbeStatus, hopCount: HopCount? = nil) {
+        // Ignore status messages that have a sequence count lower than any previously
+        // received status messages
+        guard !isOldStatusUpdate(deviceStatus) else { return }
                    
         var updated : Bool = false
         
         if(deviceStatus.modeId.mode == .normal) {
-            if(shouldUpdateNormalMode(hopCount: hopCount) && !isOldStatusUpdate(deviceStatus)) {
+            if(shouldUpdateNormalMode(hopCount: hopCount)) {
                 // Update ID, Color, Battery status
                 updateIdColorBattery(probeId: deviceStatus.modeId.id,
                                      probeColor: deviceStatus.modeId.color,
@@ -450,12 +450,11 @@ extension Probe {
     }
     
     
-    /// Determins whether the device status has already been received
+    /// Determins whether the device status has sequence number less than current maximum
     /// - param deviceStatus: Device status to check
     private func isOldStatusUpdate(_ deviceStatus: ProbeStatus) -> Bool {
-        if let currentTemperatureLog = getCurrentTemperatureLog() {
-            // Check current temperature log for status sequence number
-            return currentTemperatureLog.dataPoints.contains(where: { $0.sequenceNum == deviceStatus.maxSequenceNumber })
+        if let currentTemperatureLog = getCurrentTemperatureLog(), let max = currentTemperatureLog.dataPoints.last {
+            return deviceStatus.maxSequenceNumber < max.sequenceNum
         }
         else {
             // This status belongs to a new session, therefore its not old

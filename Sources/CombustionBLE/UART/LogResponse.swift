@@ -29,7 +29,7 @@ import Foundation
 class LogResponse: Response {
     
     enum Constants {
-        static let MINIMUM_PAYLOAD_LENGTH = 19
+        static let MINIMUM_PAYLOAD_LENGTH = 24
         
         static let SEQUENCE_RANGE = Response.HEADER_LENGTH..<(Response.HEADER_LENGTH + 4)
         static let TEMPERATURE_RANGE = (Response.HEADER_LENGTH + 4)..<(Response.HEADER_LENGTH + 17)

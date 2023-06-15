@@ -36,12 +36,13 @@ public class MeatNetNode: Device {
     /// Dictionary of Probes connected to this Node's Network
     @Published public var probes: [UInt32 : Probe] = [:]
     
+    /// DFU device type
+    @Published public internal(set) var dfuType: DFUDeviceType = .unknown
     
     init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
         super.init(uniqueIdentifier: identifier.uuidString, bleIdentifier: identifier, RSSI: RSSI)
         updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI)
     }
-    
     
     func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber) {
         // Always update probe RSSI and isConnectable flag
@@ -60,5 +61,16 @@ public class MeatNetNode: Device {
         return probes[serialNumber]
     }
 
-
+    /// Special handling for MeatNetNode model info.  Need to decode model info string
+    /// to determine DFU type
+    override func updateWithModelInfo(_ modelInfo: String) {
+        super.updateWithModelInfo(modelInfo)
+        
+        if(modelInfo.contains("Timer")) {
+            dfuType = .display
+        }
+        else if(modelInfo.contains("Charger")) {
+            dfuType = .charger
+        }
+    }
 }

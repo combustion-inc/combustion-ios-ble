@@ -274,7 +274,7 @@ extension Probe {
         
         if manufacturingLot == nil || sku == nil {
             // Request the model info
-            DeviceManager.shared.readModelInfo(probe: self)
+            DeviceManager.shared.readModelInfoForProbe(self)
         }
     }
     

@@ -403,10 +403,10 @@ public class DeviceManager : ObservableObject {
         }
     }
     
-    /// Sends request to the device to read the probe model info.
+    /// Sends request to read the probe model info.
     ///
     /// - parameter probe: Probe for which to read model info.
-    public func readModelInfo(probe: Probe) {
+    public func readModelInfoForProbe(_ probe: Probe) {
         if let targetDevice = getBestRouteToProbe(serialNumber: probe.serialNumber) {
             if let targetProbe = targetDevice as? Probe, let bleIdentifier = targetProbe.bleIdentifier {
                 // If the best route is directly to the Probe, send it that way.
@@ -420,7 +420,12 @@ public class DeviceManager : ObservableObject {
         }
     }
     
-    
+    /// Sends request to read the MeatNetNode model info.
+    ///
+    /// - parameter node: MeatNetNode for which to read model info.
+    public func readModelInfoForNode(_ node: MeatNetNode) {
+        BleManager.shared.readModelNumber(identifier: node.uniqueIdentifier)
+    }
     
     /// Sends a request to the device to read Over Temperature flag
     ///

@@ -109,12 +109,12 @@ public class DeviceManager : ObservableObject {
         }
     }
     
-    /// Returns list of displays
-    /// - returns: List of all kitchen timers
-    public func getDisplays() -> [Display] {
+    /// Returns list of MeatNet nodes
+    /// - returns: List of all MeatNet nodes
+    public func getDisplays() -> [MeatNetNode] {
         if meatNetEnabled {
             return Array(devices.values).compactMap { device in
-                return device as? Display
+                return device as? MeatNetNode
             }
         } else {
             return []
@@ -403,10 +403,10 @@ public class DeviceManager : ObservableObject {
         }
     }
     
-    /// Sends request to the device to read the probe model info.
+    /// Sends request to read the probe model info.
     ///
     /// - parameter probe: Probe for which to read model info.
-    public func readModelInfo(probe: Probe) {
+    public func readModelInfoForProbe(_ probe: Probe) {
         if let targetDevice = getBestRouteToProbe(serialNumber: probe.serialNumber) {
             if let targetProbe = targetDevice as? Probe, let bleIdentifier = targetProbe.bleIdentifier {
                 // If the best route is directly to the Probe, send it that way.
@@ -420,7 +420,12 @@ public class DeviceManager : ObservableObject {
         }
     }
     
-    
+    /// Sends request to read the MeatNetNode model info.
+    ///
+    /// - parameter node: MeatNetNode for which to read model info.
+    public func readModelInfoForNode(_ node: MeatNetNode) {
+        BleManager.shared.readModelNumber(identifier: node.uniqueIdentifier)
+    }
     
     /// Sends a request to the device to read Over Temperature flag
     ///
@@ -440,16 +445,16 @@ public class DeviceManager : ObservableObject {
         }
     }
     
-    /// Set the DFU file to be used on displays with failed software upgrade.
+    /// Set the DFU file to be used on devices with failed software upgrade.
     /// A failed upgrade will occur if the user kills the application in the middle of
     /// the software upgrade process.  After this method is called, DFU will be initiated
     /// when a device with failed software upgrade is detected.
     ///
-    /// - displayDFUFile: Display DFU file
-    /// - thermometerDFUFile: Thermometer DFU file
-    public func restartFailedUpgradesWith(displayDFUFile: URL?, thermometerDFUFile: URL?) {
-        DFUManager.shared.setDisplayDFU(displayDFUFile)
-        DFUManager.shared.setThermometerDFU( thermometerDFUFile)
+    /// - dfuFiles: DFU files for each DFU type
+    public func restartFailedUpgradesWith(dfuFiles: [DFUDeviceType: URL]) {
+        for (type, dfuFile) in dfuFiles {
+            DFUManager.shared.setDefaultDFUForType(dfuFile: dfuFile, dfuType: type)
+        }
     }
 }
 
@@ -545,7 +550,7 @@ extension DeviceManager : BleManagerDelegate {
         case .probe:
             let _ = updateProbeWithAdvertising(advertising: advertising, isConnectable: isConnectable, rssi: rssi, identifier: identifier)
             
-        case .display:
+        case .meatNetNode:
             // If this advertising data was from a Node, attempt to find its Device entry by its BLE identifier.
             if(meatNetEnabled) {
                 let uniqueIdentifier = identifier.uuidString
@@ -561,7 +566,7 @@ extension DeviceManager : BleManagerDelegate {
                     }
                     
                 } else {
-                    let node = Display(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
+                    let node = MeatNetNode(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
                     addDevice(device: node)
                     
                     // If MeatNet is enabled, try to connect to all Nodes.
@@ -617,20 +622,12 @@ extension DeviceManager : BleManagerDelegate {
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String) {
         if let device = findDeviceByBleIdentifier(bleIdentifier: identifier) {
             device.firmareVersion = fwVersion
-            
-            // TODO : remove this at some point
-            // Prior to v0.8.0, the firmware did not support the Session ID command
-            // Therefore, add a hardcoded session for backwards compatibility
-            if(Version.isBefore(deviceFirmware: fwVersion, comparison: "v0.8.0")) {
-                let fakeSessionInfo = SessionInformation(sessionID: 0, samplePeriod: 1000)
-                updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: fakeSessionInfo)
-            }
         }
     }
     
     func updateDeviceSerialNumber(identifier: UUID, serialNumber: String) {
-        if let timer = findDeviceByBleIdentifier(bleIdentifier: identifier) as? Display {
-            timer.serialNumberString = serialNumber
+        if let node = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode {
+            node.serialNumberString = serialNumber
         }
     }
     
@@ -642,7 +639,7 @@ extension DeviceManager : BleManagerDelegate {
     
     func updateDeviceModelInfo(identifier: UUID, modelInfo: String) {
         if let device = findDeviceByBleIdentifier(bleIdentifier: identifier)  {
-            device.updateSkuAndLot(modelInfo: modelInfo)
+            device.updateWithModelInfo(modelInfo)
         }
     }
     
@@ -732,7 +729,7 @@ extension DeviceManager : BleManagerDelegate {
             }
         } else if let readModelInfoResponse = response as? NodeReadModelInfoResponse {
             if let probe = findProbeBySerialNumber(serialNumber: readModelInfoResponse.probeSerialNumber) {
-                probe.updateSkuAndLot(modelInfo: readModelInfoResponse.modelInfo)
+                probe.updateWithModelInfo(readModelInfoResponse.modelInfo)
             }
         } else if let sessionInfoResponse = response as? NodeReadSessionInfoResponse {
             if let probe = findProbeBySerialNumber(serialNumber: sessionInfoResponse.probeSerialNumber) {
@@ -742,7 +739,6 @@ extension DeviceManager : BleManagerDelegate {
             if let probe = findProbeBySerialNumber(serialNumber: readLogsResponse.probeSerialNumber) {
                 probe.processLogResponse(logResponse: readLogsResponse)
             }
-            
         }
     }
     

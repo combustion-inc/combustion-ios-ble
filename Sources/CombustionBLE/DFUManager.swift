@@ -28,6 +28,13 @@ import CoreBluetooth
 import Foundation
 import NordicDFU
 
+public enum DFUDeviceType {
+    case thermometer
+    case display
+    case charger
+    case unknown
+}
+
 class DFUManager {
     
     /// Singleton accessor for class
@@ -42,30 +49,21 @@ class DFUManager {
     // Dictionary of currently active DFUs. Key = DFU advertising name
     private var runningDFUs = [String: DFU]()
     
-    private var defaultDisplayFirmware: DFUFirmware?
-    private var defaultThermometerFirmware: DFUFirmware?
+    private var defaultFirmware: [DFUDeviceType: DFUFirmware] = [:]
     
     private enum Constants {
         static let THERMOMETER_DFU_NAME = "Thermom_DFU_"
         static let DISPLAY_DFU_NAME = "Display_DFU_"
+        static let CHARGER_DFU_NAME = "Charger_DFU_"
         
         static let RETRY_TIME_DELAY = 10 // seconds
     }
     
-    func setDisplayDFU(_ displayDFUFile: URL?) {
-        guard let dfuFile = displayDFUFile else { return }
+    func setDefaultDFUForType(dfuFile: URL?, dfuType: DFUDeviceType) {
+        guard let dfuFile = dfuFile else { return }
         
         do {
-            defaultDisplayFirmware = try DFUFirmware(urlToZipFile: dfuFile)
-        }
-        catch { }
-    }
-    
-    func setThermometerDFU(_ thermometerDFUFile: URL?) {
-        guard let dfuFile = thermometerDFUFile else { return }
-        
-        do {
-            defaultThermometerFirmware = try DFUFirmware(urlToZipFile: dfuFile)
+            defaultFirmware[dfuType] = try DFUFirmware(urlToZipFile: dfuFile)
         }
         catch { }
     }
@@ -74,13 +72,17 @@ class DFUManager {
         return runningDFUs[advertisingName]?.uniqueIdentifier
     }
     
-    static func bootloaderTypeFrom(advertisingName: String) -> CombustionProductType {
+    static func bootloaderTypeFrom(advertisingName: String) -> DFUDeviceType {
         if(advertisingName.contains(Constants.THERMOMETER_DFU_NAME)) {
-            return CombustionProductType.probe
+            return .thermometer
         }
         
         if(advertisingName.contains(Constants.DISPLAY_DFU_NAME)) {
-            return CombustionProductType.display
+            return .display
+        }
+        
+        if(advertisingName.contains(Constants.CHARGER_DFU_NAME)) {
+            return .charger
         }
         
         return .unknown
@@ -115,7 +117,7 @@ class DFUManager {
         
         // Use advertising name to determine if device is Display or Thermometer
         // and restart DFU with the default file for each device type
-        if let firmware = firmwareForBootloader(device) {
+        if let firmware = defaultFirmware[device.type] {
             _ = runDfu(peripheral: peripheral,
                        device: device,
                        advertisingName: device.advertisingName,
@@ -136,10 +138,25 @@ class DFUManager {
     }
     
     private func dfuAdvertisingName(for device: Device) -> String {
-        let typeName = (device is Probe) ? Constants.THERMOMETER_DFU_NAME : Constants.DISPLAY_DFU_NAME
+        let typeName = deviceTypeAdvertisingName(for: device)
         
         // Add random value to advertising name
         return typeName + String(format: "%05d", arc4random_uniform(100000))
+    }
+    
+    private func deviceTypeAdvertisingName(for device: Device) -> String {
+        let typeName = (device is Probe) ? Constants.THERMOMETER_DFU_NAME : Constants.DISPLAY_DFU_NAME
+        
+        if let node = device as? MeatNetNode {
+            if node.dfuType == .charger {
+                return Constants.CHARGER_DFU_NAME
+            }
+            else if(node.dfuType == .display) {
+                return Constants.DISPLAY_DFU_NAME
+            }
+        }
+
+        return Constants.THERMOMETER_DFU_NAME
     }
     
     private func runDfu(peripheral: CBPeripheral,
@@ -162,18 +179,6 @@ class DFUManager {
                                            startedAt: Date())
         
         return initiator.start(target: peripheral)
-    }
-    
-    private func firmwareForBootloader(_ device: BootloaderDevice) -> DFUFirmware? {
-        if device.advertisingName.contains(Constants.DISPLAY_DFU_NAME) {
-            return defaultDisplayFirmware
-        }
-
-        if device.advertisingName.contains(Constants.THERMOMETER_DFU_NAME) {
-            return defaultThermometerFirmware
-        }
-
-        return nil
     }
     
 }

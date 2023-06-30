@@ -743,7 +743,7 @@ extension DeviceManager : BleManagerDelegate {
     }
     
     func handleNodeUARTRequest(identifier: UUID, request: NodeRequest) {
-//        print("Received Request from Node: \(request)")
+//        print("CombustionBLE : Received Request from Node: \(request)")
         if let statusRequest = request as? NodeProbeStatusRequest, let probeStatus = statusRequest.probeStatus, let hopCount = statusRequest.hopCount {
             // Update the Probe based on the information that was received
             updateDeviceWithNodeStatus(serialNumber: statusRequest.serialNumber,
@@ -756,6 +756,9 @@ extension DeviceManager : BleManagerDelegate {
                 // Add the probe to the node's list of networked probes
                 node.updateNetworkedProbe(probe: probe)
             }
+        }
+        else if let heartBeatRequest = request as? NodeHeartbeatRequest {
+            // TODO handle heartBeatRequest
         }
     }
     

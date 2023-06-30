@@ -43,4 +43,5 @@ enum NodeMessageType: UInt8  {
     case probeFirmwareRevision = 0x46
     case probeHardwareRevision = 0x47
     case probeModelInformation = 0x48
+    case heartbeat = 0x49
 }

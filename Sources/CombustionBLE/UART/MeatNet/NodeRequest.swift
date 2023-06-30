@@ -94,7 +94,7 @@ extension NodeRequest {
         let syncBytes = data.subdata(in: 0..<2)
         let syncString = syncBytes.reduce("") {$0 + String(format: "%02x", $1)}
         guard syncString == "cafe" else {
-            print("NodeRequest::fromData(): Missing sync bytes in request")
+            print("CombustionBLE : NodeRequest::fromData(): Missing sync bytes in request")
             return nil
         }
         
@@ -105,7 +105,7 @@ extension NodeRequest {
         }
         
         guard let messageType = NodeMessageType(rawValue: typeRaw) else {
-            print("NodeRequest::fromData(): Unknown message type in request")
+            print("CombustionBLE : NodeRequest::fromData(): Unknown message type in request")
             return nil
         }
         
@@ -148,20 +148,12 @@ extension NodeRequest {
         // print("Success: \(success), payloadLength: \(payloadLength)")
         
         switch messageType {
-//        case .log:
-//            return NodeLogResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
-//        case .setID:
-//            return NodeSetIDResponse(success: success, payloadLength: Int(payloadLength))
-//        case .setColor:
-//            return NodeSetColorResponse(success: success, payloadLength: Int(payloadLength))
-//        case .sessionInfo:
-//            return NodeSessionInfoResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
         case .probeStatus:
             return NodeProbeStatusRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
-//        case .readOverTemperature:
-//            return NodeReadOverTemperatureResponse(data: data, success: success, payloadLength: Int(payloadLength))
+        case .heartbeat:
+            return NodeHeartbeatRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
         default:
-            print("Unknown node request type: \(messageType)")
+            print("CombustionBLE : Unknown node request type: \(messageType)")
             return nil
         }
     }

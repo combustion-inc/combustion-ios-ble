@@ -31,6 +31,9 @@ class ConnectionManager {
     /// Tracks whether MeatNet is enabled.
     var meatNetEnabled : Bool = false
     
+    /// Tracks whether DFU mode is enabled.
+    var dfuModeEnabled : Bool = false
+    
     private var connectionTimers: [String: Timer] = [:]
     private var lastStatusUpdate: [String: Date] = [:]
     
@@ -46,16 +49,18 @@ class ConnectionManager {
             probeStatusStale = Date().timeIntervalSince(lastUpdateTime) > PROBE_STATUS_STALE_TIMEOUT
         }
         
-        // If MeatNet is enabled and the probe data is stale, then connect to it
-        if meatNetEnabled &&
+        // Always connect to probe if DFU mode is enabled
+        if dfuModeEnabled {
+            probe.connect()
+        }
+        else if meatNetEnabled && // Otherwise if MeatNet is enabled and the probe data is stale, then connect to it
             probeStatusStale &&
             (probe.connectionState != .connected) &&
             (connectionTimers[probe.serialNumberString] == nil) {
             
             // Start timer to connect to probe after delay
             connectionTimers[probe.serialNumberString] = Timer.scheduledTimer(withTimeInterval: 3, repeats: false, block: { [weak self] _ in
-                print("JDJ Connect to probe")
-                
+
                 if let probe = self?.getProbeWithSerial(probe.serialNumberString) {
                     probe.connect()
                 }
@@ -76,12 +81,13 @@ class ConnectionManager {
     func receivedStatusFor(_ probe: Probe, directConnection: Bool) {
         lastStatusUpdate[probe.serialNumberString] = Date()
         
-        // if receiving status from meatnet, then disconnect from probe
-        if !directConnection,
-           let probe = getProbeWithSerial(probe.serialNumberString),
-           probe.connectionState == .connected {
-            print("JDJ diconnect from probe")
-            probe.disconnect()
+        // if receiving status from meatnet and DFU disabled, then disconnect from probe
+        if !directConnection && meatNetEnabled && !dfuModeEnabled {
+            
+            if let probe = getProbeWithSerial(probe.serialNumberString),
+               probe.connectionState == .connected {
+                probe.disconnect()
+            }
         }
     }
     

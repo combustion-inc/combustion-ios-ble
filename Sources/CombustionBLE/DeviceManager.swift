@@ -73,6 +73,11 @@ public class DeviceManager : ObservableObject {
         connectionManager.meatNetEnabled = true
     }
     
+    /// Enables DFU mode
+    public func enableDFUMode(_ enable: Bool) {
+        connectionManager.dfuModeEnabled = enable
+    }
+    
     /// Private initializer to enforce singleton
     private init() {
         BleManager.shared.delegate = self

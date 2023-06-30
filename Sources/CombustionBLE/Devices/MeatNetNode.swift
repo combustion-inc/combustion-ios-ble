@@ -56,9 +56,9 @@ public class MeatNetNode: Device {
         probes[probe.serialNumber] = probe
     }
     
-    /// Returns probe associated with the specified serial number, if it's in this list.
-    func getNetworkedProbe(serialNumber: UInt32) -> Probe? {
-        return probes[serialNumber]
+    /// Returns true if node has connection to probe.
+    func hasConnectionToProbe(_ serialNumber: UInt32) -> Bool {
+        return probes[serialNumber] != nil
     }
 
     /// Special handling for MeatNetNode model info.  Need to decode model info string

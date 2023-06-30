@@ -111,7 +111,7 @@ public class DeviceManager : ObservableObject {
     
     /// Returns list of MeatNet nodes
     /// - returns: List of all MeatNet nodes
-    public func getDisplays() -> [MeatNetNode] {
+    public func getMeatnetNodes() -> [MeatNetNode] {
         if meatNetEnabled {
             return Array(devices.values).compactMap { device in
                 return device as? MeatNetNode
@@ -142,19 +142,21 @@ public class DeviceManager : ObservableObject {
     /// Gets the best Node for communicating with a Probe.
     func getBestNodeForProbe(serialNumber: UInt32) -> MeatNetNode? {
         var foundNode : MeatNetNode? = nil
-        // Check Nodes to which we are connected to see if they have a route to the Probe
-        for (_, device) in devices {
-            if let node = device as? MeatNetNode {
-                // Check multiple Nodes and choose the one with the best RSSI to this device.
-                var foundRssi = Device.MIN_RSSI
-                if let _ = node.getNetworkedProbe(serialNumber: serialNumber) {
-                    if node.rssi > foundRssi {
-                        foundNode = node
-                        foundRssi = node.rssi
-                    }
+        var foundRssi = Device.MIN_RSSI
+        
+        let meatnetNodes = getMeatnetNodes()
+        
+        for node in meatnetNodes {
+            // Check Nodes to which we are connected to see if they have a route to the Probe
+            if node.connectionState == .connected {
+                // Choose node with the best RSSI that has connection to probe
+                if node.hasConnectionToProbe(serialNumber) && node.rssi > foundRssi {
+                    foundNode = node
+                    foundRssi = node.rssi
                 }
             }
         }
+        
         return foundNode
     }
     

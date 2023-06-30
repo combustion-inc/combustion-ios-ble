@@ -52,7 +52,9 @@ public class MeatNetNode: Device {
     }
     
     /// Adds Probe to dictionary of networked Probes, if not already present.
-    func updateNetworkedProbe(probe : Probe) {
+    func updateNetworkedProbe(probe: Probe?) {
+        guard let probe = probe else { return }
+        
         probes[probe.serialNumber] = probe
     }
     

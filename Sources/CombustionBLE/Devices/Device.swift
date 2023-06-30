@@ -131,7 +131,7 @@ public class Device : ObservableObject {
         
         // If we were disconnected and we should be maintaining a connection, attempt to reconnect.
         if(maintainingConnection && (connectionState == .disconnected || connectionState == .failed)) {
-            DeviceManager.shared.connectToDevice(self)
+            connect()
         }
     }
     

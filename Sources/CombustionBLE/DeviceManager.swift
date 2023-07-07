@@ -33,15 +33,15 @@ import CoreBluetooth
 /// (either via Bluetooth or from a list in the Cloud)
 public class DeviceManager : ObservableObject {
     
-    /// Serial Number value indicating 'No Probe'
-    private let INVALID_PROBE_SERIAL_NUMBER = 0
-    
     /// Singleton accessor for class
     public static let shared = DeviceManager()
     
     public enum Constants {
         public static let MINIMUM_PREDICTION_SETPOINT_CELSIUS = 0.0
         public static let MAXIMUM_PREDICTION_SETPOINT_CELSIUS = 100.0
+        
+        /// Serial Number value indicating 'No Probe'
+        static let INVALID_PROBE_SERIAL_NUMBER = 0
     }
     
     /// Dictionary of discovered devices.
@@ -54,11 +54,11 @@ public class DeviceManager : ObservableObject {
         let handler: (Bool) -> Void
     }
     
-    /// Tracks whether MeatNet is enabled.
-    private var meatNetEnabled : Bool = false;
-    
     /// Handler for messages from Probe
     private let messageHandlers = MessageHandlers()
+    
+    /// Connection manager to handle BLE connection logic
+    private let connectionManager = ConnectionManager()
     
     public func addSimulatedProbe() {
         addDevice(device: SimulatedProbe())
@@ -70,7 +70,12 @@ public class DeviceManager : ObservableObject {
     
     /// Enables MeatNet repeater network.
     public func enableMeatNet() {
-        meatNetEnabled = true;
+        connectionManager.meatNetEnabled = true
+    }
+    
+    /// Enables DFU mode
+    public func enableDFUMode(_ enable: Bool) {
+        connectionManager.dfuModeEnabled = enable
     }
     
     /// Private initializer to enforce singleton
@@ -111,8 +116,8 @@ public class DeviceManager : ObservableObject {
     
     /// Returns list of MeatNet nodes
     /// - returns: List of all MeatNet nodes
-    public func getDisplays() -> [MeatNetNode] {
-        if meatNetEnabled {
+    public func getMeatnetNodes() -> [MeatNetNode] {
+        if connectionManager.meatNetEnabled {
             return Array(devices.values).compactMap { device in
                 return device as? MeatNetNode
             }
@@ -142,19 +147,21 @@ public class DeviceManager : ObservableObject {
     /// Gets the best Node for communicating with a Probe.
     func getBestNodeForProbe(serialNumber: UInt32) -> MeatNetNode? {
         var foundNode : MeatNetNode? = nil
-        // Check Nodes to which we are connected to see if they have a route to the Probe
-        for (_, device) in devices {
-            if let node = device as? MeatNetNode {
-                // Check multiple Nodes and choose the one with the best RSSI to this device.
-                var foundRssi = Device.MIN_RSSI
-                if let _ = node.getNetworkedProbe(serialNumber: serialNumber) {
-                    if node.rssi > foundRssi {
-                        foundNode = node
-                        foundRssi = node.rssi
-                    }
+        var foundRssi = Device.MIN_RSSI
+        
+        let meatnetNodes = getMeatnetNodes()
+        
+        for node in meatnetNodes {
+            // Check Nodes to which we are connected to see if they have a route to the Probe
+            if node.connectionState == .connected {
+                // Choose node with the best RSSI that has connection to probe
+                if node.hasConnectionToProbe(serialNumber) && node.rssi > foundRssi {
+                    foundNode = node
+                    foundRssi = node.rssi
                 }
             }
         }
+        
         return foundNode
     }
     
@@ -484,11 +491,15 @@ extension DeviceManager : BleManagerDelegate {
         // Update Probe Device from direct status notification
         guard let probe = findDeviceByBleIdentifier(bleIdentifier: identifier) as? Probe else { return }
         probe.updateProbeStatus(deviceStatus: status)
+        
+        connectionManager.receivedStatusFor(probe, directConnection: true)
     }
     
     func updateDeviceWithNodeStatus(serialNumber: UInt32, status: ProbeStatus, hopCount: HopCount) {
         guard let probe = findProbeBySerialNumber(serialNumber: serialNumber) else { return }
         probe.updateProbeStatus(deviceStatus: status, hopCount: hopCount)
+        
+        connectionManager.receivedStatusFor(probe, directConnection: false)
     }
     
     func handleBootloaderAdvertising(advertisingName: String, rssi: NSNumber, peripheral: CBPeripheral) {
@@ -514,11 +525,12 @@ extension DeviceManager : BleManagerDelegate {
     /// - param rssi - Signal strength to Probe (only present if advertising is directly from Probe)
     /// - param identifier - BLE identifier (only present if advertising is directly from Probe)
     /// - return Probe that was updated or added, if any
-    func updateProbeWithAdvertising(advertising: AdvertisingData, isConnectable: Bool?, rssi: NSNumber?, identifier: UUID?) -> Probe? {
+    private func updateProbeWithAdvertising(advertising: AdvertisingData, isConnectable: Bool?,
+                                            rssi: NSNumber?, identifier: UUID?) -> Probe? {
         var foundProbe : Probe? = nil
         
         // If this advertising data was from a Probe, attempt to find its Device entry by its serial number.
-        if advertising.serialNumber != INVALID_PROBE_SERIAL_NUMBER {
+        if advertising.serialNumber != Constants.INVALID_PROBE_SERIAL_NUMBER {
             let uniqueIdentifier = String(advertising.serialNumber)
             if let probe = devices[uniqueIdentifier] as? Probe {
                 // If we already have an entry for this Probe, update its information.
@@ -532,11 +544,6 @@ extension DeviceManager : BleManagerDelegate {
             }
         }
         
-        // If MeatNet is enabled, try to connect to all probes
-        if(meatNetEnabled) {
-            foundProbe?.connect()
-        }
-        
         return foundProbe
     }
     
@@ -548,37 +555,41 @@ extension DeviceManager : BleManagerDelegate {
     func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID) {
         switch(advertising.type) {
         case .probe:
-            let _ = updateProbeWithAdvertising(advertising: advertising, isConnectable: isConnectable, rssi: rssi, identifier: identifier)
+            
+            // Create or update probe with advertising data
+            let probe = updateProbeWithAdvertising(advertising: advertising, isConnectable: isConnectable, rssi: rssi, identifier: identifier)
+            
+            // Notify connection manager
+            connectionManager.receivedProbeAdvertising(probe)
             
         case .meatNetNode:
-            // If this advertising data was from a Node, attempt to find its Device entry by its BLE identifier.
-            if(meatNetEnabled) {
-                let uniqueIdentifier = identifier.uuidString
-                if let node = devices[uniqueIdentifier] as? MeatNetNode {
-                    node.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
-                    
-                    // If MeatNet is enabled, try to connect to all Nodes.
-                    node.connect()
-                    
-                    // Also update the probe associated with this advertising data
-                    if let probe = updateProbeWithAdvertising(advertising: advertising, isConnectable: nil, rssi: nil, identifier: nil) {
-                        node.updateNetworkedProbe(probe: probe)
-                    }
-                    
-                } else {
-                    let node = MeatNetNode(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
-                    addDevice(device: node)
-                    
-                    // If MeatNet is enabled, try to connect to all Nodes.
-                    node.connect()
-                    
-                    // Also update the probe associated with this advertising data
-                    if let probe = updateProbeWithAdvertising(advertising: advertising, isConnectable: nil, rssi: nil, identifier: nil) {
-                        node.updateNetworkedProbe(probe: probe)
-                    }
-                }
+
+            // if meatnet is not enabled, then ignore advertising from meatnet nodes
+            if(!connectionManager.meatNetEnabled) {
+                return
             }
             
+            let meatnetNode: MeatNetNode
+            
+            // Update node if it is in device list
+            if let node = devices[identifier.uuidString] as? MeatNetNode {
+                node.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
+                meatnetNode = node
+            } else {
+                // Create node and add to device list
+                meatnetNode = MeatNetNode(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
+                addDevice(device: meatnetNode)
+            }
+            
+            // Update the probe associated with this advertising data
+            let probe = updateProbeWithAdvertising(advertising: advertising, isConnectable: nil, rssi: nil, identifier: nil)
+            
+            // Add probe to meatnet node
+            meatnetNode.updateNetworkedProbe(probe: probe)
+            
+            // Notify connection manager
+            connectionManager.receivedProbeAdvertising(probe, from: meatnetNode)
+
         case .unknown:
             print("Found device with unknown type")
             
@@ -587,7 +598,7 @@ extension DeviceManager : BleManagerDelegate {
     }
     
     /// Finds Device (Node or Probe) by specified BLE identifier.
-    func findDeviceByBleIdentifier(bleIdentifier: UUID) -> Device? {
+    private func findDeviceByBleIdentifier(bleIdentifier: UUID) -> Device? {
         var foundDevice : Device? = nil
         if let device = devices[bleIdentifier.uuidString]  {
             // This was a MeatNet Node as it was stored by its BLE UUID.
@@ -608,7 +619,7 @@ extension DeviceManager : BleManagerDelegate {
         return foundDevice
     }
     
-    func findProbeBySerialNumber(serialNumber: UInt32) -> Probe? {
+    private func findProbeBySerialNumber(serialNumber: UInt32) -> Probe? {
         var foundProbe : Probe? = nil
         
         if let probe = devices[String(serialNumber)] as? Probe {
@@ -673,7 +684,7 @@ extension DeviceManager : BleManagerDelegate {
     /// - MARK: Probe Direct Message Handling
     //////////////////////////////////////////////
     
-    func handleProbeUARTResponse(identifier: UUID, response: Response) {
+    private func handleProbeUARTResponse(identifier: UUID, response: Response) {
         if let logResponse = response as? LogResponse {
             updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
         }
@@ -714,7 +725,7 @@ extension DeviceManager : BleManagerDelegate {
     /// - MARK: Node/MeatNet Direct Message Handling
     ///////////////////////////////////////
     
-    func handleNodeUARTResponse(identifier: UUID, response: NodeResponse) {
+    private func handleNodeUARTResponse(identifier: UUID, response: NodeResponse) {
 //        print("Received Response from Node: \(response)")
         
         if let setPredictionResponse = response as? NodeSetPredictionResponse {
@@ -742,7 +753,7 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
-    func handleNodeUARTRequest(identifier: UUID, request: NodeRequest) {
+    private func handleNodeUARTRequest(identifier: UUID, request: NodeRequest) {
 //        print("CombustionBLE : Received Request from Node: \(request)")
         if let statusRequest = request as? NodeProbeStatusRequest, let probeStatus = statusRequest.probeStatus, let hopCount = statusRequest.hopCount {
             // Update the Probe based on the information that was received

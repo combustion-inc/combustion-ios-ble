@@ -34,7 +34,7 @@ public enum PredictionType: UInt8, CaseIterable {
     
     static let MASK: UInt8 = 0x3
     
-    func toString() -> String {
+    public func toString() -> String {
          switch(self) {
          case .none:
              return "None"

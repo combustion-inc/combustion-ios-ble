@@ -1,9 +1,9 @@
-//  BatteryStatusVirtualSensors.swift
+//  NodeReadHardwareRevisionRequest.swift
 
 /*--
 MIT License
 
-Copyright (c) 2022 Combustion Inc.
+Copyright (c) 2021 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,19 +26,13 @@ SOFTWARE.
 
 import Foundation
 
-struct VirtualSensorsPredictionState {
-    let predictionState: PredictionState
-    let virtualSensors: VirtualSensors
-}
-
-extension VirtualSensorsPredictionState {
-    static func fromBytes(_ rawValue: UInt16) -> VirtualSensorsPredictionState {
-        let lowerByte = UInt8(rawValue & 0xFF)
-        let virtualSensors = VirtualSensors.fromByte(lowerByte)
+class NodeReadHardwareRevisionRequest: NodeRequest {
+    init(serialNumber: UInt32) {
+        var payload = Data()
+        var serialNumberBytes = serialNumber
+        payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
         
-        let rawPrediction = UInt8((rawValue >> 7) & UInt16(PredictionState.MASK))
-        let prediction = PredictionState(rawValue: rawPrediction) ?? .unknown
-        
-        return VirtualSensorsPredictionState(predictionState: prediction, virtualSensors: virtualSensors)
+        super.init(outgoingPayload: payload, type: .probeHardwareRevision)
     }
 }
+

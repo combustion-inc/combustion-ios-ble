@@ -1,4 +1,4 @@
-//  PredictionType.swift
+//  ReadOverTemperature.swift
 
 /*--
 MIT License
@@ -26,24 +26,25 @@ SOFTWARE.
 
 import Foundation
 
-public enum PredictionType: UInt8, CaseIterable {
-    case none = 0x00
-    case removal = 0x01
-    case resting = 0x02
-    case reserved = 0x03
+class ReadOverTemperatureRequest: Request {
+    init() {
+        let payload = Data()
+        super.init(payload: payload, type: .readOverTemperature)
+    }
+}
+
+class ReadOverTemperatureResponse : Response {
+    static let PAYLOAD_LENGTH = 1
     
-    static let MASK: UInt8 = 0x3
+    let flagSet: Bool
     
-    public func toString() -> String {
-         switch(self) {
-         case .none:
-             return "None"
-         case .removal:
-             return "Removal"
-         case .resting:
-             return "Resting"
-         case .reserved:
-             return "Reserved"
-         }
-     }
+    init(data: Data, success: Bool, payloadLength: Int) {
+        let sequenceByteIndex = Response.HEADER_LENGTH
+        let flagSetByte = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 1))
+        flagSet = flagSetByte.withUnsafeBytes {
+            $0.load(as: Bool.self)
+        }
+
+        super.init(success: success, payloadLength: payloadLength)
+    }
 }

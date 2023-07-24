@@ -1,4 +1,4 @@
-//  LogResponse.swift
+//  NodeReadModelInfoResponse.swift
 
 /*--
 MIT License
@@ -26,45 +26,38 @@ SOFTWARE.
 
 import Foundation
 
-class LogResponse: Response {
+class NodeReadModelInfoResponse: NodeResponse {
     
     enum Constants {
-        static let MINIMUM_PAYLOAD_LENGTH = 24
+        static let MINIMUM_PAYLOAD_LENGTH = 54
         
-        static let SEQUENCE_RANGE = Response.HEADER_LENGTH..<(Response.HEADER_LENGTH + 4)
-        static let TEMPERATURE_RANGE = (Response.HEADER_LENGTH + 4)..<(Response.HEADER_LENGTH + 17)
-        static let PREDICTION_LOG_RANGE = (Response.HEADER_LENGTH + 17)..<(Response.HEADER_LENGTH + 24)
+        static let SERIAL_RANGE = NodeResponse.HEADER_LENGTH..<(NodeResponse.HEADER_LENGTH + 4)
+        static let MODEL_INFO_RANGE = (NodeResponse.HEADER_LENGTH + 4)..<(NodeResponse.HEADER_LENGTH + 54)
     }
     
-    let sequenceNumber: UInt32
-    let temperatures: ProbeTemperatures
-    let predictionLog: PredictionLog
+    let probeSerialNumber: UInt32
+    let modelInfo: String
     
-    init(data: Data, success: Bool, payloadLength: Int) {
-        let sequenceRaw = data.subdata(in: Constants.SEQUENCE_RANGE)
-        sequenceNumber = sequenceRaw.withUnsafeBytes {
+    init(data: Data, success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
+        let serialRaw = data.subdata(in: Constants.SERIAL_RANGE)
+        probeSerialNumber = serialRaw.withUnsafeBytes {
             $0.load(as: UInt32.self)
         }
         
-        // Temperatures (8 13-bit) values
-        let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
-        temperatures = ProbeTemperatures.fromRawData(data: tempData)
+        let modelInfoRaw = data.subdata(in: Constants.MODEL_INFO_RANGE)
+        modelInfo = String(decoding: modelInfoRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))
         
-        // Prediction Log
-        let predictionLogData = data.subdata(in: Constants.PREDICTION_LOG_RANGE)
-        predictionLog = PredictionLog.fromRaw(data: predictionLogData)
-
-        super.init(success: success, payloadLength: payloadLength)
+        super.init(success: success, requestId: requestId, responseId: responseId, payloadLength: payloadLength)
     }
 }
 
-extension LogResponse {
+extension NodeReadModelInfoResponse {
 
-    static func fromRaw(data: Data, success: Bool, payloadLength: Int) -> LogResponse? {
+    static func fromRaw(data: Data, success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) -> NodeReadModelInfoResponse? {
         if(payloadLength < Constants.MINIMUM_PAYLOAD_LENGTH) {
             return nil
         }
             
-        return LogResponse(data: data, success: success, payloadLength: payloadLength)
+        return NodeReadModelInfoResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: payloadLength)
     }
 }

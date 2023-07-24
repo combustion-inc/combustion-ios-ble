@@ -46,6 +46,8 @@ public class SimulatedProbe: Probe {
             self?.updateFakeStatus()
         }
         
+        self.connectionState = .connected
+        
         // Set fake session information
         let fakeSessionInfo = SessionInformation(sessionID: UInt32.random(in: 0..<UInt32.max), samplePeriod: 1000)
         updateWithSessionInformation(fakeSessionInfo)
@@ -64,7 +66,7 @@ public class SimulatedProbe: Probe {
     private func updateFakeAdvertising() {
         let advertising = AdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
                                           fakeTemperatures: ProbeTemperatures.withRandomData())
-        updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI())
+        updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), bleIdentifier: nil)
     }
     
     private func updateFakeStatus() {
@@ -81,12 +83,20 @@ public class SimulatedProbe: Probe {
             lastSequence = 0
         }
         
+        let predictionStatus = PredictionStatus(predictionState: .predicting,
+                                                predictionMode: .timeToRemoval,
+                                                predictionType: .none,
+                                                predictionSetPointTemperature: 71.0,
+                                                heatStartTemperature: 5.0,
+                                                predictionValueSeconds: 3540,
+                                                estimatedCoreTemperature: 30.0)
+        
         let probeStatus = ProbeStatus(minSequenceNumber: firstSeq,
                                       maxSequenceNumber: lastSequence,
                                       temperatures: ProbeTemperatures.withRandomData(),
                                       modeId: ModeId.defaultValues(),
                                       batteryStatusVirtualSensors: BatteryStatusVirtualSensors.defaultValues(),
-                                      predictionStatus: nil)
+                                      predictionStatus: predictionStatus)
         
         updateProbeStatus(deviceStatus: probeStatus)
     }

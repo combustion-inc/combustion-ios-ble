@@ -42,15 +42,26 @@ public class Device : ObservableObject {
         /// Attempt to connect to device failed
         case failed
     }
+
+    /// String representation of BLE device identifier (UUID), if able to see this device's
+    /// adveritsing messages directly.
+    public var bleIdentifier: String?
     
-    /// String representation of device identifier (UUID)
-    public var identifier: String
+    /// Unique identifier for this device, which is Serial Number for Probes, or BLE device
+    /// identifier for Nodes.
+    public var uniqueIdentifier: String
     
     /// Device firmware version
-    public internal(set) var firmareVersion: String?
+    @Published public internal(set) var firmareVersion: String?
     
     /// Device hardware revision
-    public internal(set) var hardwareRevision: String?
+    @Published public internal(set) var hardwareRevision: String?
+    
+    /// Device SKU
+    @Published public internal(set) var sku: String?
+    
+    /// Device lot #
+    @Published public internal(set) var manufacturingLot: String?
     
     /// Current connection state of device
     @Published public internal(set) var connectionState: ConnectionState = .disconnected
@@ -62,10 +73,10 @@ public class Device : ObservableObject {
     @Published public internal(set) var rssi: Int
     
     /// Tracks whether the app should attempt to maintain a connection to the device.
-    @Published public internal(set) var maintainingConnection = false
+    @Published public private(set) var maintainingConnection = false
     
     /// Tracks whether the data has gone stale (no new data in some time)
-    @Published public internal(set) var stale = false
+    @Published public private(set) var stale = false
     
     /// DFU state
     @Published public private(set) var dfuState: DFUState?
@@ -84,31 +95,52 @@ public class Device : ObservableObject {
         public let progress: Int
     }
     
+    /// Minimum possible value for RSSI
+    static internal let MIN_RSSI = -128
+    
+    
     /// DFU Upload progress
     @Published public private(set) var dfuUploadProgress: DFUUploadProgress?
+    
+    private var dfuServiceController: DFUServiceController? = nil
     
     /// Time at which device was last updated
     internal var lastUpdateTime = Date()
     
-    public init(identifier: UUID, RSSI: NSNumber) {
-        self.identifier = identifier.uuidString
-        self.rssi = RSSI.intValue
+    public init(uniqueIdentifier: String, bleIdentifier: UUID?, RSSI: NSNumber?) {
+        self.uniqueIdentifier = uniqueIdentifier
+        
+        if let bleIdentifier = bleIdentifier {
+            self.bleIdentifier = bleIdentifier.uuidString
+        }
+        
+        if let RSSI = RSSI {
+            self.rssi = RSSI.intValue
+        } else {
+            self.rssi = Device.MIN_RSSI
+        }
     }
     
     func updateConnectionState(_ state: ConnectionState) {
         connectionState = state
         
+        // Clear firmware version and DFU state on disconnect
+        if(connectionState == .disconnected) {
+            firmareVersion = nil
+        }
+        
         // If we were disconnected and we should be maintaining a connection, attempt to reconnect.
         if(maintainingConnection && (connectionState == .disconnected || connectionState == .failed)) {
-            DeviceManager.shared.connectToDevice(self)
+            connect()
         }
     }
     
+    /// Updates whether the device is stale. Called on a timer interval by DeviceManager.
     func updateDeviceStale() {
         stale = Date().timeIntervalSince(lastUpdateTime) > Constants.STALE_TIMEOUT
         
         
-        // If device data is stale, assume its not longer connectable
+        // If device data is stale, assume its not connectable
         if(stale) {
             isConnectable = false
         }
@@ -122,6 +154,21 @@ public class Device : ObservableObject {
         }
         
         return true
+    }
+    
+    /// Called when DFU has completed
+    func dfuComplete() {
+        DFUManager.shared.clearCompletedDFU(device: self)
+    }
+    
+    /// Updates SKU and Lot number based on Model Info string.
+    func updateWithModelInfo(_ modelInfo: String) {
+        // Parse the SKU and lot number, which are delimited by a ':'
+        let parts = modelInfo.components(separatedBy: ":")
+        if parts.count == 2 {
+            self.sku = parts[0]
+            self.manufacturingLot = parts[1]
+        }
     }
 }
     
@@ -150,26 +197,43 @@ extension Device {
         // Disconnect if connected
         DeviceManager.shared.disconnectFromDevice(self)
     }
+    
+    public func runSoftwareUpgrade(dfuFile: URL) -> Bool {
+        do {
+            let dfu = try DFUFirmware(urlToZipFile: dfuFile)
+            dfuServiceController = BleManager.shared.startFirmwareUpdate(device: self, dfu: dfu)
+            return true
+        }
+        catch {
+            return false
+        }
+    }
 }
 
 
 extension Device: Hashable {
     public static func == (lhs: Device, rhs: Device) -> Bool {
-        return lhs.identifier == rhs.identifier
+        return lhs.uniqueIdentifier == rhs.uniqueIdentifier
     }
 
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(identifier)
+        hasher.combine(uniqueIdentifier)
     }
 }
 
 extension Device: DFUServiceDelegate {
     public func dfuStateDidChange(to state: DFUState) {
         dfuState = state
+        
+        if(dfuState == .completed) {
+            dfuComplete()
+        }
     }
     
     public func dfuError(_ error: DFUError, didOccurWithMessage message: String) {
         dfuError = DFUErrorMessage(error: error, message: message)
+        
+        dfuServiceController?.restart()
     }
 }
 
@@ -180,5 +244,11 @@ extension Device: DFUProgressDelegate {
                                      currentSpeedBytesPerSecond: Double,
                                      avgSpeedBytesPerSecond: Double) {
         dfuUploadProgress = DFUUploadProgress(part: part, totalParts: totalParts, progress: progress)
+    }
+}
+
+extension Device: LoggerDelegate {
+    public func logWith(_ level: NordicDFU.LogLevel, message: String) {
+        NSLog("LoggerDelegate : \(message)")
     }
 }

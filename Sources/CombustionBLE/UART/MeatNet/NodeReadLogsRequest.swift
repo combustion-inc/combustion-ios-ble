@@ -1,9 +1,9 @@
-//  PredictionType.swift
+//  NodeReadLogsRequest.swift
 
 /*--
 MIT License
 
-Copyright (c) 2022 Combustion Inc.
+Copyright (c) 2021 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,24 +26,19 @@ SOFTWARE.
 
 import Foundation
 
-public enum PredictionType: UInt8, CaseIterable {
-    case none = 0x00
-    case removal = 0x01
-    case resting = 0x02
-    case reserved = 0x03
-    
-    static let MASK: UInt8 = 0x3
-    
-    public func toString() -> String {
-         switch(self) {
-         case .none:
-             return "None"
-         case .removal:
-             return "Removal"
-         case .resting:
-             return "Resting"
-         case .reserved:
-             return "Reserved"
-         }
-     }
+class NodeReadLogsRequest: NodeRequest {
+    init(serialNumber: UInt32, minSequence: UInt32, maxSequence: UInt32) {
+        var payload = Data()
+        var serialNumberBytes = serialNumber
+        payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
+        
+        var min = minSequence
+        payload.append(Data(bytes: &min, count: MemoryLayout.size(ofValue: min)))
+        
+        var max = maxSequence
+        payload.append(Data(bytes: &max, count: MemoryLayout.size(ofValue: max)))
+        
+        super.init(outgoingPayload: payload, type: .log)
+    }
 }
+

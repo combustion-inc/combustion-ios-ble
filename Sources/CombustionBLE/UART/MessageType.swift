@@ -32,4 +32,5 @@ enum MessageType: UInt8  {
     case sessionInfo = 3
     case log = 4
     case setPrediction = 5
+    case readOverTemperature = 6
 }

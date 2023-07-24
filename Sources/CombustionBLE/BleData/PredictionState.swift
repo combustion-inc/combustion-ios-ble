@@ -33,12 +33,55 @@ public enum PredictionState: UInt8 {
     case cooking                = 0x02
     case predicting             = 0x03
     case removalPredictionDone  = 0x04
-//    * 5: Reserved State 5
-//    * 6: Reserved State 6
-//    ...
-//    * 14: Reserved State 14
+    case reservedState5         = 0x05
+    case reservedState6         = 0x06
+    case reservedState7         = 0x07
+    case reservedState8         = 0x08
+    case reservedState9         = 0x09
+    case reservedState10        = 0x0A
+    case reservedState11        = 0x0B
+    case reservedState12        = 0x0C
+    case reservedState13        = 0x0D
+    case reservedState14        = 0x0E
     case unknown                = 0x0F
     
     
     static let MASK: UInt8      = 0xF
+    
+    public func toString() -> String {
+        switch self {
+        case .probeNotInserted:
+            return "Probe Not Inserted"
+        case .probeInserted:
+            return "Probe Inserted"
+        case .cooking:
+            return "Cooking"
+        case .predicting:
+            return "Predicting"
+        case .removalPredictionDone:
+            return "Removal Prediction Done"
+        case .reservedState5:
+            return "Reserved State 5"
+        case .reservedState6:
+            return "Reserved State 6"
+        case .reservedState7:
+            return "Reserved State 7"
+        case .reservedState8:
+            return "Reserved State 8"
+        case .reservedState9:
+            return "Reserved State 9"
+        case .reservedState10:
+            return "Reserved State 10"
+        case .reservedState11:
+            return "Reserved State 11"
+        case .reservedState12:
+            return "Reserved State 12"
+        case .reservedState13:
+            return "Reserved State 13"
+        case .reservedState14:
+            return "Reserved State 14"
+        case .unknown:
+            return "Unknown"
+        }
+    }
 }

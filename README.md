@@ -16,15 +16,13 @@ Or you can create your own mobile app to work with the Predictive Thermometer us
 
 <img src="https://github.com/combustion-inc/combustion-documentation/blob/main/images/Predictive%20Thermometer%20+%20Display%20&%20Range%20Extender%201024x1024.png?raw=true" alt="Probe and Timer" width="400"/>
 
-Visit [www.combustion.inc](https://www.combustion.inc) to sign up to be notified when they're available to order now.
+Visit [www.combustion.inc](https://www.combustion.inc) to order a Predicitive Thermometer.
 
 Head on over to our [FAQ](https://combustion.inc/pages/faq) for more product details.
 
 Ask us a quick question on [Twitter](https://twitter.com/intent/tweet?screen_name=inccombustion).
 
 Email [hello@combustion.inc](mailto:hello@combustion.inc) for OEM partnership information.
-
-
 
 ## Example project
 
@@ -65,6 +63,7 @@ The following classes provide key functionality to apps incorporating this frame
 
 #### Important members
 
+- `initBluetooth()` - Initialize Bluetooth and begin scanning for thermometers
 - `probes` - Observable dictionary of probes (key is a `String` BLE UUID identifier, value is the `Probe` object)
 - `getProbes()` - Function that returns array representation of the `Probe` objects in the `probes` dictionary.
 
@@ -80,7 +79,7 @@ An instance of the `Probe` class representes an individual temperature probe tha
 - `macAddressString` - String representation of Probe's MAC address
 - `id` - Probe's numeric ID (1-8)
 - `color` - Probe's silicone ring color
-- `batteryLevel` - Battery level as reported by probe *NOTE: This is not yet implemented in probe firmware and will likely change to a boolean 'battery low' flag in the near future.*
+- `batteryStatus` - Battery status (OK or low) as reported by probe 
 - `currentTemperatures` - `ProbeTemperatures` struct containing the most recent temperatures read by the Probe. 
   - `currentTemperatures.values` - Array of these temperatures, in celsius, where `values[0]` is temperature sensor T1, and `values[7]` is temperature sensor T8.
     - T1 - High-precision temperature sensor in tip of probe
@@ -107,10 +106,14 @@ An instance of the `Probe` class representes an individual temperature probe tha
 - `minSequenceNumber` - Minimum sequence number of log records stored on the probe
 - `maxSequenceNumber` - Maximum sequence number of log records stored on the probe
 
-- `logsUpToDate` - Boolean value that indicates whether all log sequence numbers contained in the probe (determined by the `status` sequence number range) have been successfully retrieved and stored in the app's memory.
+- `percentOfLogsSynced` - Percent of all log sequence numbers contained in the probe (determined by the `status` sequence number range) that have been successfully retrieved and stored in the app's memory.
 
 - `temperatureLog` - `ProbeTemperatureLog` class instance containing all logged temperatures that have been retrieved from the device, and logic that coordinates automatically retrieving all past records when connected to a Probe.
   - Individual logged temperatures are provided in the `temperatureLog.dataPoints` array. These are instances of the struct `LoggedProbeDataPoint`, which contains the point's sequence number and corresponding `ProbeTemperatures` struct as explained above.
+
+- `predictionInfo` - `PredictionInfo` struct containing current prediction information
+
+- `virtualTemperatures` - `VirtualTemperatures` struct containing current temperature for Virutal sensors (core, suface, ambient)
 
 ## Useful functions
 
@@ -150,15 +153,3 @@ struct EngineeringProbeList: View {
     }
 }
 ```
-
-## Framework features coming soon
-
-The following features are planned for near-term development but are not yet implemented in this version of the Combustion BLE Framework.
-
-### Firmware update
-
-The framework will provide methods for updating a Probe's firmware with a signed firmware image.
-
-### Instant Read
-
-The framework will include additional features for differentiating Instant Read messages from logged temperatures.

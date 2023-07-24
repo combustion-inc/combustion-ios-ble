@@ -1,9 +1,9 @@
-//  PredictionType.swift
+//  NodeMessageType.swift
 
 /*--
 MIT License
 
-Copyright (c) 2022 Combustion Inc.
+Copyright (c) 2021 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,24 +26,22 @@ SOFTWARE.
 
 import Foundation
 
-public enum PredictionType: UInt8, CaseIterable {
-    case none = 0x00
-    case removal = 0x01
-    case resting = 0x02
-    case reserved = 0x03
+enum NodeMessageType: UInt8  {
+    case setID = 1
+    case setColor = 2
+    case sessionInfo = 3
+    case log = 4
+    case setPrediction = 5
+    case readOverTemperature = 6
     
-    static let MASK: UInt8 = 0x3
-    
-    public func toString() -> String {
-         switch(self) {
-         case .none:
-             return "None"
-         case .removal:
-             return "Removal"
-         case .resting:
-             return "Resting"
-         case .reserved:
-             return "Reserved"
-         }
-     }
+    case connected = 0x40
+    case disconnected = 0x41
+    case readNodeList = 0x42
+    case readNetworkTopology = 0x43
+    case readProbeList = 0x44
+    case probeStatus = 0x45
+    case probeFirmwareRevision = 0x46
+    case probeHardwareRevision = 0x47
+    case probeModelInformation = 0x48
+    case heartbeat = 0x49
 }

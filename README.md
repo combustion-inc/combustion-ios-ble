@@ -113,7 +113,7 @@ An instance of the `Probe` class representes an individual temperature probe tha
 
 - `predictionInfo` - `PredictionInfo` struct containing current prediction information
 
-
+- `virtualTemperatures` - `VirtualTemperatures` struct containing current temperature for Virutal sensors (core, suface, ambient)
 
 ## Useful functions
 

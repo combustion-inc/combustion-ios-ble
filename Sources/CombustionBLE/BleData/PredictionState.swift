@@ -48,7 +48,7 @@ public enum PredictionState: UInt8 {
     
     static let MASK: UInt8      = 0xF
     
-    func toString() -> String {
+    public func toString() -> String {
         switch self {
         case .probeNotInserted:
             return "Probe Not Inserted"

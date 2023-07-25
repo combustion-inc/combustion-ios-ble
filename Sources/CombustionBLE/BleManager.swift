@@ -30,6 +30,7 @@ import CoreBluetooth
 import NordicDFU
 
 protocol BleManagerDelegate: AnyObject {
+    func updateBluetoothState(state: CBManagerState)
     func didConnectTo(identifier: UUID)
     func didFailToConnectTo(identifier: UUID)
     func didDisconnectFrom(identifier: UUID)
@@ -180,6 +181,9 @@ class BleManager : NSObject {
 extension BleManager: CBCentralManagerDelegate{
     
     public func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        // Update the state
+        delegate?.updateBluetoothState(state: central.state)
+        
         switch central.state {
         case .poweredOn:
             // print("\(#function): poweredOn")

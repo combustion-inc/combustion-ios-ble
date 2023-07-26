@@ -47,6 +47,9 @@ public class DeviceManager : ObservableObject {
     /// Dictionary of discovered devices.
     /// key = string representation of device identifier (UUID)
     @Published public private(set) var devices : [String: Device] = [String: Device]()
+    
+    // Bluetooth manager state
+    @Published public private(set) var bluetoothState: CBManagerState = .unknown
 
     // Struct to store when BLE message was send and the completion handler for message
     private struct MessageHandler {
@@ -466,6 +469,10 @@ public class DeviceManager : ObservableObject {
 }
 
 extension DeviceManager : BleManagerDelegate {
+    func updateBluetoothState(state: CBManagerState) {
+        bluetoothState = state
+    }
+    
     func didConnectTo(identifier: UUID) {
         guard let device = findDeviceByBleIdentifier(bleIdentifier: identifier) else { return }
         

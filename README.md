@@ -16,7 +16,7 @@ Or you can create your own mobile app to work with the Predictive Thermometer us
 
 <img src="https://github.com/combustion-inc/combustion-documentation/blob/main/images/Predictive%20Thermometer%20+%20Display%20&%20Range%20Extender%201024x1024.png?raw=true" alt="Probe and Timer" width="400"/>
 
-Visit [www.combustion.inc](https://www.combustion.inc) to order a Predicitive Thermometer.
+Visit [www.combustion.inc](https://www.combustion.inc) to purchase or learn more about the Predictive Thermometer.
 
 Head on over to our [FAQ](https://combustion.inc/pages/faq) for more product details.
 

@@ -37,3 +37,22 @@ public struct PredictionInfo {
     public let secondsRemaining: UInt?
     public let percentThroughCook: Int
 }
+
+extension PredictionInfo {
+    
+    /// Helper function to check if prediction is running
+    public func predictionIsRunning() -> Bool {
+        return predictionMode == .timeToRemoval
+    }
+    
+    /// Helper function to check if prediction is running and complete
+    public func predictionIsComplete() -> Bool {
+        guard predictionIsRunning() else { return false }
+        
+        if estimatedCoreTemperature > predictionSetPointTemperature {
+            return true
+        }
+        
+        return predictionState == .removalPredictionDone
+    }
+}

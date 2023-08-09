@@ -142,8 +142,8 @@ public class Probe : Device {
         
         predictionManager.delegate = self
         
-        // Start timer to re-request session information every 3 minutes
-        sessionRequestTimer = Timer.scheduledTimer(withTimeInterval: 180, repeats: true, block: { [weak self] _ in
+        // Start timer to re-request session information every 5 seconds
+        sessionRequestTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true, block: { [weak self] _ in
             self?.requestSessionInformation()
         })
     }

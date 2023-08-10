@@ -49,7 +49,7 @@ extension PredictionInfo {
     public func predictionIsComplete() -> Bool {
         guard predictionIsRunning() else { return false }
         
-        if estimatedCoreTemperature >= predictionSetPointTemperature {
+        if (predictionState != .predicting) && (estimatedCoreTemperature > predictionSetPointTemperature) {
             return true
         }
         

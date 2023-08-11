@@ -39,6 +39,16 @@ public class MeatNetNode: Device {
     /// DFU device type
     @Published public internal(set) var dfuType: DFUDeviceType = .unknown
     
+    /// Dictionary of last time data was received for each connected probe
+    /// key = Probe serial
+    /// value = Last time advertising or status was recieved from probe over this node
+    private var lastTimeDataRecieved: [UInt32: Date] = [:]
+    
+    private enum Constants {
+        /// Number of seconds after which probe should be removed from Node list
+        static let PROBE_REMOVE_CONNECTION_TIMEOUT = 30.0
+    }
+    
     init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
         super.init(uniqueIdentifier: identifier.uuidString, bleIdentifier: identifier, RSSI: RSSI)
         updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI)
@@ -48,19 +58,42 @@ public class MeatNetNode: Device {
         // Always update probe RSSI and isConnectable flag
         self.rssi = RSSI.intValue
         self.isConnectable = isConnectable
-        
     }
     
-    /// Adds Probe to dictionary of networked Probes, if not already present.
-    func updateNetworkedProbe(probe: Probe?) {
+    func dataReceivedFromProbe(_ probe: Probe?) {
         guard let probe = probe else { return }
         
+        // Add connection to probe
         probes[probe.serialNumber] = probe
+        
+        // Update last time data was recieved for probe
+        lastTimeDataRecieved[probe.serialNumber] = Date()
+    }
+    
+    /// Removes probe from probe list
+    private func removeConnectionToProbe(_ serialNumber: UInt32) {
+        probes[serialNumber] = nil
     }
     
     /// Returns true if node has connection to probe.
     func hasConnectionToProbe(_ serialNumber: UInt32) -> Bool {
         return probes[serialNumber] != nil
+    }
+    
+    /// Updates whether the device is stale. Called on a timer interval by DeviceManager.
+    override func updateDeviceStale() {
+        for probeSerial in probes.keys {
+            if let lastUpdateTime = lastTimeDataRecieved[probeSerial] {
+                // If not data has been received from probe for timeout length, then remove from list
+                if(Date().timeIntervalSince(lastUpdateTime) > Constants.PROBE_REMOVE_CONNECTION_TIMEOUT) {
+                    removeConnectionToProbe(probeSerial)
+                }
+            }
+            else {
+                // This should not happen, but if no update time for probe, then remove from list
+                removeConnectionToProbe(probeSerial)
+            }
+        }
     }
 
     /// Special handling for MeatNetNode model info.  Need to decode model info string

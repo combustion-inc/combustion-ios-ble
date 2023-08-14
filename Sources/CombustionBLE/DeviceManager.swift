@@ -147,6 +147,19 @@ public class DeviceManager : ObservableObject {
         return getDevices().max{ $0.rssi < $1.rssi }
     }
     
+    /// Checks if specified probe is connected to any meatnetnode
+    func isProbeConnectedToMeatnet(_ probe: Probe) -> Bool {
+        let meatnetNodes = getMeatnetNodes()
+        
+        for node in meatnetNodes {
+            if(node.hasConnectionToProbe(probe.serialNumber)) {
+                return true
+            }
+        }
+        
+        return false
+    }
+    
     /// Gets the best Node for communicating with a Probe.
     private func getBestNodeForProbe(serialNumber: UInt32) -> MeatNetNode? {
         var foundNode : MeatNetNode? = nil

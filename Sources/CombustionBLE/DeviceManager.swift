@@ -147,8 +147,21 @@ public class DeviceManager : ObservableObject {
         return getDevices().max{ $0.rssi < $1.rssi }
     }
     
+    /// Checks if specified probe is connected to any meatnetnode
+    func isProbeConnectedToMeatnet(_ probe: Probe) -> Bool {
+        let meatnetNodes = getMeatnetNodes()
+        
+        for node in meatnetNodes {
+            if(node.hasConnectionToProbe(probe.serialNumber)) {
+                return true
+            }
+        }
+        
+        return false
+    }
+    
     /// Gets the best Node for communicating with a Probe.
-    func getBestNodeForProbe(serialNumber: UInt32) -> MeatNetNode? {
+    private func getBestNodeForProbe(serialNumber: UInt32) -> MeatNetNode? {
         var foundNode : MeatNetNode? = nil
         var foundRssi = Device.MIN_RSSI
         
@@ -499,14 +512,15 @@ extension DeviceManager : BleManagerDelegate {
         guard let probe = findDeviceByBleIdentifier(bleIdentifier: identifier) as? Probe else { return }
         probe.updateProbeStatus(deviceStatus: status)
         
-        connectionManager.receivedStatusFor(probe, directConnection: true)
+        connectionManager.receivedStatusFor(probe, node: nil)
     }
     
-    func updateDeviceWithNodeStatus(serialNumber: UInt32, status: ProbeStatus, hopCount: HopCount) {
+    private func updateDeviceWithNodeStatus(serialNumber: UInt32, status: ProbeStatus, hopCount: HopCount, node: MeatNetNode) {
         guard let probe = findProbeBySerialNumber(serialNumber: serialNumber) else { return }
+        
         probe.updateProbeStatus(deviceStatus: status, hopCount: hopCount)
         
-        connectionManager.receivedStatusFor(probe, directConnection: false)
+        connectionManager.receivedStatusFor(probe, node: node)
     }
     
     func handleBootloaderAdvertising(advertisingName: String, rssi: NSNumber, peripheral: CBPeripheral) {
@@ -590,9 +604,6 @@ extension DeviceManager : BleManagerDelegate {
             
             // Update the probe associated with this advertising data
             let probe = updateProbeWithAdvertising(advertising: advertising, isConnectable: nil, rssi: nil, identifier: nil)
-            
-            // Add probe to meatnet node
-            meatnetNode.updateNetworkedProbe(probe: probe)
             
             // Notify connection manager
             connectionManager.receivedProbeAdvertising(probe, from: meatnetNode)
@@ -762,17 +773,17 @@ extension DeviceManager : BleManagerDelegate {
     
     private func handleNodeUARTRequest(identifier: UUID, request: NodeRequest) {
 //        print("CombustionBLE : Received Request from Node: \(request)")
-        if let statusRequest = request as? NodeProbeStatusRequest, let probeStatus = statusRequest.probeStatus, let hopCount = statusRequest.hopCount {
-            // Update the Probe based on the information that was received
-            updateDeviceWithNodeStatus(serialNumber: statusRequest.serialNumber,
-                                       status: probeStatus,
-                                       hopCount: hopCount)
+        if let statusRequest = request as? NodeProbeStatusRequest {
             
-            // Ensure the Node that sent this item has the Probe in its list of repeated devices.
-            if let node = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode,
-               let probe = findProbeBySerialNumber(serialNumber: statusRequest.serialNumber) {
-                // Add the probe to the node's list of networked probes
-                node.updateNetworkedProbe(probe: probe)
+            if let probeStatus = statusRequest.probeStatus,
+               let node = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode,
+               let hopCount = statusRequest.hopCount {
+                
+                // Update the Probe based on the information that was received
+                updateDeviceWithNodeStatus(serialNumber: statusRequest.serialNumber,
+                                           status: probeStatus,
+                                           hopCount: hopCount,
+                                           node: node)
             }
         }
         else if let heartBeatRequest = request as? NodeHeartbeatRequest {

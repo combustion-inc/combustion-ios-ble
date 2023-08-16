@@ -75,11 +75,19 @@ class ConnectionManager {
         // When meatnet is enabled, try to connect to all Nodes.
         if meatNetEnabled {
             node.connect()
+            
+            // Track that data was recieved for probe on node
+            node.dataReceivedFromProbe(probe)
         }
     }
     
-    func receivedStatusFor(_ probe: Probe, directConnection: Bool) {
+    func receivedStatusFor(_ probe: Probe, node: MeatNetNode?) {
+        let directConnection = node == nil
+        
         lastStatusUpdate[probe.serialNumberString] = Date()
+        
+        // Track that data was recieved for probe on node
+        node?.dataReceivedFromProbe(probe)
         
         // if receiving status from meatnet and DFU disabled, then disconnect from probe
         if !directConnection && meatNetEnabled && !dfuModeEnabled {

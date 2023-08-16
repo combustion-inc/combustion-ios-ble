@@ -122,8 +122,8 @@ public class Probe : Device {
     @Published public private(set) var lastNormalModeHopCount : HopCount? = nil
 
     private var predictionManager: PredictionManager
-    
     private var instantReadFilter: InstantReadFilter
+    private var deviceManager = DeviceManager.shared
     
     /// Timer for periodically requesting session information
     private var sessionRequestTimer = Timer()
@@ -221,9 +221,9 @@ extension Probe {
             self.bleIdentifier = bleIdentifier.uuidString
         }
         
-        // Only update rest of data if not connected to probe.  Otherwise, rely on status
-        // notifications to update data
-        if(connectionState != .connected) {
+        // Only update rest of data if not connected to probe (directly or through meatnet).
+        // Otherwise, rely on status notifications to update data
+        if(connectionState != .connected && !deviceManager.isProbeConnectedToMeatnet(self)) {
             if(advertising.modeId.mode == .normal) {
                 // If we should update normal mode, do so, but since this is Advertising info
                 // and does not contain Prediction information, DO NOT lock it out. We want to
@@ -259,22 +259,22 @@ extension Probe {
     /// Requests any missing data.
     private func requestMissingData() {
         if sessionInformation == nil {
-            DeviceManager.shared.readSessionInfo(probe: self)
+            deviceManager.readSessionInfo(probe: self)
         }
         
         if firmareVersion == nil {
             // Request the firmware version
-            DeviceManager.shared.readFirmwareVersion(probe: self)
+            deviceManager.readFirmwareVersion(probe: self)
         }
         
         if hardwareRevision == nil {
             // Request the hardware version
-            DeviceManager.shared.readHardwareVersion(probe: self)
+            deviceManager.readHardwareVersion(probe: self)
         }
         
         if manufacturingLot == nil || sku == nil {
             // Request the model info
-            DeviceManager.shared.readModelInfoForProbe(self)
+            deviceManager.readModelInfoForProbe(self)
         }
     }
     
@@ -346,7 +346,7 @@ extension Probe {
             
             if let missingRange = missingRange {
                 // Request missing records
-                DeviceManager.shared.requestLogsFrom(self,
+                deviceManager.requestLogsFrom(self,
                                                      minSequence: missingRange.lowerBound,
                                                      maxSequence: missingRange.upperBound)
             }
@@ -590,7 +590,7 @@ extension Probe {
     }
     
     private func requestSessionInformation() {
-        DeviceManager.shared.readSessionInfo(probe: self)
+        deviceManager.readSessionInfo(probe: self)
     }
 }
 

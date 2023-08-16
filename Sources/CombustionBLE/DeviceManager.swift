@@ -147,7 +147,7 @@ public class DeviceManager : ObservableObject {
         return getDevices().max{ $0.rssi < $1.rssi }
     }
     
-    /// Checks if specified probe is connected to any meatnetnode
+    /// Checks if specified probe is connected to any meatnet node
     func isProbeConnectedToMeatnet(_ probe: Probe) -> Bool {
         let meatnetNodes = getMeatnetNodes()
         
@@ -160,39 +160,23 @@ public class DeviceManager : ObservableObject {
         return false
     }
     
-    /// Gets the best Node for communicating with a Probe.
-    private func getBestNodeForProbe(serialNumber: UInt32) -> MeatNetNode? {
-        var foundNode : MeatNetNode? = nil
-        var foundRssi = Device.MIN_RSSI
+    private func getNodesConnectedToProbe(serialNumber: UInt32) -> [MeatNetNode] {
+        var nodesWithProbe: [MeatNetNode] = []
         
         let meatnetNodes = getMeatnetNodes()
         
         for node in meatnetNodes {
             // Check Nodes to which we are connected to see if they have a route to the Probe
-            if node.connectionState == .connected {
-                // Choose node with the best RSSI that has connection to probe
-                if node.hasConnectionToProbe(serialNumber) && node.rssi > foundRssi {
-                    foundNode = node
-                    foundRssi = node.rssi
-                }
+            if node.connectionState == .connected, node.hasConnectionToProbe(serialNumber) {
+                nodesWithProbe.append(node)
             }
         }
         
-        return foundNode
+        return nodesWithProbe
     }
     
-    /// Returns the best device to which to send a request to a Probe, if there is one.
-    public func getBestRouteToProbe(serialNumber: UInt32) -> Device? {
-        var foundDevice : Device? = nil
-        
-        if let probe = findProbeBySerialNumber(serialNumber: serialNumber), probe.connectionState == .connected {
-            // If we're directly connected to this probe, send the request directly.
-            foundDevice = probe
-        } else {
-            foundDevice = getBestNodeForProbe(serialNumber: serialNumber)
-        }
-        
-        return foundDevice
+    private func shouldSendMessageDirectlyTo(probe: Probe) -> Bool {
+        return probe.connectionState == .connected
     }
     
     func connectToDevice(_ device: Device) {
@@ -223,27 +207,22 @@ public class DeviceManager : ObservableObject {
     /// - parameter device: Device from which to request messages
     /// - parameter minSequence: Minimum sequence number to request
     /// - parameter maxSequence: Maximum sequence number to request
-    func requestLogsFrom(_ device: Device, minSequence: UInt32, maxSequence: UInt32) {
-        if let device = device as? Probe {
-            let targetDevice = getBestRouteToProbe(serialNumber: device.serialNumber)
+    func requestLogsFrom(_ probe: Probe, minSequence: UInt32, maxSequence: UInt32) {
+        if shouldSendMessageDirectlyTo(probe: probe) {
+            // Request logs directly from Probe.
+            let request = LogRequest(minSequence: minSequence,
+                                     maxSequence: maxSequence)
             
-            if let probe = targetDevice as? Probe, let bleIdentifier = probe.bleIdentifier {
+            BleManager.shared.sendRequest(identifier: probe.bleIdentifier, request: request)
             
-                // Request logs directly from Probe.
-                let request = LogRequest(minSequence: minSequence,
-                                         maxSequence: maxSequence)
-                
-                BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
-                
-            } else if let node = targetDevice as? MeatNetNode, let bleIdentifier = node.bleIdentifier {
-                // If the best route is through a Node, send it that way.
-                
-                // Send request to device
-                let request = NodeReadLogsRequest(serialNumber: device.serialNumber,
-                                                  minSequence: minSequence,
-                                                  maxSequence: maxSequence)
-                BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
-            }
+        }
+        else {
+            // Send message to all nodes that have a route to the probe
+            let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
+            let request = NodeReadLogsRequest(serialNumber: probe.serialNumber,
+                                              minSequence: minSequence,
+                                              maxSequence: maxSequence)
+            BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
         }
     }
     
@@ -288,10 +267,10 @@ public class DeviceManager : ObservableObject {
     /// removal prediction is currently active, then the set point will be modified.  If another
     /// type of prediction is active, then the probe will start predicting removal.
     ///
-    /// - parameter device: Device to set prediction on
+    /// - parameter probe: Probe to set prediction on
     /// - parameter removalTemperatureC: the target removal temperature in Celsius
     /// - parameter completionHandler: Completion handler to be called operation is complete
-    public func setRemovalPrediction(_ device: Device,
+    public func setRemovalPrediction(_ probe: Probe,
                                      removalTemperatureC: Double,
                                      completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
         guard removalTemperatureC < Constants.MAXIMUM_PREDICTION_SETPOINT_CELSIUS,
@@ -300,70 +279,62 @@ public class DeviceManager : ObservableObject {
             return
         }
         
-        if let device = device as? Probe {
+        if shouldSendMessageDirectlyTo(probe: probe) {
+            // If the best route is directly to the Probe, send it that way.
             
-            let targetDevice = getBestRouteToProbe(serialNumber: device.serialNumber)
+            // Store completion handler
+            messageHandlers.addSetPredictionCompletionHandler(probe, completionHandler: completionHandler)
             
-            if let probe = targetDevice as? Probe, let bleIdentifier = probe.bleIdentifier {
-                // If the best route is directly to the Probe, send it that way.
-             
-                // Store completion handler
-                messageHandlers.addSetPredictionCompletionHandler(device, completionHandler: completionHandler)
-                
-                // Send request to device
-                let request = SetPredictionRequest(setPointCelsius: removalTemperatureC, mode: .timeToRemoval)
-                BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
-                
-            } else if let node = targetDevice as? MeatNetNode, let bleIdentifier = node.bleIdentifier {
-                // If the best route is through a Node, send it that way.
-                
-                // Store completion handler
-                messageHandlers.addNodeSetPredictionCompletionHandler(node, completionHandler: completionHandler)
-                
-                // Send request to device
-                let request = NodeSetPredictionRequest(serialNumber: device.serialNumber,
-                                                       setPointCelsius: removalTemperatureC,
-                                                       mode: .timeToRemoval)
-                BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
-            }
-           
+            // Send request to device
+            let request = SetPredictionRequest(setPointCelsius: removalTemperatureC, mode: .timeToRemoval)
+            BleManager.shared.sendRequest(identifier: probe.bleIdentifier, request: request)
+        }
+        else {
+            // Send message to all nodes that have a route to the probe
+            let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
+            
+            // Store completion handler
+            // TODO JDJ
+//            messageHandlers.addNodeSetPredictionCompletionHandler(node, completionHandler: completionHandler)
+            
+            // Send request to device
+            let request = NodeSetPredictionRequest(serialNumber: probe.serialNumber,
+                                                   setPointCelsius: removalTemperatureC,
+                                                   mode: .timeToRemoval)
+            BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
         }
     }
     
     
     /// Sends a request to the device to set the prediction mode to none, stopping any active prediction.
     ///
-    /// - parameter device: Device to cancel prediction on
+    /// - parameter probe: Probe to cancel prediction on
     /// - parameter completionHandler: Completion handler to be called operation is complete
-    public func cancelPrediction(_ device: Device, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+    public func cancelPrediction(_ probe: Probe, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
         
-        if let device = device as? Probe {
+        if shouldSendMessageDirectlyTo(probe: probe) {
+            // If the best route is directly to the Probe, send it that way.
             
-            let targetDevice = getBestRouteToProbe(serialNumber: device.serialNumber)
+            // Store completion handler
+            messageHandlers.addSetPredictionCompletionHandler(probe, completionHandler: completionHandler)
             
-            if let probe = targetDevice as? Probe, let bleIdentifier = probe.bleIdentifier {
-                // If the best route is directly to the Probe, send it that way.
-             
-                // Store completion handler
-                messageHandlers.addSetPredictionCompletionHandler(device, completionHandler: completionHandler)
-                
-                // Send request to device
-                let request = SetPredictionRequest(setPointCelsius: 0.0, mode: .none)
-                BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
-                
-            } else if let node = targetDevice as? MeatNetNode, let bleIdentifier = node.bleIdentifier {
-                // If the best route is through a Node, send it that way.
-                
-                // Store completion handler
-                messageHandlers.addNodeSetPredictionCompletionHandler(node, completionHandler: completionHandler)
-                
-                // Send request to device
-                let request = NodeSetPredictionRequest(serialNumber: device.serialNumber,
-                                                       setPointCelsius: 0.0,
-                                                       mode: .none)
-                BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
-            }
-           
+            // Send request to device
+            let request = SetPredictionRequest(setPointCelsius: 0.0, mode: .none)
+            BleManager.shared.sendRequest(identifier: probe.bleIdentifier, request: request)
+        }
+        else {
+            // Send message to all nodes that have a route to the probe
+            let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
+            
+            // Store completion handler
+            // TODO JDJ
+//            messageHandlers.addNodeSetPredictionCompletionHandler(node, completionHandler: completionHandler)
+            
+            // Send request to device
+            let request = NodeSetPredictionRequest(serialNumber: probe.serialNumber,
+                                                   setPointCelsius: 0.0,
+                                                   mode: .none)
+            BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
         }
     }
     
@@ -374,21 +345,20 @@ public class DeviceManager : ObservableObject {
     /// - parameter completionHandler: Completion handler to be called operation is complete
     public func readSessionInfo(probe: Probe) {
         
-        let targetDevice = getBestRouteToProbe(serialNumber: probe.serialNumber)
-        
-        if let targetProbe = targetDevice as? Probe, let bleIdentifier = targetProbe.bleIdentifier {
+        if shouldSendMessageDirectlyTo(probe: probe) {
             // If the best route is directly to the Probe, send it that way.
-         
+            
             // Send request to device
             let request = SessionInfoRequest()
-            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
-            
-        } else if let node = targetDevice as? MeatNetNode, let bleIdentifier = node.bleIdentifier {
-            // If the best route is through a Node, send it that way.
+            BleManager.shared.sendRequest(identifier: probe.bleIdentifier, request: request)
+        }
+        else {
+            // Send message to all nodes that have a route to the probe
+            let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
             
             // Send request to device
             let request = NodeReadSessionInfoRequest(serialNumber: probe.serialNumber)
-            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+            BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
         }
     }
     
@@ -396,16 +366,16 @@ public class DeviceManager : ObservableObject {
     ///
     /// - parameter probe: Probe for which to read firmware version
     public func readFirmwareVersion(probe: Probe) {
-        if let targetDevice = getBestRouteToProbe(serialNumber: probe.serialNumber) {
-            if let targetProbe = targetDevice as? Probe, let bleIdentifier = targetProbe.bleIdentifier {
-                // If the best route is directly to the Probe, send it that way.
-                BleManager.shared.readFirmwareRevision(identifier: bleIdentifier)
-            } else if let node = targetDevice as? MeatNetNode, let bleIdentifier = node.bleIdentifier {
-                // If the best route is through a Node, send it that way.
-                
-                let request = NodeReadFirmwareRevisionRequest(serialNumber: probe.serialNumber)
-                BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
-            }
+        if shouldSendMessageDirectlyTo(probe: probe) {
+            // If the best route is directly to the Probe, send it that way.
+            BleManager.shared.readFirmwareRevision(identifier: probe.bleIdentifier)
+        }
+        else {
+            // Send message to all nodes that have a route to the probe
+            let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
+            
+            let request = NodeReadFirmwareRevisionRequest(serialNumber: probe.serialNumber)
+            BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
         }
     }
     
@@ -413,16 +383,16 @@ public class DeviceManager : ObservableObject {
     ///
     /// - parameter probe: Probe for which to read hardware version
     public func readHardwareVersion(probe: Probe) {
-        if let targetDevice = getBestRouteToProbe(serialNumber: probe.serialNumber) {
-            if let targetProbe = targetDevice as? Probe, let bleIdentifier = targetProbe.bleIdentifier {
-                // If the best route is directly to the Probe, send it that way.
-                BleManager.shared.readHardwareRevision(identifier: bleIdentifier)
-            } else if let node = targetDevice as? MeatNetNode, let bleIdentifier = node.bleIdentifier {
-                // If the best route is through a Node, send it that way.
-                
-                let request = NodeReadHardwareRevisionRequest(serialNumber: probe.serialNumber)
-                BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
-            }
+        if shouldSendMessageDirectlyTo(probe: probe) {
+            // If the best route is directly to the Probe, send it that way.
+            BleManager.shared.readHardwareRevision(identifier: probe.bleIdentifier)
+        }
+        else {
+            // Send message to all nodes that have a route to the probe
+            let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
+            
+            let request = NodeReadHardwareRevisionRequest(serialNumber: probe.serialNumber)
+            BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
         }
     }
     
@@ -430,16 +400,16 @@ public class DeviceManager : ObservableObject {
     ///
     /// - parameter probe: Probe for which to read model info.
     public func readModelInfoForProbe(_ probe: Probe) {
-        if let targetDevice = getBestRouteToProbe(serialNumber: probe.serialNumber) {
-            if let targetProbe = targetDevice as? Probe, let bleIdentifier = targetProbe.bleIdentifier {
-                // If the best route is directly to the Probe, send it that way.
-                BleManager.shared.readModelNumber(identifier: bleIdentifier)
-            } else if let node = targetDevice as? MeatNetNode, let bleIdentifier = node.bleIdentifier {
-                // If the best route is through a Node, send it that way.
-                
-                let request = NodeReadModelInfoRequest(serialNumber: probe.serialNumber)
-                BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
-            }
+        if shouldSendMessageDirectlyTo(probe: probe) {
+            // If the best route is directly to the Probe, send it that way.
+            BleManager.shared.readModelNumber(identifier: probe.bleIdentifier)
+        }
+        else {
+            // Send message to all nodes that have a route to the probe
+            let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
+            
+            let request = NodeReadModelInfoRequest(serialNumber: probe.serialNumber)
+            BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
         }
     }
     

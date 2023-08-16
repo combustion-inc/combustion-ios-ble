@@ -293,14 +293,15 @@ public class DeviceManager : ObservableObject {
             // Send message to all nodes that have a route to the probe
             let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
             
-            // Store completion handler
-            // TODO JDJ
-//            messageHandlers.addNodeSetPredictionCompletionHandler(node, completionHandler: completionHandler)
-            
             // Send request to device
             let request = NodeSetPredictionRequest(serialNumber: probe.serialNumber,
                                                    setPointCelsius: removalTemperatureC,
                                                    mode: .timeToRemoval)
+            
+            // Store completion handler
+            messageHandlers.addNodeSetPredictionCompletionHandler(requestID: request.requestId,
+                                                                  completionHandler: completionHandler)
+
             BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
         }
     }
@@ -326,14 +327,15 @@ public class DeviceManager : ObservableObject {
             // Send message to all nodes that have a route to the probe
             let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
             
-            // Store completion handler
-            // TODO JDJ
-//            messageHandlers.addNodeSetPredictionCompletionHandler(node, completionHandler: completionHandler)
-            
             // Send request to device
             let request = NodeSetPredictionRequest(serialNumber: probe.serialNumber,
                                                    setPointCelsius: 0.0,
                                                    mode: .none)
+            
+            // Store completion handler
+            messageHandlers.addNodeSetPredictionCompletionHandler(requestID: request.requestId,
+                                                                  completionHandler: completionHandler)
+            
             BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
         }
     }
@@ -717,7 +719,7 @@ extension DeviceManager : BleManagerDelegate {
 //        print("Received Response from Node: \(response)")
         
         if let setPredictionResponse = response as? NodeSetPredictionResponse {
-            messageHandlers.callNodeSetPredictionCompletionHandler(identifier, response: setPredictionResponse)
+            messageHandlers.callNodeSetPredictionCompletionHandler(response: setPredictionResponse)
         } else if let readFirmwareResponse = response as? NodeReadFirmwareRevisionResponse {
             if let probe = findProbeBySerialNumber(serialNumber: readFirmwareResponse.probeSerialNumber) {
                 probe.firmareVersion = readFirmwareResponse.fwRevision

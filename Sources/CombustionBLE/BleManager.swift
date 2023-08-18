@@ -93,21 +93,28 @@ class BleManager : NSObject {
                                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
     }
     
-    func sendRequest(identifier: String, request: Request) {
+    func sendRequest(identifier: String?, request: Request) {
+        guard let identifier = identifier else { return }
+        
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
             let uartChar = uartCharacteristics[identifier] {
             connectionPeripheral.writeValue(request.data, for: uartChar, type: .withoutResponse)
         }
     }
     
-    func sendRequest(identifier: String, request: NodeRequest) {
-        if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
-           let uartChar = uartCharacteristics[identifier] {
-            connectionPeripheral.writeValue(request.data, for: uartChar, type: .withoutResponse)
+    func sendRequestToNodes(_ nodes: [MeatNetNode], request: NodeRequest) {
+        for node in nodes {
+            if let identifier = node.bleIdentifier,
+               let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
+               let uartChar = uartCharacteristics[identifier] {
+                connectionPeripheral.writeValue(request.data, for: uartChar, type: .withoutResponse)
+            }
         }
     }
     
-    func readFirmwareRevision(identifier: String) {
+    func readFirmwareRevision(identifier: String?) {
+        guard let identifier = identifier else { return }
+        
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
            let characteristic = fwRevisionCharacteristics[identifier] {
             // Initiate read of firmware revision
@@ -115,7 +122,9 @@ class BleManager : NSObject {
         }
     }
     
-    func readHardwareRevision(identifier: String) {
+    func readHardwareRevision(identifier: String?) {
+        guard let identifier = identifier else { return }
+        
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
            let characteristic = hwRevisionCharacteristics[identifier] {
             // Initiate read of hardware revision
@@ -131,7 +140,9 @@ class BleManager : NSObject {
         }
     }
     
-    func readModelNumber(identifier: String) {
+    func readModelNumber(identifier: String?) {
+        guard let identifier = identifier else { return }
+        
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
            let characteristic = modelNumberCharacteristics[identifier] {
             // Initiate read of hardware revision

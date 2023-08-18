@@ -28,7 +28,8 @@ import Foundation
 
 public class MessageHandlers {
     private enum Constants {
-        static let messageTimeOutSeconds = 3
+        static let directConnectionTimeOutSeconds = 5
+        static let meatnetTimeOutSeconds = 30
     }
     
     // Generic completion handler for BLE messages
@@ -53,7 +54,7 @@ public class MessageHandlers {
     private var readOverTemperatureCompletionHandlers : [String: MessageSentHandler] = [:]
     
     // Node handlers
-    private var setNodePredictionCompletionHandlers : [String: MessageSentHandler] = [:]
+    private var setNodePredictionCompletionHandlers : [UInt32: MessageSentHandler] = [:]
     
     func checkForTimeout() {
         checkForMessageTimeout(messageHandlers: &setIDCompletionHandlers)
@@ -61,7 +62,7 @@ public class MessageHandlers {
         checkForMessageTimeout(messageHandlers: &setPredictionCompletionHandlers)
         checkForMessageTimeout(messageHandlers: &readOverTemperatureCompletionHandlers)
         
-        checkForMessageTimeout(messageHandlers: &setNodePredictionCompletionHandlers)
+        checkForNodeMessageTimeout(messageHandlers: &setNodePredictionCompletionHandlers)
     }
     
     func clearHandlersForDevice(_ identifier: UUID) {
@@ -69,8 +70,6 @@ public class MessageHandlers {
         setIDCompletionHandlers.removeValue(forKey: identifier.uuidString)
         setPredictionCompletionHandlers.removeValue(forKey: identifier.uuidString)
         readOverTemperatureCompletionHandlers.removeValue(forKey: identifier.uuidString)
-        
-        setNodePredictionCompletionHandlers.removeValue(forKey: identifier.uuidString)
     }
     
     func addSetIDCompletionHandler(_ device: Device, completionHandler: @escaping SuccessCompletionHandler) {
@@ -134,7 +133,30 @@ public class MessageHandlers {
         
         for key in messageHandlers.keys {
             if let messageHandler = messageHandlers[key],
-               Int(currentTime.timeIntervalSince(messageHandler.timeSent)) > Constants.messageTimeOutSeconds {
+               Int(currentTime.timeIntervalSince(messageHandler.timeSent)) > Constants.directConnectionTimeOutSeconds {
+                
+                // Messsage timeout has elapsed, therefore call handler with failure
+                messageHandler.successHandler?(false)
+                messageHandler.readOverTemperatureHandler?(false, false)
+                
+                // Save key to remove
+                keysToRemove.append(key)
+            }
+        }
+        
+        // Remove keys that timed out
+        for key in keysToRemove {
+            messageHandlers.removeValue(forKey: key)
+        }
+    }
+    
+    private func checkForNodeMessageTimeout(messageHandlers: inout [UInt32: MessageSentHandler]) {
+        let currentTime = Date()
+        var keysToRemove = [UInt32]()
+        
+        for key in messageHandlers.keys {
+            if let messageHandler = messageHandlers[key],
+               Int(currentTime.timeIntervalSince(messageHandler.timeSent)) > Constants.meatnetTimeOutSeconds {
                 
                 // Messsage timeout has elapsed, therefore call handler with failure
                 messageHandler.successHandler?(false)
@@ -162,17 +184,21 @@ public class MessageHandlers {
 ///////////////////////////////////
 
 extension MessageHandlers {
-    func addNodeSetPredictionCompletionHandler(_ device: Device, completionHandler: @escaping SuccessCompletionHandler) {
-        if let bleIdentifier = device.bleIdentifier {
-            setNodePredictionCompletionHandlers[bleIdentifier] = MessageSentHandler(timeSent: Date(),
-                                                                                    successHandler: completionHandler,
-                                                                                    readOverTemperatureHandler: nil)
-        }
+    func addNodeSetPredictionCompletionHandler(requestID: UInt32, completionHandler: @escaping SuccessCompletionHandler) {
+        setNodePredictionCompletionHandlers[requestID] = MessageSentHandler(timeSent: Date(),
+                                                                            successHandler: completionHandler,
+                                                                            readOverTemperatureHandler: nil)
     }
     
-    func callNodeSetPredictionCompletionHandler(_ identifier: UUID, response: NodeSetPredictionResponse) {
-        callSuccessCompletionHandler(identifier: identifier,
-                                     success: response.success,
-                                     handlers: &setNodePredictionCompletionHandlers)
+    func callNodeSetPredictionCompletionHandler(response: NodeSetPredictionResponse) {
+        callNodeSuccessCompletionHandler(response: response,
+                                         success: response.success,
+                                         handlers: &setNodePredictionCompletionHandlers)
+    }
+    
+    private func callNodeSuccessCompletionHandler(response: NodeResponse, success: Bool,
+                                                  handlers: inout [UInt32: MessageSentHandler]) {
+        handlers[response.requestId]?.successHandler?(success)
+        handlers.removeValue(forKey: response.requestId)
     }
 }

@@ -105,7 +105,7 @@ extension NodeRequest {
         }
         
         guard let messageType = NodeMessageType(rawValue: typeRaw) else {
-            print("CombustionBLE : NodeRequest::fromData(): Unknown message type in request")
+            print("CombustionBLE : NodeRequest::fromData(): Unknown message type in request : \(typeRaw)")
             return nil
         }
         
@@ -152,6 +152,9 @@ extension NodeRequest {
             return NodeProbeStatusRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
         case .heartbeat:
             return NodeHeartbeatRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
+        case .syncThermometerList:
+            // Nothing to do for this message type
+            return nil
         default:
             print("CombustionBLE : Unknown node request type: \(messageType)")
             return nil

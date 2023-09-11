@@ -44,4 +44,5 @@ enum NodeMessageType: UInt8  {
     case probeHardwareRevision = 0x47
     case probeModelInformation = 0x48
     case heartbeat = 0x49
+    case syncThermometerList = 0x4B
 }

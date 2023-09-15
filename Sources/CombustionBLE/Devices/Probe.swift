@@ -417,6 +417,14 @@ extension Probe {
     }
     
     private func addDataToLog(_ dataPoint: LoggedProbeDataPoint) {
+        // Do not store the dataPoint if its sequence number is greater
+        // than the probe's max sequence number. This is a safety check
+        // for the probe/node sending a record with invalid sequence number
+        if let maxSequenceNumber = maxSequenceNumber,
+           dataPoint.sequenceNum > maxSequenceNumber {
+            return
+        }
+        
         if let current = getCurrentTemperatureLog() {
             // Append data to temperature log for current session
             current.appendDataPoint(dataPoint: dataPoint)

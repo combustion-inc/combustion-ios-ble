@@ -39,6 +39,27 @@ public class MeatNetNode: Device {
     /// DFU device type
     @Published public internal(set) var dfuType: DFUDeviceType = .unknown
     
+    /// Meatnet node name
+    public var name: String {
+        let serialNumber = serialNumberString ?? ""
+        
+        switch(dfuType) {
+        case .display:
+            return "Display \(serialNumber)"
+            
+        case .charger:
+            return "Booster \(serialNumber)"
+            
+        case .unknown:
+            return "Repeater \(serialNumber)"
+            
+        case .thermometer:
+            // Node should not have a DFU type of thermometer
+            return "Unknown \(serialNumber)"
+        }
+
+    }
+    
     /// Dictionary of last time data was received for each connected probe
     /// key = Probe serial
     /// value = Last time advertising or status was recieved from probe over this node

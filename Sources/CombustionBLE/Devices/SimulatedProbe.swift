@@ -28,6 +28,9 @@ SOFTWARE.
 import Foundation
 
 public class SimulatedProbe: Probe {
+    
+    private var fakeSetPoint = 71.0
+    
     public init() {
         let advertising = AdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
                                           fakeTemperatures: ProbeTemperatures.withRandomData())
@@ -59,6 +62,11 @@ public class SimulatedProbe: Probe {
         return String(format: "SIM-\(nameStr)")
     }
     
+    public func setPredictionSetPoint(_ setPoint: Double) {
+        fakeSetPoint = setPoint
+        updateFakeStatus()
+    }
+    
     static func randomeRSSI() -> NSNumber {
         return NSNumber(value: Int.random(in: -80 ..< -40))
     }
@@ -86,7 +94,7 @@ public class SimulatedProbe: Probe {
         let predictionStatus = PredictionStatus(predictionState: .predicting,
                                                 predictionMode: .timeToRemoval,
                                                 predictionType: .none,
-                                                predictionSetPointTemperature: 71.0,
+                                                predictionSetPointTemperature: fakeSetPoint,
                                                 heatStartTemperature: 5.0,
                                                 predictionValueSeconds: 3540,
                                                 estimatedCoreTemperature: 30.0)

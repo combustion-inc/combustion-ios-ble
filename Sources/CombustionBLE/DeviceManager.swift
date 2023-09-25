@@ -29,9 +29,19 @@ import SwiftUI
 import NordicDFU
 import CoreBluetooth
 
+// Device Manager protocol to support unit testing
+public protocol DeviceManagerProtocol {
+    func cancelPrediction(_ probe: Probe,
+                          completionHandler: @escaping MessageHandlers.SuccessCompletionHandler)
+    
+    func setRemovalPrediction(_ probe: Probe,
+                              removalTemperatureC: Double,
+                              completionHandler: @escaping MessageHandlers.SuccessCompletionHandler)
+}
+
 /// Singleton that provides list of detected Devices
 /// (either via Bluetooth or from a list in the Cloud)
-public class DeviceManager : ObservableObject {
+public class DeviceManager : DeviceManagerProtocol, ObservableObject {
     
     /// Singleton accessor for class
     public static let shared = DeviceManager()

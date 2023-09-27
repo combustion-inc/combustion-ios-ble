@@ -36,7 +36,8 @@ public class SimulatedProbe: Probe {
     
     public init(temperatures: ProbeTemperatures? = nil, 
                 batterySensors: BatteryStatusVirtualSensors? = nil,
-                predictionStatus: PredictionStatus? = nil) {
+                predictionStatus: PredictionStatus? = nil,
+                probeDataPoints: [LoggedProbeDataPoint]? = nil) {
         self.temperatures = temperatures
         self.batterySensors = batterySensors
         self.predictionStatus = predictionStatus
@@ -64,6 +65,17 @@ public class SimulatedProbe: Probe {
         // Set fake session information
         let fakeSessionInfo = SessionInformation(sessionID: UInt32.random(in: 0..<UInt32.max), samplePeriod: 1000)
         updateWithSessionInformation(fakeSessionInfo)
+        
+        // Add previous data to temperature logs
+        if let probeDataPoints = probeDataPoints {
+            let log = ProbeTemperatureLog(sessionInfo: fakeSessionInfo)
+            
+            for point in probeDataPoints {
+                log.appendDataPoint(dataPoint: point)
+            }
+            
+            self.temperatureLogs.append(log)
+        }
     }
     
     public override var name: String {

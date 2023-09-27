@@ -184,6 +184,7 @@ public class ProbeTemperatureLog : ObservableObject {
     
     /// Appends data point to the logged probe data.
     func appendDataPoint(dataPoint: LoggedProbeDataPoint) {
+        print("points.append(\(dataPoint))")
         // Check if new point's sequence number belongs at the end
         if let lastPoint = dataPointsDict.values.last {
             if(dataPoint.sequenceNum == (lastPoint.sequenceNum + 1)) {

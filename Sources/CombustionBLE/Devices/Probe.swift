@@ -77,7 +77,7 @@ public class Probe : Device {
     }
     
     /// Stores historical values of probe temperatures
-    public private(set) var temperatureLogs: [ProbeTemperatureLog] = []
+    public internal(set) var  temperatureLogs: [ProbeTemperatureLog] = []
     
     /// Pretty-formatted device name
     public var name: String {
@@ -283,6 +283,11 @@ extension Probe {
         // Ignore status messages that have a sequence count lower than any previously
         // received status messages
         guard !isOldStatusUpdate(deviceStatus) else { return }
+        
+        if !temperatureLogs.isEmpty {
+            print(temperatureLogs[0].dataPoints)
+        }
+
                    
         var updated : Bool = false
         

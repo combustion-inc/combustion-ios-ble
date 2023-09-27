@@ -38,6 +38,20 @@ public struct LoggedProbeDataPoint: Equatable {
     public let predictionSetPointTemperature: Double
     public let predictionValueSeconds: UInt
     public let estimatedCoreTemperature: Double
+    
+    public init(sequenceNum: UInt32, temperatures: ProbeTemperatures, virtualCore: VirtualCoreSensor, virtualSurface: VirtualSurfaceSensor, virtualAmbient: VirtualAmbientSensor, predictionState: PredictionState, predictionMode: PredictionMode, predictionType: PredictionType, predictionSetPointTemperature: Double, predictionValueSeconds: UInt, estimatedCoreTemperature: Double) {
+        self.sequenceNum = sequenceNum
+        self.temperatures = temperatures
+        self.virtualCore = virtualCore
+        self.virtualSurface = virtualSurface
+        self.virtualAmbient = virtualAmbient
+        self.predictionState = predictionState
+        self.predictionMode = predictionMode
+        self.predictionType = predictionType
+        self.predictionSetPointTemperature = predictionSetPointTemperature
+        self.predictionValueSeconds = predictionValueSeconds
+        self.estimatedCoreTemperature = estimatedCoreTemperature
+    }
 }
 
 /// Record representing a logged temperature data point retrieved from a probe

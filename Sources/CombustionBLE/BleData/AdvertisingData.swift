@@ -141,12 +141,14 @@ extension AdvertisingData {
     }
     
     // Fake data initializer for Simulated Probe
-    public init(fakeSerial: UInt32, fakeTemperatures: ProbeTemperatures) {
+    public init(fakeSerial: UInt32, 
+                fakeTemperatures: ProbeTemperatures,
+                fakeVirtualSensors: BatteryStatusVirtualSensors) {
         type = .probe
         temperatures = fakeTemperatures
         serialNumber = fakeSerial
         modeId = ModeId.defaultValues()
-        batteryStatusVirtualSensors = BatteryStatusVirtualSensors.defaultValues()
+        batteryStatusVirtualSensors = fakeVirtualSensors
         hopCount = HopCount.defaultValues()
     }
 }

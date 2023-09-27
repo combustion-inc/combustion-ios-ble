@@ -73,8 +73,8 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// Connection manager to handle BLE connection logic
     private let connectionManager = ConnectionManager()
     
-    public func addSimulatedProbe() {
-        addDevice(device: SimulatedProbe())
+    public func addSimulatedProbe(_ probe: SimulatedProbe) {
+        addDevice(device: probe)
     }
     
     public func initBluetooth() {

@@ -75,6 +75,12 @@ public struct VirtualSensors {
     public let virtualCore: VirtualCoreSensor
     public let virtualSurface: VirtualSurfaceSensor
     public let virtualAmbient: VirtualAmbientSensor
+    
+    public init(virtualCore: VirtualCoreSensor, virtualSurface: VirtualSurfaceSensor, virtualAmbient: VirtualAmbientSensor) {
+        self.virtualCore = virtualCore
+        self.virtualSurface = virtualSurface
+        self.virtualAmbient = virtualAmbient
+    }
 }
 
 extension VirtualSensors {

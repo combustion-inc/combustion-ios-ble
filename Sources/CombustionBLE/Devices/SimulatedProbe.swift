@@ -30,10 +30,20 @@ import Foundation
 public class SimulatedProbe: Probe {
     
     private var fakeSetPoint = 71.0
+    private var temperatures: ProbeTemperatures? = nil
+    private var batterySensors: BatteryStatusVirtualSensors? = nil
+    private var predictionStatus: PredictionStatus? = nil
     
-    public init() {
+    public init(temperatures: ProbeTemperatures? = nil, 
+                batterySensors: BatteryStatusVirtualSensors? = nil,
+                predictionStatus: PredictionStatus? = nil) {
+        self.temperatures = temperatures
+        self.batterySensors = batterySensors
+        self.predictionStatus = predictionStatus
+        
         let advertising = AdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
-                                          fakeTemperatures: ProbeTemperatures.withRandomData())
+                                          fakeTemperatures: temperatures ?? ProbeTemperatures.withRandomData(), 
+                                          fakeVirtualSensors: batterySensors ?? BatteryStatusVirtualSensors.defaultValues())
         super.init(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())
         
         firmareVersion = "v1.2.3"
@@ -73,7 +83,8 @@ public class SimulatedProbe: Probe {
     
     private func updateFakeAdvertising() {
         let advertising = AdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
-                                          fakeTemperatures: ProbeTemperatures.withRandomData())
+                                          fakeTemperatures: temperatures ?? ProbeTemperatures.withRandomData(), 
+                                          fakeVirtualSensors: batterySensors ?? BatteryStatusVirtualSensors.defaultValues())
         updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), bleIdentifier: nil)
     }
     
@@ -91,7 +102,7 @@ public class SimulatedProbe: Probe {
             lastSequence = 0
         }
         
-        let predictionStatus = PredictionStatus(predictionState: .predicting,
+        let fakePredictionStatus = PredictionStatus(predictionState: .predicting,
                                                 predictionMode: .timeToRemoval,
                                                 predictionType: .none,
                                                 predictionSetPointTemperature: fakeSetPoint,
@@ -101,10 +112,10 @@ public class SimulatedProbe: Probe {
         
         let probeStatus = ProbeStatus(minSequenceNumber: firstSeq,
                                       maxSequenceNumber: lastSequence,
-                                      temperatures: ProbeTemperatures.withRandomData(),
+                                      temperatures: temperatures ?? ProbeTemperatures.withRandomData(),
                                       modeId: ModeId.defaultValues(),
-                                      batteryStatusVirtualSensors: BatteryStatusVirtualSensors.defaultValues(),
-                                      predictionStatus: predictionStatus)
+                                      batteryStatusVirtualSensors: batterySensors ?? BatteryStatusVirtualSensors.defaultValues(),
+                                      predictionStatus: predictionStatus ?? fakePredictionStatus)
         
         updateProbeStatus(deviceStatus: probeStatus)
     }

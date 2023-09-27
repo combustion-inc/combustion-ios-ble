@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-struct PredictionStatus {
+public struct PredictionStatus {
     public let predictionState: PredictionState
     public let predictionMode: PredictionMode
     public let predictionType: PredictionType
@@ -34,6 +34,22 @@ struct PredictionStatus {
     public let heatStartTemperature: Double
     public let predictionValueSeconds: UInt
     public let estimatedCoreTemperature: Double
+    
+    public init(predictionState: PredictionState, 
+                predictionMode: PredictionMode,
+                predictionType: PredictionType,
+                predictionSetPointTemperature: Double,
+                heatStartTemperature: Double,
+                predictionValueSeconds: UInt,
+                estimatedCoreTemperature: Double) {
+        self.predictionState = predictionState
+        self.predictionMode = predictionMode
+        self.predictionType = predictionType
+        self.predictionSetPointTemperature = predictionSetPointTemperature
+        self.heatStartTemperature = heatStartTemperature
+        self.predictionValueSeconds = predictionValueSeconds
+        self.estimatedCoreTemperature = estimatedCoreTemperature
+    }
 }
  
 extension PredictionStatus {

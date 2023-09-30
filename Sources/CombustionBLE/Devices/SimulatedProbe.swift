@@ -51,12 +51,12 @@ public class SimulatedProbe: Probe {
         hardwareRevision = "v0.31-A1"
         
         // Create timer to update probe with fake advertising packets
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { [weak self] _ in
                 self?.updateFakeAdvertising()
         }
         
         // Create timer to update probe with fake status notifications
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { [weak self] _ in
             self?.updateFakeStatus()
         }
         

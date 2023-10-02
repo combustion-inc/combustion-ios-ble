@@ -29,7 +29,7 @@ import Foundation
 import NordicDFU
 
 /// Struct containing info about a thermometer device.
-public class Device : ObservableObject {
+open class Device : ObservableObject {
     
     /// Enumeration representing the various connection states of the device
     public enum ConnectionState : CaseIterable {

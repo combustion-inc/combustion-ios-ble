@@ -28,7 +28,7 @@ SOFTWARE.
 import Foundation
 
 /// Struct containing info about a Probe device.
-public class Probe : Device {
+open class Probe : Device {
     
     /// Probe serial number
     @Published public private(set) var serialNumber: UInt32
@@ -38,29 +38,29 @@ public class Probe : Device {
         return String(format: "%08X", serialNumber)
     }
     
-    @Published public private(set) var currentTemperatures: ProbeTemperatures?
+    @Published public internal(set) var currentTemperatures: ProbeTemperatures?
     
     /// Filtered Instant Read reading in Celsius.
-    @Published public private(set) var instantReadCelsius: Double?
+    @Published public internal(set) var instantReadCelsius: Double?
     /// Filtered Instant Read reading in Fahrenheit.
-    @Published public private(set) var instantReadFahrenheit: Double?
+    @Published public internal(set) var instantReadFahrenheit: Double?
     /// Deprecated. Legacy value - raw, unfiltered instant read reading.
     @Published public private(set) var instantReadTemperature: Double?
     
-    @Published public private(set) var minSequenceNumber: UInt32?
-    @Published public private(set) var maxSequenceNumber: UInt32?
+    @Published public internal(set) var minSequenceNumber: UInt32?
+    @Published public internal(set) var maxSequenceNumber: UInt32?
     
     /// Tracks what percent of logs on probe have been synced to the app
-    @Published public private(set) var percentOfLogsSynced: Int?
+    @Published public internal(set) var percentOfLogsSynced: Int?
     
-    @Published public private(set) var id: ProbeID
-    @Published public private(set) var color: ProbeColor
+    @Published public internal(set) var id: ProbeID
+    @Published public internal(set) var color: ProbeColor
     
-    @Published public private(set) var batteryStatus: BatteryStatus = .ok
+    @Published public internal(set) var batteryStatus: BatteryStatus = .ok
     
-    @Published public private(set) var virtualSensors: VirtualSensors?
+    @Published public internal(set) var virtualSensors: VirtualSensors?
     
-    @Published public private(set) var predictionInfo: PredictionInfo?
+    @Published public internal(set) var predictionInfo: PredictionInfo?
     
     public struct VirtualTemperatures {
         public let coreTemperature: Double
@@ -68,7 +68,7 @@ public class Probe : Device {
         public let ambientTemperature: Double
     }
     
-    @Published public private(set) var virtualTemperatures: VirtualTemperatures?
+    @Published public internal(set) var virtualTemperatures: VirtualTemperatures?
     
     public var hasActivePrediction: Bool {
         guard let info = predictionInfo else { return false }
@@ -77,7 +77,7 @@ public class Probe : Device {
     }
     
     /// Stores historical values of probe temperatures
-    public private(set) var temperatureLogs: [ProbeTemperatureLog] = []
+    public internal(set) var temperatureLogs: [ProbeTemperatureLog] = []
     
     /// Pretty-formatted device name
     public var name: String {
@@ -95,31 +95,31 @@ public class Probe : Device {
     }
     
     /// Whether or not probe is overheating
-    @Published public private(set) var overheating: Bool = false
+    @Published public internal(set) var overheating: Bool = false
     
     /// Array of sensor indexes that are overheating
-    @Published public private(set) var overheatingSensors: [Int] = []
+    @Published public internal(set) var overheatingSensors: [Int] = []
     
     /// Tracks the most recent time a status notification was received.
     @Published public internal(set) var lastStatusNotificationTime = Date()
     
     /// Tracks whether status notification data has become stale.
-    @Published public private(set) var statusNotificationsStale = false
+    @Published public internal(set) var statusNotificationsStale = false
     
     /// Current session information
-    @Published public private(set) var sessionInformation: SessionInformation?
+    @Published public internal(set) var sessionInformation: SessionInformation?
     
     /// Time at which probe instant read was last updated
     internal var lastInstantRead: Date?
    
     /// Last hop count that updated Instant Read (nil = direct from Probe)
-    @Published public private(set) var lastInstantReadHopCount : HopCount? = nil
+    @Published public internal(set) var lastInstantReadHopCount : HopCount? = nil
      
     /// Time at which probe 'normal mode' info (raw temperatures etc.) was last updated
     internal var lastNormalMode: Date?
    
     /// Last hop count that updated 'normal mode' info (nil = direct from Probe)
-    @Published public private(set) var lastNormalModeHopCount : HopCount? = nil
+    @Published public internal(set) var lastNormalModeHopCount : HopCount? = nil
 
     private var predictionManager: PredictionManager
     private var instantReadFilter: InstantReadFilter

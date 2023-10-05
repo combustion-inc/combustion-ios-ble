@@ -42,13 +42,29 @@ open class Probe : Device {
     
     /// Filtered Instant Read reading in Celsius.
     @Published public internal(set) var instantReadCelsius: Double?
+    
     /// Filtered Instant Read reading in Fahrenheit.
     @Published public internal(set) var instantReadFahrenheit: Double?
+    
     /// Deprecated. Legacy value - raw, unfiltered instant read reading.
+    @available(*, deprecated)
     @Published public private(set) var instantReadTemperature: Double?
     
+    /// Deprecated. Legacy value - use sequenceNumberRange instead.
+    @available(*, deprecated)
     @Published public internal(set) var minSequenceNumber: UInt32?
+    
+    /// Deprecated. Legacy value - use sequenceNumberRange instead.
+    @available(*, deprecated)
     @Published public internal(set) var maxSequenceNumber: UInt32?
+    
+    /// Sequence number range of records on the probe
+    @Published public internal(set) var sequenceNumberRange: ClosedRange<UInt32>? {
+        didSet {
+            minSequenceNumber = sequenceNumberRange?.lowerBound
+            maxSequenceNumber = sequenceNumberRange?.upperBound
+        }
+    }
     
     /// Tracks what percent of logs on probe have been synced to the app
     @Published public internal(set) var percentOfLogsSynced: Int?
@@ -293,9 +309,8 @@ extension Probe {
                                      probeColor: deviceStatus.modeId.color,
                                      probeBatteryStatus: deviceStatus.batteryStatusVirtualSensors.batteryStatus)
                 
-                // Update sequence numbers
-                minSequenceNumber = deviceStatus.minSequenceNumber
-                maxSequenceNumber = deviceStatus.maxSequenceNumber
+                // Update sequence number range
+                sequenceNumberRange = deviceStatus.minSequenceNumber...deviceStatus.maxSequenceNumber
          
                 // Update prediction status
                 predictionManager.updatePredictionStatus(deviceStatus.predictionStatus,
@@ -325,8 +340,7 @@ extension Probe {
                                         hopCount: hopCount)
             if updated {
                 // Also update sequence numbers if Instant Read was updated
-                minSequenceNumber = deviceStatus.minSequenceNumber
-                maxSequenceNumber = deviceStatus.maxSequenceNumber
+                sequenceNumberRange = deviceStatus.minSequenceNumber...deviceStatus.maxSequenceNumber
             }
         }
         
@@ -420,8 +434,8 @@ extension Probe {
         // Do not store the dataPoint if its sequence number is greater
         // than the probe's max sequence number. This is a safety check
         // for the probe/node sending a record with invalid sequence number
-        if let maxSequenceNumber = maxSequenceNumber,
-           dataPoint.sequenceNum > maxSequenceNumber {
+        if let sequenceNumberRange = sequenceNumberRange,
+           dataPoint.sequenceNum > sequenceNumberRange.upperBound {
             return
         }
         
@@ -438,12 +452,11 @@ extension Probe {
     }
     
     private func updateLogPercent() {
-        guard let maxSequenceNumber = maxSequenceNumber,
-              let minSequenceNumber = minSequenceNumber,
+        guard let sequenceNumberRange = sequenceNumberRange,
               let currentLog = getCurrentTemperatureLog() else { return }
         
-        let numberLogsFromProbe = currentLog.logsInRange(sequenceNumbers: minSequenceNumber ... maxSequenceNumber)
-        let numberLogsOnProbe = Int(maxSequenceNumber - minSequenceNumber + 1)
+        let numberLogsFromProbe = currentLog.logsInRange(sequenceNumbers: sequenceNumberRange)
+        let numberLogsOnProbe = Int(sequenceNumberRange.upperBound - sequenceNumberRange.lowerBound + 1)
         
         if(numberLogsOnProbe == numberLogsFromProbe) {
             percentOfLogsSynced = 100

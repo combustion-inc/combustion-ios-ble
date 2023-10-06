@@ -27,7 +27,7 @@ SOFTWARE.
 import Foundation
 
 public struct SessionInformation {
-    let sessionID: UInt32
+    public let sessionID: UInt32
     public let samplePeriod: UInt16
 }
 

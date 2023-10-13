@@ -95,10 +95,6 @@ open class Device : ObservableObject {
         public let progress: Int
     }
     
-    /// Minimum possible value for RSSI
-    static internal let MIN_RSSI = -128
-    
-    
     /// DFU Upload progress
     @Published public private(set) var dfuUploadProgress: DFUUploadProgress?
     
@@ -117,16 +113,17 @@ open class Device : ObservableObject {
         if let RSSI = RSSI {
             self.rssi = RSSI.intValue
         } else {
-            self.rssi = Device.MIN_RSSI
+            self.rssi = Constants.MIN_RSSI
         }
     }
     
     func updateConnectionState(_ state: ConnectionState) {
         connectionState = state
         
-        // Clear firmware version and DFU state on disconnect
+        // Clear firmware version and RSSI on disconnect
         if(connectionState == .disconnected) {
             firmareVersion = nil
+            rssi = Constants.MIN_RSSI
         }
         
         // If we were disconnected and we should be maintaining a connection, attempt to reconnect.
@@ -141,8 +138,10 @@ open class Device : ObservableObject {
         
         
         // If device data is stale, assume its not connectable
+        // and clear RSSI
         if(stale) {
             isConnectable = false
+            rssi = Constants.MIN_RSSI
         }
     }
     
@@ -177,6 +176,9 @@ extension Device {
     private enum Constants {
         /// Go stale after this many seconds of no Bluetooth activity
         static let STALE_TIMEOUT = 15.0
+        
+        /// Minimum possible value for RSSI
+        static internal let MIN_RSSI = -128
     }
     
     /// Attempt to connect to the device.

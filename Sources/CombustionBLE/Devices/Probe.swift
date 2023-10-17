@@ -116,6 +116,18 @@ open class Probe : Device {
     /// Array of sensor indexes that are overheating
     @Published public internal(set) var overheatingSensors: [Int] = []
     
+    /// Overheating thresholds for each sensor (in degrees C)
+    public static let OVERHEATING_THRESHOLDS: [Double] = [
+        105.0, // T1
+        105.0, // T2
+        115.0, // T3
+        125.0, // T4
+        300.0, // T5
+        300.0, // T6
+        300.0, // T7
+        300.0, // T8
+    ]
+    
     /// Tracks the most recent time a status notification was received.
     @Published public internal(set) var lastStatusNotificationTime = Date()
     
@@ -207,18 +219,7 @@ extension Probe {
         
         /// Number of seconds after which status notifications should be considered stale.
         static let STATUS_NOTIFICATION_STALE_TIMEOUT = 16.0
-        
-        
-        /// Overheating thresholds (in degrees C) for T1 and T2
-        static let OVERHEATING_T1_T2_THRESHOLD = 105.0
-        /// Overheating thresholds (in degrees C) for T3
-        static let OVERHEATING_T3_THRESHOLD = 115.0
-        /// Overheating thresholds (in degrees C) for T4
-        static let OVERHEATING_T4_THRESHOLD = 125.0
-        /// Overheating thresholds (in degrees C) for T5-T8
-        static let OVERHEATING_T5_T8_THRESHOLD = 300.0
     }
-    
     
     /// Updates this Probe with data from an advertisement message.
     /// - param advertising: Advertising data either directly from the Probe, or related via a MeatNet Node
@@ -397,29 +398,9 @@ extension Probe {
         
         var overheatingSensorList : [Int] = []
             
-        // Check T1-T2
-        for i in 1...2 {
-            if currentTemperatures.values[i] >= Constants.OVERHEATING_T1_T2_THRESHOLD {
-                anyOverTemp = true
-                overheatingSensorList.append(i)
-            }
-        }
-        
-        // Check T3
-        if currentTemperatures.values[2] >= Constants.OVERHEATING_T3_THRESHOLD {
-            anyOverTemp = true
-            overheatingSensorList.append(2)
-        }
-        
-        // Check T4
-        if currentTemperatures.values[3] >= Constants.OVERHEATING_T4_THRESHOLD {
-            anyOverTemp = true
-            overheatingSensorList.append(3)
-        }
-        
-        // Check T5-T8
-        for i in 4...7 {
-            if currentTemperatures.values[i] >= Constants.OVERHEATING_T5_T8_THRESHOLD {
+        // Check T1-T8
+        for i in 0...7 {
+            if currentTemperatures.values[i] >= Probe.OVERHEATING_THRESHOLDS[i] {
                 anyOverTemp = true
                 overheatingSensorList.append(i)
             }

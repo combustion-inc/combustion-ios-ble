@@ -70,7 +70,14 @@ open class Device : ObservableObject {
     @Published public internal(set) var isConnectable = false
     
     /// Signal strength to device
-    @Published public internal(set) var rssi: Int
+    @Published public internal(set) var rssi: Int {
+        didSet {
+            handleRSSIUpdate()
+        }
+    }
+    
+    /// Within Proximity Identification range
+    @Published public internal(set) var withinProximityRange: Bool = false
     
     /// Tracks whether the app should attempt to maintain a connection to the device.
     @Published public private(set) var maintainingConnection = false
@@ -99,6 +106,8 @@ open class Device : ObservableObject {
     @Published public private(set) var dfuUploadProgress: DFUUploadProgress?
     
     private var dfuServiceController: DFUServiceController? = nil
+    
+    private var rssiEWMA = EWMA(span: 6)
     
     /// Time at which device was last updated
     internal var lastUpdateTime = Date()
@@ -179,6 +188,9 @@ extension Device {
         
         /// Minimum possible value for RSSI
         static internal let MIN_RSSI = -128
+        
+        // RSSI limit for proximity check
+        static let PROXIMITY_RSSI: Float = -48.0
     }
     
     /// Attempt to connect to the device.
@@ -208,6 +220,26 @@ extension Device {
         }
         catch {
             return false
+        }
+    }
+    
+    private func handleRSSIUpdate() {
+        // Ignore unreasonable values
+        if(rssi > 0) {
+            return
+        }
+        
+        if(rssi == Constants.MIN_RSSI) {
+            // Reset values if RSSI is set to MIN
+            rssiEWMA.reset()
+            withinProximityRange = false
+        }
+        else {
+            // Update RSSI EWMA
+            rssiEWMA.put(value: Float(rssi))
+            
+            // Check RSSI proximity
+            withinProximityRange = rssiEWMA.get() > Constants.PROXIMITY_RSSI
         }
     }
 }

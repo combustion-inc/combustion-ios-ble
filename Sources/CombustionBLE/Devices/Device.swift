@@ -70,7 +70,14 @@ open class Device : ObservableObject {
     @Published public internal(set) var isConnectable = false
     
     /// Signal strength to device
-    @Published public internal(set) var rssi: Int
+    @Published public internal(set) var rssi: Int {
+        didSet {
+            handleRSSIUpdate()
+        }
+    }
+    
+    /// Within Proximity Identification range
+    @Published public internal(set) var withinProximityRange: Bool = false
     
     /// Tracks whether the app should attempt to maintain a connection to the device.
     @Published public private(set) var maintainingConnection = false
@@ -95,14 +102,12 @@ open class Device : ObservableObject {
         public let progress: Int
     }
     
-    /// Minimum possible value for RSSI
-    static internal let MIN_RSSI = -128
-    
-    
     /// DFU Upload progress
     @Published public private(set) var dfuUploadProgress: DFUUploadProgress?
     
     private var dfuServiceController: DFUServiceController? = nil
+    
+    private var rssiEWMA = EWMA(span: 6)
     
     /// Time at which device was last updated
     internal var lastUpdateTime = Date()
@@ -117,16 +122,17 @@ open class Device : ObservableObject {
         if let RSSI = RSSI {
             self.rssi = RSSI.intValue
         } else {
-            self.rssi = Device.MIN_RSSI
+            self.rssi = Constants.MIN_RSSI
         }
     }
     
     func updateConnectionState(_ state: ConnectionState) {
         connectionState = state
         
-        // Clear firmware version and DFU state on disconnect
+        // Clear firmware version and RSSI on disconnect
         if(connectionState == .disconnected) {
             firmareVersion = nil
+            rssi = Constants.MIN_RSSI
         }
         
         // If we were disconnected and we should be maintaining a connection, attempt to reconnect.
@@ -141,8 +147,10 @@ open class Device : ObservableObject {
         
         
         // If device data is stale, assume its not connectable
+        // and clear RSSI
         if(stale) {
             isConnectable = false
+            rssi = Constants.MIN_RSSI
         }
     }
     
@@ -177,6 +185,13 @@ extension Device {
     private enum Constants {
         /// Go stale after this many seconds of no Bluetooth activity
         static let STALE_TIMEOUT = 15.0
+        
+        /// Minimum possible value for RSSI
+        static internal let MIN_RSSI = -128
+        
+        // RSSI limits for proximity check
+        static let PROXIMITY_RSSI_MAX: Float = -48.0
+        static let PROXIMITY_RSSI_MIN: Float = -55.0
     }
     
     /// Attempt to connect to the device.
@@ -206,6 +221,31 @@ extension Device {
         }
         catch {
             return false
+        }
+    }
+    
+    private func handleRSSIUpdate() {
+        // Ignore unreasonable values
+        if(rssi > 0) {
+            return
+        }
+        
+        if(rssi == Constants.MIN_RSSI) {
+            // Reset values if RSSI is set to MIN
+            rssiEWMA.reset()
+            withinProximityRange = false
+        }
+        else {
+            // Update RSSI EWMA
+            rssiEWMA.put(value: Float(rssi))
+            
+            // Check RSSI proximity
+            if(withinProximityRange && rssiEWMA.get() < Constants.PROXIMITY_RSSI_MIN) {
+                withinProximityRange = false
+            }
+            else if(!withinProximityRange && rssiEWMA.get() > Constants.PROXIMITY_RSSI_MAX) {
+                withinProximityRange = true
+            }
         }
     }
 }

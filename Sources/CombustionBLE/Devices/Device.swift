@@ -189,8 +189,9 @@ extension Device {
         /// Minimum possible value for RSSI
         static internal let MIN_RSSI = -128
         
-        // RSSI limit for proximity check
-        static let PROXIMITY_RSSI: Float = -48.0
+        // RSSI limits for proximity check
+        static let PROXIMITY_RSSI_MAX: Float = -48.0
+        static let PROXIMITY_RSSI_MIN: Float = -55.0
     }
     
     /// Attempt to connect to the device.
@@ -239,7 +240,12 @@ extension Device {
             rssiEWMA.put(value: Float(rssi))
             
             // Check RSSI proximity
-            withinProximityRange = rssiEWMA.get() > Constants.PROXIMITY_RSSI
+            if(withinProximityRange && rssiEWMA.get() < Constants.PROXIMITY_RSSI_MIN) {
+                withinProximityRange = false
+            }
+            else if(!withinProximityRange && rssiEWMA.get() > Constants.PROXIMITY_RSSI_MAX) {
+                withinProximityRange = true
+            }
         }
     }
 }

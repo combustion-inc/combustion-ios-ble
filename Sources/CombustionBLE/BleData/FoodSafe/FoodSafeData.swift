@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-struct FoodSafeData {
+struct FoodSafeData: Equatable {
     let mode: FoodSafeMode
     let protein: Protein
     let form: Form
@@ -38,9 +38,44 @@ struct FoodSafeData {
 }
 
 extension FoodSafeData {
+    static let RAW_DATA_SIZE = 9
+    
+    private func toPacked(_ value: Double) -> UInt16 {
+        return UInt16(value / 0.05) & 0x1FFF
+    }
+    
+    func toRawData() -> Data {
+        var data = Data(count: FoodSafeData.RAW_DATA_SIZE)
+        
+        let rawSelectedThreshold = toPacked(selectedThresholdReferenceTemperature)
+        let rawZValue = toPacked(zValue)
+        let rawReferenceTemperature = toPacked(referenceTemperature)
+        let rawDValueAtRt = toPacked(dValueAtRt)
+    
+        data[0] = mode.rawValue | (protein.rawValue << 3)
+
+        data[1] = (protein.rawValue >> 5) | (form.rawValue << 1) | (serving.rawValue << 5)
+        
+        data[2] = UInt8(rawSelectedThreshold & 0x00FF)
+
+        data[3] = UInt8((rawSelectedThreshold & 0x1F00) >> 8) | UInt8((rawZValue & 0x03) << 5)
+
+        data[4] = UInt8((rawZValue & 0x07F8) >> 3)
+
+        data[5] = UInt8((rawZValue & 0x1800) >> 11) | UInt8((rawReferenceTemperature & 0x003F) << 2)
+
+        data[6] = UInt8((rawReferenceTemperature & 0x1FC0) >> 6) | UInt8((rawDValueAtRt & 0x01) << 7)
+
+        data[7] = UInt8((rawDValueAtRt & 0x01FE) >> 1)
+
+        data[8] = UInt8((rawDValueAtRt & 0x1E00) >> 9)
+        
+        return data
+    }
+    
     /// Parses Food Safe data from raw data buffer
     static func fromRawData(data: Data) -> FoodSafeData? {
-        guard data.count >= 9 else { return nil }
+        guard data.count >= RAW_DATA_SIZE else { return nil }
         
         // Food Safe Mode - 3 bits
         let rawMode = data[0] & FoodSafeMode.MASK

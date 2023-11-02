@@ -130,6 +130,10 @@ extension Response {
             return SetPredictionResponse(success: success, payloadLength: Int(payloadLength))
         case .readOverTemperature:
             return ReadOverTemperatureResponse(data: data, success: success, payloadLength: Int(payloadLength))
+        case .configureFoodSafe:
+            return ConfigureFoodSafeResponse(success: success, payloadLength: Int(payloadLength))
+        case .resetFoodSafe:
+            return ResetFoodSafeResponse(success: success, payloadLength: Int(payloadLength))
         }
     }
 }

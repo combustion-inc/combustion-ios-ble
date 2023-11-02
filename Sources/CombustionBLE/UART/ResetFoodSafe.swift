@@ -1,4 +1,4 @@
-//  FoodSafeStatus.swift
+//  ResetFoodSafe.swift
 
 /*--
 MIT License
@@ -26,34 +26,10 @@ SOFTWARE.
 
 import Foundation
 
-struct FoodSafeStatus: Equatable {
-    let state: FoodSafeState
-    let logReduction: Double
-    let secondsAboveThreshold: UInt
-}
-
-extension FoodSafeStatus {
-    
-    /// Parses Food Safe Status data from raw data buffer
-    static func fromRawData(data: Data) -> FoodSafeStatus? {
-        guard data.count >= 4 else { return nil }
-
-        // Safe State - 3 bits
-        let rawState = data[0] & FoodSafeState.MASK
-        let state = FoodSafeState(rawValue: rawState) ?? .notSafe
-        
-        // Log Reduction - 8 bits
-        let rawLogReduction = ((data[0] & 0xF8) >> 3) | ((data[1] & 0x07) << 5)
-        
-        // Seconds above threshold - 16 bits
-        let secondsAboveThreshold = ((UInt16(data[1]) & 0xF8) >> 3) |
-                                   (UInt16(data[2]) & 0xFF) << 5 |
-                                   (UInt16(data[3]) & 0x07) << 13
-
-        return FoodSafeStatus(
-            state: state,
-            logReduction: Double(rawLogReduction) * 0.1,
-            secondsAboveThreshold: UInt(secondsAboveThreshold)
-        )
+class ResetFoodSafeRequest: Request {
+    init() {
+        super.init(payload: Data(), type: .resetFoodSafe)
     }
 }
+
+class ResetFoodSafeResponse : Response { }

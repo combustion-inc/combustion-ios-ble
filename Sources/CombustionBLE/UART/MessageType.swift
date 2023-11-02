@@ -27,10 +27,12 @@ SOFTWARE.
 import Foundation
 
 enum MessageType: UInt8  {
-    case setID = 1
-    case setColor = 2
-    case sessionInfo = 3
-    case log = 4
-    case setPrediction = 5
-    case readOverTemperature = 6
+    case setID = 0x01
+    case setColor = 0x02
+    case sessionInfo = 0x03
+    case log = 0x04
+    case setPrediction = 0x05
+    case readOverTemperature = 0x06
+    case configureFoodSafe = 0x07
+    case resetFoodSafe = 0x08
 }

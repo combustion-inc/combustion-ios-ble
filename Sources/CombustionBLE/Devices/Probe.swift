@@ -78,6 +78,10 @@ open class Probe : Device {
     
     @Published public internal(set) var predictionInfo: PredictionInfo?
     
+    @Published public internal(set) var foodSafeData: FoodSafeData?
+    
+    @Published public internal(set) var foodSafeStatus: FoodSafeStatus?
+    
     public struct VirtualTemperatures {
         public let coreTemperature: Double
         public let surfaceTemperature: Double
@@ -295,7 +299,7 @@ extension Probe {
         }
     }
     
-    /// Updates the Device based on newly-received DeviceStatus message. Requests missing records.
+    /// Updates the Device based on newly-received ProbeStatus message. Requests missing records.
     func updateProbeStatus(deviceStatus: ProbeStatus, hopCount: HopCount? = nil) {
         // Ignore status messages that have a sequence count lower than any previously
         // received status messages
@@ -320,6 +324,10 @@ extension Probe {
                 // Update temperatures, virtual sensors, and check for overheating
                 updateTemperatures(temperatures: deviceStatus.temperatures,
                                    virtualSensors: deviceStatus.batteryStatusVirtualSensors.virtualSensors)
+                
+                // Update Food Safety data
+                foodSafeData = deviceStatus.foodSafeData
+                foodSafeStatus = deviceStatus.foodSafeStatus
                 
                 // Log the temperature data point for "Normal" status updates
                 addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus))
@@ -573,22 +581,6 @@ extension Probe {
         
         // Check if the probe is overheating
         checkOverheating()
-    }
-    
-    private func updateVirtualTemperatures() {
-        guard let virtualSensors = virtualSensors,
-              let currentTemperatures = currentTemperatures else {
-            self.virtualTemperatures = nil
-            return
-        }
-        
-        let core = virtualSensors.virtualCore.temperatureFrom(currentTemperatures)
-        let surface = virtualSensors.virtualSurface.temperatureFrom(currentTemperatures)
-        let ambient = virtualSensors.virtualAmbient.temperatureFrom(currentTemperatures)
-        
-        virtualTemperatures = VirtualTemperatures(coreTemperature: core,
-                                                  surfaceTemperature: surface,
-                                                  ambientTemperature: ambient)
     }
     
     private func requestSessionInformation() {

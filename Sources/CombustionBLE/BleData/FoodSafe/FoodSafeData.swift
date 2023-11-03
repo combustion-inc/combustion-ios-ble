@@ -27,34 +27,39 @@ SOFTWARE.
 import Foundation
 
 public struct FoodSafeData: Equatable {
-    public let mode: FoodSafeMode
-    public let protein: Protein
-    public let form: Form
-    public let serving: Serving
+    public let mode: FoodModeProductServing
+    
     public let selectedThresholdReferenceTemperature: Double
     public let zValue: Double
     public let referenceTemperature: Double
     public let dValueAtRt: Double
+    public let targetLogReduction: Double
 }
 
 extension FoodSafeData {
-    static let RAW_DATA_SIZE = 9
-    
     private func toPacked(_ value: Double) -> UInt16 {
         return UInt16(value / 0.05) & 0x1FFF
     }
     
+    private enum Constants {
+        static let RAW_DATA_SIZE = 10
+        static let RAW_MODE_RANGE = 0..<2
+    }
+    
     func toRawData() -> Data {
-        var data = Data(count: FoodSafeData.RAW_DATA_SIZE)
+        var data = Data(count: Constants.RAW_DATA_SIZE)
         
         let rawSelectedThreshold = toPacked(selectedThresholdReferenceTemperature)
         let rawZValue = toPacked(zValue)
         let rawReferenceTemperature = toPacked(referenceTemperature)
         let rawDValueAtRt = toPacked(dValueAtRt)
+        let rawLogReduction = UInt8(targetLogReduction / 0.1)
     
-        data[0] = mode.rawValue | (protein.rawValue << 3)
-
-        data[1] = (protein.rawValue >> 5) | (form.rawValue << 1) | (serving.rawValue << 5)
+        let rawModeData = mode.toRaw()
+        
+        data[0] = rawModeData[0]
+        
+        data[1] = rawModeData[1]
         
         data[2] = UInt8(rawSelectedThreshold & 0x00FF)
 
@@ -68,30 +73,19 @@ extension FoodSafeData {
 
         data[7] = UInt8((rawDValueAtRt & 0x01FE) >> 1)
 
-        data[8] = UInt8((rawDValueAtRt & 0x1E00) >> 9)
+        data[8] = UInt8((rawDValueAtRt & 0x1E00) >> 9) | UInt8((rawLogReduction & 0x0F) << 4)
+        
+        data[9] = UInt8((rawLogReduction & 0xF0) >> 4)
         
         return data
     }
     
     /// Parses Food Safe data from raw data buffer
     static func fromRawData(data: Data) -> FoodSafeData? {
-        guard data.count >= RAW_DATA_SIZE else { return nil }
+        guard data.count >= Constants.RAW_DATA_SIZE else { return nil }
         
-        // Food Safe Mode - 3 bits
-        let rawMode = data[0] & FoodSafeMode.MASK
-        let mode = FoodSafeMode(rawValue: rawMode) ?? .simplified
-        
-        // Protein - 6 bits
-        let rawProtein = ((data[0] & 0xF8) >> 3) | ((data[1] & 0x01) << 5)
-        let protein = Protein(rawValue: rawProtein) ?? ._default
-        
-        // Form - 4 bits
-        let rawForm = (data[1] >> 1) & Form.MASK
-        let form = Form(rawValue: rawForm) ?? .intactCut
-        
-        // Serving - 3 bits
-        let rawServing = (data[1] >> 5) & Serving.MASK
-        let serving = Serving(rawValue: rawServing) ?? .servedImmediately
+        let rawModeData = data.subdata(in: Constants.RAW_MODE_RANGE)
+        guard let mode = FoodModeProductServing.fromRaw(data: rawModeData) else { return nil }
         
         // Selected Threshold Reference Temperature - 13 bits
         let rawSelectedThresholdReferenceTemperature = UInt16(data[2]) | ((UInt16(data[3]) & 0x1F) << 8)
@@ -109,14 +103,16 @@ extension FoodSafeData {
         let rawDValueAtRt = ((UInt16(data[6]) & 0x80) >> 7) | (UInt16(data[7]) << 1) | ((UInt16(data[8]) & 0x0F) << 9)
         let dValueAtRt = Double(rawDValueAtRt) * 0.05
         
-        return FoodSafeData(mode: mode, 
-                            protein: protein, 
-                            form: form, 
-                            serving: serving,
+        // Log Reduction - 8 bits
+        let rawLogReduction = ((data[8] & 0xF0) >> 4) | ((data[9] & 0x0F) << 4)
+        let logReduction = Double(rawLogReduction) * 0.1
+        
+        return FoodSafeData(mode: mode,
                             selectedThresholdReferenceTemperature: selectedThresholdReferenceTemperature,
                             zValue: zValue,
                             referenceTemperature: referenceTemperature,
-                            dValueAtRt: dValueAtRt
+                            dValueAtRt: dValueAtRt, 
+                            targetLogReduction: logReduction
         )
     }
 }

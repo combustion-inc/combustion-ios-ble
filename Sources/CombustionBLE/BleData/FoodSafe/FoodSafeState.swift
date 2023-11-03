@@ -26,15 +26,12 @@ SOFTWARE.
 
 import Foundation
 
-enum FoodSafeState: UInt8 {
+public enum FoodSafeState: UInt8 {
     case notSafe = 0x00
     case safe = 0x01
     case safetyImpossible = 0x02
-    case reserved3 = 0x03
-    case reserved4 = 0x04
-    case reserved5 = 0x05
-    case reserved6 = 0x06
-    case reserved7 = 0x07
+
+    // 0x03 - 0x07 : Reserved
     
     // 3 bit enum value
     static let MASK: UInt8 = 0x07

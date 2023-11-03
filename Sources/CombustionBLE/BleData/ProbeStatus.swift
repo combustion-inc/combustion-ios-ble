@@ -62,8 +62,8 @@ extension ProbeStatus {
         static let MODE_COLOR_ID_RANGE = 21..<22
         static let DEVICE_STATUS_RANGE = 22..<23
         static let PREDICTION_STATUS_RANGE = 23..<30
-        static let FOOD_SAFE_DATA_RANGE = 30..<39
-        static let FOOD_SAFE_STATUS_RANGE = 39..<43
+        static let FOOD_SAFE_DATA_RANGE = 30..<40
+        static let FOOD_SAFE_STATUS_RANGE = 40..<44
     }
     
     init?(fromData data: Data) {

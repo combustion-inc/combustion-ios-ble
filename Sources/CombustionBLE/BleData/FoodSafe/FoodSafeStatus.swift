@@ -26,10 +26,10 @@ SOFTWARE.
 
 import Foundation
 
-struct FoodSafeStatus: Equatable {
-    let state: FoodSafeState
-    let logReduction: Double
-    let secondsAboveThreshold: UInt
+public struct FoodSafeStatus: Equatable {
+    public let state: FoodSafeState
+    public let logReduction: Double
+    public let secondsAboveThreshold: UInt
 }
 
 extension FoodSafeStatus {

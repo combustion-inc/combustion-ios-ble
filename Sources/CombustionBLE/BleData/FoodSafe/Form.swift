@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-enum Form: UInt8 {
+public enum Form: UInt8 {
     case intactCut = 0x00
     case notIntact = 0x01
     case ground = 0x02

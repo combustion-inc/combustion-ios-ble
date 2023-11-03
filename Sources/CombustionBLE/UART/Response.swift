@@ -31,10 +31,12 @@ class Response {
     
     let success: Bool
     let payloadLength: Int
+    let messageType: MessageType
     
-    init(success: Bool, payloadLength: Int) {
+    init(success: Bool, payloadLength: Int, messageType: MessageType) {
         self.success = success
         self.payloadLength = payloadLength
+        self.messageType = messageType
     }
 }
 

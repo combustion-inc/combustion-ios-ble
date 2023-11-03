@@ -47,7 +47,11 @@ class NodeReadModelInfoResponse: NodeResponse {
         let modelInfoRaw = data.subdata(in: Constants.MODEL_INFO_RANGE)
         modelInfo = String(decoding: modelInfoRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))
         
-        super.init(success: success, requestId: requestId, responseId: responseId, payloadLength: payloadLength)
+        super.init(success: success,
+                   requestId: requestId,
+                   responseId: responseId,
+                   payloadLength: payloadLength,
+                   messageType: .probeModelInformation)
     }
 }
 

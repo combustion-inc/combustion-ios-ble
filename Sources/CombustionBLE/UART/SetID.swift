@@ -35,4 +35,10 @@ class SetIDRequest: Request {
     }
 }
 
-class SetIDResponse : Response { }
+class SetIDResponse : Response { 
+    init(success: Bool, payloadLength: Int) {
+        super.init(success:success,
+                   payloadLength: payloadLength,
+                   messageType: .setID)
+    }
+}

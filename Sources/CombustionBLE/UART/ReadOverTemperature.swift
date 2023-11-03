@@ -45,6 +45,6 @@ class ReadOverTemperatureResponse : Response {
             $0.load(as: Bool.self)
         }
 
-        super.init(success: success, payloadLength: payloadLength)
+        super.init(success: success, payloadLength: payloadLength, messageType: .readOverTemperature)
     }
 }

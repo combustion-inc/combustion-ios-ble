@@ -37,4 +37,10 @@ class SetPredictionRequest: Request {
     }
 }
 
-class SetPredictionResponse : Response { }
+class SetPredictionResponse : Response { 
+    init(success: Bool, payloadLength: Int) {
+        super.init(success:success,
+                   payloadLength: payloadLength,
+                   messageType: .setPrediction)
+    }
+}

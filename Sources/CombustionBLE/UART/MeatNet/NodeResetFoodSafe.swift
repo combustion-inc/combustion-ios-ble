@@ -1,4 +1,4 @@
-//  FoodSafeMode.swift
+//  NodeResetFoodSafe.swift
 
 /*--
 MIT License
@@ -26,16 +26,10 @@ SOFTWARE.
 
 import Foundation
 
-public enum FoodSafeMode: UInt8 {
-    case simplified = 0x00
-    case integrated = 0x01
-    case reserved2 = 0x02
-    case reserved3 = 0x03
-    case reserved4 = 0x04
-    case reserved5 = 0x05
-    case reserved6 = 0x06
-    case reserved7 = 0x07
-    
-    // 3 bit enum value
-    static let MASK: UInt8 = 0x07
+class NodeResetFoodSafeRequest: NodeRequest {
+    init() {
+        super.init(outgoingPayload: Data(), type: .resetFoodSafe)
+    }
 }
+
+class NodeResetFoodSafeResponse : NodeResponse { }

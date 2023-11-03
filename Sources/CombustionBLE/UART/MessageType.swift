@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-enum MessageType: UInt8  {
+enum MessageType: UInt8, CaseIterable  {
     case setID = 0x01
     case setColor = 0x02
     case sessionInfo = 0x03

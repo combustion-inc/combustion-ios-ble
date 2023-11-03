@@ -26,15 +26,15 @@ SOFTWARE.
 
 import Foundation
 
-struct FoodSafeData: Equatable {
-    let mode: FoodSafeMode
-    let protein: Protein
-    let form: Form
-    let serving: Serving
-    let selectedThresholdReferenceTemperature: Double
-    let zValue: Double
-    let referenceTemperature: Double
-    let dValueAtRt: Double
+public struct FoodSafeData: Equatable {
+    public let mode: FoodSafeMode
+    public let protein: Protein
+    public let form: Form
+    public let serving: Serving
+    public let selectedThresholdReferenceTemperature: Double
+    public let zValue: Double
+    public let referenceTemperature: Double
+    public let dValueAtRt: Double
 }
 
 extension FoodSafeData {

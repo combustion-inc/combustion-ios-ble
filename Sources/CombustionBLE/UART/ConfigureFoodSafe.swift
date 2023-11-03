@@ -32,4 +32,10 @@ class ConfigureFoodSafeRequest: Request {
     }
 }
 
-class ConfigureFoodSafeResponse : Response { }
+class ConfigureFoodSafeResponse : Response {
+    init(success: Bool, payloadLength: Int) {
+        super.init(success:success,
+                   payloadLength: payloadLength,
+                   messageType: .configureFoodSafe)
+    }
+}

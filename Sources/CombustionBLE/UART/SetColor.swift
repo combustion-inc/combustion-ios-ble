@@ -35,4 +35,10 @@ class SetColorRequest: Request {
     }
 }
 
-class SetColorResponse : Response { }
+class SetColorResponse : Response {
+    init(success: Bool, payloadLength: Int) {
+        super.init(success:success,
+                   payloadLength: payloadLength,
+                   messageType: .setColor)
+    }
+}

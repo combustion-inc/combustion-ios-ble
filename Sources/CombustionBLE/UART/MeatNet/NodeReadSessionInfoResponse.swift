@@ -58,7 +58,11 @@ class NodeReadSessionInfoResponse: NodeResponse {
         
         info = SessionInformation(sessionID: sessionId, samplePeriod: samplePeriod)
         
-        super.init(success: success, requestId: requestId, responseId: responseId, payloadLength: payloadLength)
+        super.init(success: success,
+                   requestId: requestId,
+                   responseId: responseId,
+                   payloadLength: payloadLength,
+                   messageType: .sessionInfo)
     }
 }
 

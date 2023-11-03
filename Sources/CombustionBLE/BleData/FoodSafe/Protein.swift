@@ -27,7 +27,7 @@ SOFTWARE.
 
 import Foundation
 
-enum Protein: UInt8 {
+public enum Protein: UInt8 {
     case _default = 0
     case chicken = 0x01
     case beef = 0x02

@@ -61,7 +61,11 @@ class NodeReadLogsResponse: NodeResponse {
         let predictionLogData = data.subdata(in: Constants.PREDICTION_LOG_RANGE)
         predictionLog = PredictionLog.fromRaw(data: predictionLogData)
 
-        super.init(success: success, requestId: requestId, responseId: responseId, payloadLength: payloadLength)
+        super.init(success: success,
+                   requestId: requestId,
+                   responseId: responseId,
+                   payloadLength: payloadLength,
+                   messageType: .log)
     }
 }
 

@@ -46,6 +46,11 @@ public struct CSV {
         output.append("Framework: iOS")
         output.append("Sample Period: \(probe.temperatureLogs.first?.sessionInformation.samplePeriod ?? 0)")
         output.append("Created: \(dateString)")
+
+        if let sessionDate = probe.temperatureLogs.first?.startTime {
+            output.append("Session date: \(dateFormatter.string(from: sessionDate))")
+        }
+
         output.append("")
         
         // Header

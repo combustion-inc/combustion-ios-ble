@@ -73,13 +73,11 @@ public class MessageHandlers {
     
     func checkForTimeout() {
         for messageType in MessageType.allCases {
-            guard var handlers = completionHandlers[messageType] else { continue }
-            checkForMessageTimeout(messageHandlers: &handlers)
+            checkForMessageTimeout(messageType: messageType)
         }
         
         for messageType in NodeMessageType.allCases {
-            guard var handlers = nodeCompletionHandlers[messageType] else { continue }
-            checkForNodeMessageTimeout(messageHandlers: &handlers)
+            checkForNodeMessageTimeout(messageType: messageType)
         }
     }
     
@@ -106,31 +104,33 @@ public class MessageHandlers {
     }
     
     func callSuccessHandler(_ identifier: UUID, response: Response) {
-        guard var handlers = completionHandlers[response.messageType] else { return }
+        guard let handlers = completionHandlers[response.messageType] else { return }
         
         // Call the handler
         handlers[identifier.uuidString]?.successHandler?(response.success)
         
         // Remove the handler
-        handlers.removeValue(forKey: identifier.uuidString)
+        completionHandlers[response.messageType]?.removeValue(forKey: identifier.uuidString)
     }
     
     func callReadOverTemperatureCompletionHandler(_ identifier: UUID, response: ReadOverTemperatureResponse) {
-        guard var handlers = completionHandlers[response.messageType] else { return }
+        guard let handlers = completionHandlers[response.messageType] else { return }
         
         // Call the handler
         handlers[identifier.uuidString]?.readOverTemperatureHandler?(response.success, response.flagSet)
         
         // Remove the handler
-        handlers.removeValue(forKey: identifier.uuidString)
+        completionHandlers[response.messageType]?.removeValue(forKey: identifier.uuidString)
     }
     
-    private func checkForMessageTimeout(messageHandlers: inout [String: MessageSentHandler]) {
+    private func checkForMessageTimeout(messageType: MessageType) {
+        guard let handlers = completionHandlers[messageType] else { return }
+        
         let currentTime = Date()
         var keysToRemove = [String]()
         
-        for key in messageHandlers.keys {
-            if let messageHandler = messageHandlers[key],
+        for key in handlers.keys {
+            if let messageHandler = handlers[key],
                Int(currentTime.timeIntervalSince(messageHandler.timeSent)) > Constants.directConnectionTimeOutSeconds {
                 
                 // Messsage timeout has elapsed, therefore call handler with failure
@@ -144,16 +144,18 @@ public class MessageHandlers {
         
         // Remove keys that timed out
         for key in keysToRemove {
-            messageHandlers.removeValue(forKey: key)
+            completionHandlers[messageType]?.removeValue(forKey: key)
         }
     }
     
-    private func checkForNodeMessageTimeout(messageHandlers: inout [UInt32: MessageSentHandler]) {
+    private func checkForNodeMessageTimeout(messageType: NodeMessageType) {
+        guard let handlers = nodeCompletionHandlers[messageType] else { return }
+        
         let currentTime = Date()
         var keysToRemove = [UInt32]()
         
-        for key in messageHandlers.keys {
-            if let messageHandler = messageHandlers[key],
+        for key in handlers.keys {
+            if let messageHandler = handlers[key],
                Int(currentTime.timeIntervalSince(messageHandler.timeSent)) > Constants.meatnetTimeOutSeconds {
                 
                 // Messsage timeout has elapsed, therefore call handler with failure
@@ -167,7 +169,7 @@ public class MessageHandlers {
         
         // Remove keys that timed out
         for key in keysToRemove {
-            messageHandlers.removeValue(forKey: key)
+            nodeCompletionHandlers[messageType]?.removeValue(forKey: key)
         }
     }
 }
@@ -184,10 +186,13 @@ extension MessageHandlers {
     }
     
     func callNodeSuccessCompletionHandler(response: NodeResponse) {
-        guard var handlers = nodeCompletionHandlers[response.messageType] else { return }
+        guard let handlers = nodeCompletionHandlers[response.messageType] else { return }
         
+        // Call handler
         handlers[response.requestId]?.successHandler?(response.success)
-        handlers.removeValue(forKey: response.requestId)
+        
+        // Remove handler
+        nodeCompletionHandlers[response.messageType]?.removeValue(forKey: response.requestId)
     }
 
 }

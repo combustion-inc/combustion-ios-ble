@@ -34,6 +34,15 @@ public struct FoodSafeData: Equatable {
     public let referenceTemperature: Double
     public let dValueAtRt: Double
     public let targetLogReduction: Double
+    
+    public init(mode: FoodModeProductServing, selectedThresholdReferenceTemperature: Double, zValue: Double, referenceTemperature: Double, dValueAtRt: Double, targetLogReduction: Double) {
+        self.mode = mode
+        self.selectedThresholdReferenceTemperature = selectedThresholdReferenceTemperature
+        self.zValue = zValue
+        self.referenceTemperature = referenceTemperature
+        self.dValueAtRt = dValueAtRt
+        self.targetLogReduction = targetLogReduction
+    }
 }
 
 extension FoodSafeData {

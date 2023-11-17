@@ -85,15 +85,22 @@ extension SimplifiedModeProduct {
 public enum IntegratedModeProduct: UInt16, CaseIterable {
     case _default = 0x0000
     case beef = 0x0001
-    case chicken = 0x0002
-    case pork = 0x0003
-    case ham = 0x0004
-    case turkey = 0x0005
-    case lamb = 0x0006
-    case fish = 0x0007
-    case dairyMilk = 0x0008
+    case beefGround = 0x0002
+    case chicken = 0x0003
+    case chickenGround = 0x0004
+    case pork = 0x0005
+    case porkGround = 0x0006
+    case ham = 0x0007
+    case hamGround = 0x0008
+    case turkey = 0x0009
+    case turkeyGround = 0x000A
+    case lamb = 0x000B
+    case lambGround = 0x000C
+    case fish = 0x000D
+    case fishGround = 0x000E
+    case dairyMilkLessThan10PctFat = 0x000F
     
-    // 0x0009 - 0x03FE: Resevered
+    // 0x0010 - 0x03FE: Resevered
     
     case custom = 0x03FF
     
@@ -104,26 +111,23 @@ public enum IntegratedModeProduct: UInt16, CaseIterable {
 extension IntegratedModeProduct {
     public func toString() -> String {
         switch self {
-        case ._default:
-            return "Default"
-        case .beef:
-            return "Beef"
-        case .chicken:
-            return "Chicken"
-        case .pork:
-            return "Pork"
-        case .ham:
-            return "Ham"
-        case .turkey:
-            return "Turkey"
-        case .lamb:
-            return "Lamb"
-        case .fish:
-            return "Fish"
-        case .dairyMilk:
-            return "Dairy Milk"
-        case .custom:
-            return "Custom"
+        case ._default: return "Default"
+        case .beef: return "Beef"
+        case .beefGround: return "Beef (Ground)"
+        case .chicken: return "Chicken"
+        case .chickenGround: return "Chicken (Ground)"
+        case .pork: return "Pork"
+        case .porkGround: return "Pork (Ground)"
+        case .ham: return "Ham"
+        case .hamGround: return "Ham (Ground)"
+        case .turkey: return "Turkey"
+        case .turkeyGround: return "Turkey (Ground)"
+        case .lamb: return "Lamb"
+        case .lambGround: return "Lamb (Ground)"
+        case .fish: return "Fish"
+        case .fishGround: return "Fish (Ground)"
+        case .dairyMilkLessThan10PctFat: return "Dairy - Milk (<10% fat)"
+        case .custom: return "Custom"
         }
     }
 }

@@ -32,6 +32,18 @@ public enum FoodModeProductServing: Equatable {
 }
 
 extension FoodModeProductServing {
+    
+    /// Help function to determine if Food Safe mode has been set
+    /// - return true if Safe mode has been set
+    public func isSafeModeSet() -> Bool {
+        switch(self) {
+        case .integrated:
+            return true
+        case .simplified(let product, _):
+            return product != ._default
+        }
+    }
+    
     public func mode() -> FoodSafeMode {
         switch self {
         case .simplified:

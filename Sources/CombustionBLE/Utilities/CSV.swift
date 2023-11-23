@@ -36,6 +36,7 @@ public struct CSV {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         let dateString = dateFormatter.string(from: date)
+        let sessionDateString = dateFormatter.string(from: probe.temperatureLogs.first?.startTime ?? date)
         
         output.append("Combustion Inc. Probe Data")
         output.append("App: iOS \(appVersion)")
@@ -46,10 +47,7 @@ public struct CSV {
         output.append("Framework: iOS")
         output.append("Sample Period: \(probe.temperatureLogs.first?.sessionInformation.samplePeriod ?? 0)")
         output.append("Created: \(dateString)")
-
-        if let sessionDate = probe.temperatureLogs.first?.startTime {
-            output.append("Session date: \(dateFormatter.string(from: sessionDate))")
-        }
+        output.append("Session date: \(sessionDateString)")
 
         output.append("")
         

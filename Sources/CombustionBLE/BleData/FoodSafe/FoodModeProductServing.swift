@@ -105,7 +105,7 @@ extension FoodModeProductServing {
             return .simplified(product: product, serving: serving)
             
         case .integrated:
-            let product = IntegratedModeProduct(rawValue: rawProduct) ?? ._default
+            let product = IntegratedModeProduct(rawValue: rawProduct) ?? .beef
             return .integrated(product: product, serving: serving)
             
         default:

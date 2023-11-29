@@ -83,7 +83,10 @@ extension SimplifiedModeProduct {
 
 
 public enum IntegratedModeProduct: UInt16, CaseIterable {
-    case _default = 0x0000
+    // Default value is defined in documentation, but
+    // not selectable in application
+    // 0x0000: Default
+    
     case beef = 0x0001
     case beefGround = 0x0002
     case chicken = 0x0003
@@ -111,7 +114,6 @@ public enum IntegratedModeProduct: UInt16, CaseIterable {
 extension IntegratedModeProduct {
     public func toString() -> String {
         switch self {
-        case ._default: return "Default"
         case .beef: return "Beef"
         case .beefGround: return "Beef (Ground)"
         case .chicken: return "Chicken"

@@ -30,13 +30,14 @@ public struct FoodSafeStatus: Equatable {
     public let state: FoodSafeState
     public let logReduction: Double
     public let secondsAboveThreshold: UInt
+    public let foodSafeSequenceNumber: UInt
 }
 
 extension FoodSafeStatus {
     
     /// Parses Food Safe Status data from raw data buffer
     static func fromRawData(data: Data) -> FoodSafeStatus? {
-        guard data.count >= 4 else { return nil }
+        guard data.count >= 8 else { return nil }
 
         // Safe State - 3 bits
         let rawState = data[0] & FoodSafeState.MASK
@@ -46,14 +47,22 @@ extension FoodSafeStatus {
         let rawLogReduction = ((data[0] & 0xF8) >> 3) | ((data[1] & 0x07) << 5)
         
         // Seconds above threshold - 16 bits
-        let secondsAboveThreshold = ((UInt16(data[1]) & 0xF8) >> 3) |
-                                   (UInt16(data[2]) & 0xFF) << 5 |
-                                   (UInt16(data[3]) & 0x07) << 13
+        let secondsAboveThreshold =  (UInt16(data[1]) & 0xF8) >> 3  |
+                                     (UInt16(data[2]) & 0xFF) << 5  |
+                                     (UInt16(data[3]) & 0x07) << 13
+        
+        // Food safe log sequence number - 32 bits
+        let foodSafeSequenceNumber = (UInt32(data[3]) & 0xF8) >> 3   |
+                                     (UInt32(data[4]) & 0xFF) << 5   |
+                                     (UInt32(data[5]) & 0xFF) << 13  |
+                                     (UInt32(data[6]) & 0xFF) << 21  |
+                                     (UInt32(data[7]) & 0x07) << 29
 
         return FoodSafeStatus(
             state: state,
             logReduction: Double(rawLogReduction) * 0.1,
-            secondsAboveThreshold: UInt(secondsAboveThreshold)
+            secondsAboveThreshold: UInt(secondsAboveThreshold), 
+            foodSafeSequenceNumber: UInt(foodSafeSequenceNumber)
         )
     }
 }

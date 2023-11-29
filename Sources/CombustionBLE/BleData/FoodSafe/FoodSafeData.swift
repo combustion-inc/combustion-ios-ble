@@ -47,7 +47,14 @@ public struct FoodSafeData: Equatable {
 
 extension FoodSafeData {
     private func toPacked(_ value: Double) -> UInt16 {
-        return UInt16(value / 0.05) & 0x1FFF
+        let count = (value / 0.05).rounded()
+        return UInt16(count) & 0x1FFF
+    }
+    
+    static private func fromPacked(_ rawValue: UInt16) -> Double {
+        let value = Double(rawValue) * 0.05
+        let rounded = (value * 100).rounded() / 100
+        return rounded
     }
     
     private enum Constants {
@@ -72,7 +79,7 @@ extension FoodSafeData {
         
         data[2] = UInt8(rawSelectedThreshold & 0x00FF)
 
-        data[3] = UInt8((rawSelectedThreshold & 0x1F00) >> 8) | UInt8((rawZValue & 0x03) << 5)
+        data[3] = UInt8((rawSelectedThreshold & 0x1F00) >> 8) | UInt8((rawZValue & 0x07) << 5)
 
         data[4] = UInt8((rawZValue & 0x07F8) >> 3)
 
@@ -102,15 +109,15 @@ extension FoodSafeData {
         
         // Z Value - 13 bits
         let rawZValue = ((UInt16(data[3]) & 0xE0) >> 5) | (UInt16(data[4]) << 3) | ((UInt16(data[5]) & 0x03) << 11)
-        let zValue = Double(rawZValue) * 0.05
+        let zValue = fromPacked(rawZValue)
         
         // Reference Temperature - 13 bits
         let rawReferenceTemperature = ((UInt16(data[5]) & 0xFC) >> 2) | ((UInt16(data[6]) & 0x7F) << 6)
-        let referenceTemperature = Double(rawReferenceTemperature) * 0.05
+        let referenceTemperature = fromPacked(rawReferenceTemperature)
         
         // D-value at RT - 13 bits
         let rawDValueAtRt = ((UInt16(data[6]) & 0x80) >> 7) | (UInt16(data[7]) << 1) | ((UInt16(data[8]) & 0x0F) << 9)
-        let dValueAtRt = Double(rawDValueAtRt) * 0.05
+        let dValueAtRt = fromPacked(rawDValueAtRt)
         
         // Log Reduction - 8 bits
         let rawLogReduction = ((data[8] & 0xF0) >> 4) | ((data[9] & 0x0F) << 4)

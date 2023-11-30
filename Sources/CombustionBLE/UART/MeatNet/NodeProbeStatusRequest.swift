@@ -37,7 +37,7 @@ class NodeProbeStatusRequest: NodeRequest {
         static let OLD_PAYLOAD_LENGTH = 35
         
         // Payload length for current firmware
-        static let PAYLOAD_LENGTH = 49
+        static let PAYLOAD_LENGTH = 53
     }
 
     
@@ -49,13 +49,15 @@ class NodeProbeStatusRequest: NodeRequest {
             $0.load(as: UInt32.self)
         }
         
-        // Parse Probe Status
-        // Probe status will be 30 bytes or 44 bytes, depending on the firmware version of node
         let probeStatusRaw: Data
         let hopCountRaw: Data
-        if(data.count >= Constants.PAYLOAD_LENGTH) {
-            probeStatusRaw = data.subdata(in: (sequenceByteIndex + 4)..<(sequenceByteIndex + 48))
-            hopCountRaw = data.subdata(in: (sequenceByteIndex + 48)..<(sequenceByteIndex + 49))
+        
+        // Parse Probe Status
+        // Probe status will be 30 bytes or 48 bytes, depending on the firmware version of node
+        let payloadLength = data.count - NodeRequest.HEADER_LENGTH
+        if(payloadLength >= Constants.PAYLOAD_LENGTH) {
+            probeStatusRaw = data.subdata(in: (sequenceByteIndex + 4)..<(sequenceByteIndex + 52))
+            hopCountRaw = data.subdata(in: (sequenceByteIndex + 52)..<(sequenceByteIndex + 53))
         }
         else {
             probeStatusRaw = data.subdata(in: (sequenceByteIndex + 4)..<(sequenceByteIndex + 34))

@@ -342,7 +342,8 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
         else {
             // Send message to all nodes that have a route to the probe
-            let request = NodeConfigureFoodSafeRequest(foodSafeData: foodSafeData)
+            let request = NodeConfigureFoodSafeRequest(serialNumber: probe.serialNumber,
+                                                       foodSafeData: foodSafeData)
             sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
         }
     }
@@ -361,7 +362,7 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
         else {
             // Send message to all nodes that have a route to the probe
-            let request = NodeResetFoodSafeRequest()
+            let request = NodeResetFoodSafeRequest(serialNumber: probe.serialNumber)
             sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
         }
     }
@@ -802,7 +803,7 @@ extension DeviceManager : BleManagerDelegate {
                     probe.processLogResponse(logResponse: readLogsResponse)
                 }
             
-        case .setPrediction:
+        case .setPrediction, .configureFoodSafe, .resetFoodSafe:
             messageHandlers.callNodeSuccessCompletionHandler(response: response)
             
         default: break

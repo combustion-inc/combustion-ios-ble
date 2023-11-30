@@ -27,9 +27,21 @@ SOFTWARE.
 import Foundation
 
 class NodeResetFoodSafeRequest: NodeRequest {
-    init() {
-        super.init(outgoingPayload: Data(), type: .resetFoodSafe)
+    init(serialNumber: UInt32) {
+        var serialNumberBytes = serialNumber
+        var payload = Data()
+        payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
+        
+        super.init(outgoingPayload: payload, type: .resetFoodSafe)
     }
 }
 
-class NodeResetFoodSafeResponse : NodeResponse { }
+class NodeResetFoodSafeResponse : NodeResponse { 
+    init(success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
+        super.init(success: success,
+                   requestId: requestId,
+                   responseId: responseId,
+                   payloadLength: payloadLength,
+                   messageType: .resetFoodSafe)
+    }
+}

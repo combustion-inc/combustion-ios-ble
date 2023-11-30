@@ -140,6 +140,10 @@ extension NodeResponse {
             return NodeReadSessionInfoResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .setPrediction:
             return NodeSetPredictionResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .configureFoodSafe:
+            return NodeConfigureFoodSafeResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .resetFoodSafe:
+            return NodeResetFoodSafeResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .probeFirmwareRevision:
             return NodeReadFirmwareRevisionResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .probeHardwareRevision:

@@ -1,9 +1,9 @@
-//  SetPrediction.swift
+//  FoodSafeState.swift
 
 /*--
 MIT License
 
-Copyright (c) 2021 Combustion Inc.
+Copyright (c) 2023 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,21 +26,13 @@ SOFTWARE.
 
 import Foundation
 
-class SetPredictionRequest: Request {
-    init(setPointCelsius: Double, mode: PredictionMode) {
-        let rawSetPoint = UInt16(setPointCelsius / 0.1)        
-        var rawPayload = (UInt16(mode.rawValue) << 10) | (rawSetPoint & 0x3FF)
-        
-        let payload = Data(bytes: &rawPayload, count: MemoryLayout.size(ofValue: rawPayload))
-        
-        super.init(payload: payload, type: .setPrediction)
-    }
-}
+public enum FoodSafeState: UInt8 {
+    case notSafe = 0x00
+    case safe = 0x01
+    case safetyImpossible = 0x02
 
-class SetPredictionResponse : Response { 
-    init(success: Bool, payloadLength: Int) {
-        super.init(success:success,
-                   payloadLength: payloadLength,
-                   messageType: .setPrediction)
-    }
+    // 0x03 - 0x07 : Reserved
+    
+    // 3 bit enum value
+    static let MASK: UInt8 = 0x07
 }

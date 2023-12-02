@@ -104,7 +104,9 @@ public class SimulatedProbe: Probe {
                                       temperatures: ProbeTemperatures.withRandomData(),
                                       modeId: ModeId.defaultValues(),
                                       batteryStatusVirtualSensors: BatteryStatusVirtualSensors.defaultValues(),
-                                      predictionStatus: predictionStatus)
+                                      predictionStatus: predictionStatus,
+                                      foodSafeData: nil,
+                                      foodSafeStatus: nil)
         
         updateProbeStatus(deviceStatus: probeStatus)
     }

@@ -31,10 +31,12 @@ class Response {
     
     let success: Bool
     let payloadLength: Int
+    let messageType: MessageType
     
-    init(success: Bool, payloadLength: Int) {
+    init(success: Bool, payloadLength: Int, messageType: MessageType) {
         self.success = success
         self.payloadLength = payloadLength
+        self.messageType = messageType
     }
 }
 
@@ -130,6 +132,10 @@ extension Response {
             return SetPredictionResponse(success: success, payloadLength: Int(payloadLength))
         case .readOverTemperature:
             return ReadOverTemperatureResponse(data: data, success: success, payloadLength: Int(payloadLength))
+        case .configureFoodSafe:
+            return ConfigureFoodSafeResponse(success: success, payloadLength: Int(payloadLength))
+        case .resetFoodSafe:
+            return ResetFoodSafeResponse(success: success, payloadLength: Int(payloadLength))
         }
     }
 }

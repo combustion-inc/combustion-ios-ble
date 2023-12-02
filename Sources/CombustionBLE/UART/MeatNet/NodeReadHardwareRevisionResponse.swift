@@ -47,7 +47,11 @@ class NodeReadHardwareRevisionResponse: NodeResponse {
         let hwRevisionRaw = data.subdata(in: Constants.HW_REVISION_RANGE)
         hwRevision = String(decoding: hwRevisionRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))
         
-        super.init(success: success, requestId: requestId, responseId: responseId, payloadLength: payloadLength)
+        super.init(success: success, 
+                   requestId: requestId,
+                   responseId: responseId,
+                   payloadLength: payloadLength,
+                   messageType: .probeHardwareRevision)
     }
 }
 

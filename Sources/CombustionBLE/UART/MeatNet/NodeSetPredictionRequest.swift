@@ -41,4 +41,12 @@ class NodeSetPredictionRequest: NodeRequest {
     }
 }
 
-class NodeSetPredictionResponse : NodeResponse { }
+class NodeSetPredictionResponse : NodeResponse {
+    init(success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
+        super.init(success: success,
+                   requestId: requestId,
+                   responseId: responseId,
+                   payloadLength: payloadLength,
+                   messageType: .setPrediction)
+    }
+}

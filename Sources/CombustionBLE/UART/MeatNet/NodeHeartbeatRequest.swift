@@ -93,7 +93,7 @@ class NodeHeartbeatRequest: NodeRequest {
 
         connectionDetails = connections
         
-        super.init(requestId: requestId, payloadLength: payloadLength)
+        super.init(requestId: requestId, payloadLength: payloadLength, type: .heartbeat)
     }
     
 }

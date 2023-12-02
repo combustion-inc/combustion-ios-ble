@@ -34,10 +34,13 @@ class Request {
     /// Contains message data.
     var data = Data()
     
+    let messageType: MessageType
+    
     /// Constructor for Request object.
     /// - parameter payloadLength: Length of payload of message
     /// - parameter type: Type of message
     init(payload: Data, type: MessageType) {
+        self.messageType = type
         
         // Sync Bytes { 0xCA, 0xFE }
         data.append(0xCA)

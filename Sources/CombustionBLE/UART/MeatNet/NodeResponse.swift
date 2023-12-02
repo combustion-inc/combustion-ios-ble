@@ -38,11 +38,14 @@ class NodeResponse : NodeUARTMessage {
     let requestId: UInt32
     let responseId: UInt32
     
-    init(success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
+    let messageType: NodeMessageType
+    
+    init(success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int, messageType: NodeMessageType) {
         self.success = success
         self.payloadLength = payloadLength
         self.requestId = requestId
         self.responseId = responseId
+        self.messageType = messageType
     }
 }
 
@@ -137,6 +140,10 @@ extension NodeResponse {
             return NodeReadSessionInfoResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .setPrediction:
             return NodeSetPredictionResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .configureFoodSafe:
+            return NodeConfigureFoodSafeResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .resetFoodSafe:
+            return NodeResetFoodSafeResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .probeFirmwareRevision:
             return NodeReadFirmwareRevisionResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .probeHardwareRevision:

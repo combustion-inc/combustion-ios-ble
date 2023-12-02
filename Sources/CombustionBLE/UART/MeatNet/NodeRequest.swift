@@ -40,10 +40,14 @@ class NodeRequest : NodeUARTMessage {
     /// Length of payload
     let payloadLength: Int
     
+    /// Node message type
+    let messageType: NodeMessageType
+    
     /// Constructor for generating a new Request object.
     /// - parameter payloadLength: Length of payload of message
     /// - parameter type: Type of message
     init(outgoingPayload: Data, type: NodeMessageType) {
+        self.messageType = type
         
         // Sync Bytes { 0xCA, 0xFE }
         data.append(0xCA)
@@ -80,9 +84,10 @@ class NodeRequest : NodeUARTMessage {
     /// Constructor for an incoming Request object (from MeatNet).
     /// - parameter requestId: Request ID of this message from the Network
     /// - parameter payloadLength: Length of this message's payload
-    init(requestId: UInt32, payloadLength: Int) {
+    init(requestId: UInt32, payloadLength: Int, type: NodeMessageType) {
         self.payloadLength = payloadLength
         self.requestId = requestId
+        self.messageType = type
     }
     
 }

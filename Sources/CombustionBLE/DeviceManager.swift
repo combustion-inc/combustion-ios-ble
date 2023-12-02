@@ -243,12 +243,13 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
     public func setProbeID(_ device: Device, id: ProbeID, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
         // TODO - Send request via Node.
         
+        let request = SetIDRequest(id: id)
+        
         // Store completion handler
-        messageHandlers.addSetIDCompletionHandler(device, completionHandler: completionHandler)
+        messageHandlers.addSuccessCompletionHandler(device, request: request, completionHandler: completionHandler)
         
         // Send request to device
         if let device = device as? Probe, let bleIdentifier = device.bleIdentifier {
-            let request = SetIDRequest(id: id)
             BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
         }
     }
@@ -262,12 +263,13 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
                               completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
         // TODO - Send request via Node.
         
+        let request = SetColorRequest(color: color)
+        
         // Store completion handler
-        messageHandlers.addSetColorCompletionHandler(device, completionHandler: completionHandler)
+        messageHandlers.addSuccessCompletionHandler(device, request: request, completionHandler: completionHandler)
 
         // Send request to device
         if let device = device as? Probe, let bleIdentifier = device.bleIdentifier {
-            let request = SetColorRequest(color: color)
             BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
         }
     }
@@ -291,28 +293,15 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
         
         if shouldSendMessageDirectlyTo(probe: probe) {
             // If the best route is directly to the Probe, send it that way.
-            
-            // Store completion handler
-            messageHandlers.addSetPredictionCompletionHandler(probe, completionHandler: completionHandler)
-            
-            // Send request to device
             let request = SetPredictionRequest(setPointCelsius: removalTemperatureC, mode: .timeToRemoval)
-            BleManager.shared.sendRequest(identifier: probe.bleIdentifier, request: request)
+            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
         }
         else {
             // Send message to all nodes that have a route to the probe
-            let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
-            
-            // Send request to device
             let request = NodeSetPredictionRequest(serialNumber: probe.serialNumber,
                                                    setPointCelsius: removalTemperatureC,
                                                    mode: .timeToRemoval)
-            
-            // Store completion handler
-            messageHandlers.addNodeSetPredictionCompletionHandler(requestID: request.requestId,
-                                                                  completionHandler: completionHandler)
-
-            BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
+            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
         }
     }
     
@@ -325,31 +314,58 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
         
         if shouldSendMessageDirectlyTo(probe: probe) {
             // If the best route is directly to the Probe, send it that way.
-            
-            // Store completion handler
-            messageHandlers.addSetPredictionCompletionHandler(probe, completionHandler: completionHandler)
-            
-            // Send request to device
             let request = SetPredictionRequest(setPointCelsius: 0.0, mode: .none)
-            BleManager.shared.sendRequest(identifier: probe.bleIdentifier, request: request)
+            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
         }
         else {
             // Send message to all nodes that have a route to the probe
-            let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
-            
-            // Send request to device
             let request = NodeSetPredictionRequest(serialNumber: probe.serialNumber,
                                                    setPointCelsius: 0.0,
                                                    mode: .none)
-            
-            // Store completion handler
-            messageHandlers.addNodeSetPredictionCompletionHandler(requestID: request.requestId,
-                                                                  completionHandler: completionHandler)
-            
-            BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
+            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
         }
     }
     
+    /// Sends a request to the device to configure Food Safe
+    ///
+    /// - parameter probe: Probe to cancel prediction on
+    /// - parameter foodSafeData: Food Safe data
+    /// - parameter completionHandler: Completion handler to be called operation is complete
+    public func configureFoodSafe(_ probe: Probe,
+                            foodSafeData: FoodSafeData,
+                            completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        
+        if shouldSendMessageDirectlyTo(probe: probe) {
+            // If the best route is directly to the Probe, send it that way.
+            let request = ConfigureFoodSafeRequest(foodSafeData: foodSafeData)
+            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+        }
+        else {
+            // Send message to all nodes that have a route to the probe
+            let request = NodeConfigureFoodSafeRequest(serialNumber: probe.serialNumber,
+                                                       foodSafeData: foodSafeData)
+            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+        }
+    }
+    
+    /// Sends a request to the device to reset Food Safe
+    ///
+    /// - parameter probe: Probe to cancel prediction on
+    /// - parameter completionHandler: Completion handler to be called operation is complete
+    public func resetFoodSafe(_ probe: Probe,
+                            completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        
+        if shouldSendMessageDirectlyTo(probe: probe) {
+            // If the best route is directly to the Probe, send it that way.
+            let request = ResetFoodSafeRequest()
+            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+        }
+        else {
+            // Send message to all nodes that have a route to the probe
+            let request = NodeResetFoodSafeRequest(serialNumber: probe.serialNumber)
+            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+        }
+    }
     
     /// Sends a request to the probe to read the session information.
     ///
@@ -359,8 +375,6 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
         
         if shouldSendMessageDirectlyTo(probe: probe) {
             // If the best route is directly to the Probe, send it that way.
-            
-            // Send request to device
             let request = SessionInfoRequest()
             BleManager.shared.sendRequest(identifier: probe.bleIdentifier, request: request)
         }
@@ -440,12 +454,13 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
                                         completionHandler: @escaping MessageHandlers.ReadOverTemperatureCompletionHandler) {
         // TODO - Send request via Node.
         
+        let request = ReadOverTemperatureRequest()
+        
         if let device = device as? Probe, let bleIdentifier = device.bleIdentifier {
             // Store completion handler
-            messageHandlers.addReadOverTemperatureCompletionHandler(device, completionHandler: completionHandler)
+            messageHandlers.addReadOverTemperatureCompletionHandler(device, request: request, completionHandler: completionHandler)
             
             // Send request to device
-            let request = ReadOverTemperatureRequest()
             BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
         }
     }
@@ -460,6 +475,29 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
         for (type, dfuFile) in dfuFiles {
             DFUManager.shared.setDefaultDFUForType(dfuFile: dfuFile, dfuType: type)
         }
+    }
+    
+    private func sendDirectRequestWithSuccessHandler(_ probe: Probe,
+                                   request: Request,
+                                   completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        // Store completion handler
+        messageHandlers.addSuccessCompletionHandler(probe, request: request, completionHandler: completionHandler)
+        
+        // Send request to device
+        BleManager.shared.sendRequest(identifier: probe.bleIdentifier, request: request)
+    }
+    
+    private func sendNodeRequestWithSuccessHandler(_ probe: Probe,
+                                   request: NodeRequest,
+                                   completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        // Send message to all nodes that have a route to the probe
+        let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
+        
+        // Store completion handler
+        messageHandlers.addNodeSuccessCompletionHandler(request: request, completionHandler: completionHandler)
+        
+        // Send request to device
+        BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
     }
 }
 
@@ -685,25 +723,31 @@ extension DeviceManager : BleManagerDelegate {
     //////////////////////////////////////////////
     
     private func handleProbeUARTResponse(identifier: UUID, response: Response) {
-        if let logResponse = response as? LogResponse {
-            updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
-        }
-        else if let setIDResponse = response as? SetIDResponse {
-            messageHandlers.callSetIDCompletionHandler(identifier, response: setIDResponse)
-        }
-        else if let setColorResponse = response as? SetColorResponse {
-            messageHandlers.callSetColorCompletionHandler(identifier, response: setColorResponse)
-        }
-        else if let sessionResponse = response as? SessionInfoResponse {
-            if(sessionResponse.success) {
-                updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: sessionResponse.info)
+        switch(response.messageType) {
+        case .log:
+            if let logResponse = response as? LogResponse {
+                updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
             }
-        }
-        else if let setPredictionResponse = response as? SetPredictionResponse {
-            messageHandlers.callSetPredictionCompletionHandler(identifier, response: setPredictionResponse)
-        }
-        else if let readOverTemperatureResponse = response as? ReadOverTemperatureResponse {
-            messageHandlers.callReadOverTemperatureCompletionHandler(identifier, response: readOverTemperatureResponse)
+            
+        case .sessionInfo:
+            if let sessionResponse = response as? SessionInfoResponse {
+                if(sessionResponse.success) {
+                    updateDeviceWithSessionInformation(identifier: identifier, sessionInformation: sessionResponse.info)
+                }
+            }
+            
+        case .readOverTemperature:
+            if let readOverTemperatureResponse = response as? ReadOverTemperatureResponse {
+                messageHandlers.callReadOverTemperatureCompletionHandler(identifier, response: readOverTemperatureResponse)
+            }
+            
+        // Messages with success completion handlers
+        case .configureFoodSafe, 
+                .resetFoodSafe,
+                .setColor,
+                .setID,
+                .setPrediction:
+                messageHandlers.callSuccessHandler(identifier, response: response)
         }
     }
     
@@ -728,29 +772,43 @@ extension DeviceManager : BleManagerDelegate {
     private func handleNodeUARTResponse(identifier: UUID, response: NodeResponse) {
 //        print("Received Response from Node: \(response)")
         
-        if let setPredictionResponse = response as? NodeSetPredictionResponse {
-            messageHandlers.callNodeSetPredictionCompletionHandler(response: setPredictionResponse)
-        } else if let readFirmwareResponse = response as? NodeReadFirmwareRevisionResponse {
-            if let probe = findProbeBySerialNumber(serialNumber: readFirmwareResponse.probeSerialNumber) {
-                probe.firmareVersion = readFirmwareResponse.fwRevision
-            }
-        } else if let readHardwareResponse = response as? NodeReadHardwareRevisionResponse {
-            if let probe = findProbeBySerialNumber(serialNumber: readHardwareResponse.probeSerialNumber) {
-                probe.hardwareRevision = readHardwareResponse.hwRevision
-            }
-        } else if let readModelInfoResponse = response as? NodeReadModelInfoResponse {
-            if let probe = findProbeBySerialNumber(serialNumber: readModelInfoResponse.probeSerialNumber) {
-                probe.updateWithModelInfo(readModelInfoResponse.modelInfo)
-            }
-        } else if let sessionInfoResponse = response as? NodeReadSessionInfoResponse {
-            if let probe = findProbeBySerialNumber(serialNumber: sessionInfoResponse.probeSerialNumber) {
-                probe.updateWithSessionInformation(sessionInfoResponse.info)
-            }
-        } else if let readLogsResponse = response as? NodeReadLogsResponse {
-            if let probe = findProbeBySerialNumber(serialNumber: readLogsResponse.probeSerialNumber) {
-                probe.processLogResponse(logResponse: readLogsResponse)
-            }
+        switch(response.messageType) {
+        case .probeFirmwareRevision:
+            if let readFirmwareResponse = response as? NodeReadFirmwareRevisionResponse,
+               let probe = findProbeBySerialNumber(serialNumber: readFirmwareResponse.probeSerialNumber) {
+                    probe.firmareVersion = readFirmwareResponse.fwRevision
+                }
+            
+        case .probeHardwareRevision:
+            if let readHardwareResponse = response as? NodeReadHardwareRevisionResponse,
+               let probe = findProbeBySerialNumber(serialNumber: readHardwareResponse.probeSerialNumber) {
+                    probe.hardwareRevision = readHardwareResponse.hwRevision
+                }
+            
+        case .probeModelInformation:
+            if let readModelInfoResponse = response as? NodeReadModelInfoResponse,
+                let probe = findProbeBySerialNumber(serialNumber: readModelInfoResponse.probeSerialNumber) {
+                    probe.updateWithModelInfo(readModelInfoResponse.modelInfo)
+                }
+            
+        case .sessionInfo:
+            if let sessionInfoResponse = response as? NodeReadSessionInfoResponse,
+               let probe = findProbeBySerialNumber(serialNumber: sessionInfoResponse.probeSerialNumber) {
+                    probe.updateWithSessionInformation(sessionInfoResponse.info)
+                }
+            
+        case .log:
+            if let readLogsResponse = response as? NodeReadLogsResponse,
+               let probe = findProbeBySerialNumber(serialNumber: readLogsResponse.probeSerialNumber) {
+                    probe.processLogResponse(logResponse: readLogsResponse)
+                }
+            
+        case .setPrediction, .configureFoodSafe, .resetFoodSafe:
+            messageHandlers.callNodeSuccessCompletionHandler(response: response)
+            
+        default: break
         }
+
     }
     
     private func handleNodeUARTRequest(identifier: UUID, request: NodeRequest) {

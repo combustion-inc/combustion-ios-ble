@@ -27,13 +27,21 @@ SOFTWARE.
 import Foundation
 
 class NodeProbeStatusRequest: NodeRequest {
-    static let PAYLOAD_LENGTH = 35
-    
     let serialNumber: UInt32
     var probeStatus: ProbeStatus? = nil
     var hopCount: HopCount? = nil
     
-    init(data: Data, requestId: UInt32, payloadLength: Int) {
+    private enum Constants {
+        // Payload length is has increased fro latest firmware, but need to check previous
+        // length for backwards compatibility
+        static let OLD_PAYLOAD_LENGTH = 35
+        
+        // Payload length for current firmware
+        static let PAYLOAD_LENGTH = 53
+    }
+
+    
+    init?(data: Data, requestId: UInt32, payloadLength: Int) {
         let sequenceByteIndex = NodeRequest.HEADER_LENGTH
         
         let serialNumberRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 4))
@@ -41,28 +49,40 @@ class NodeProbeStatusRequest: NodeRequest {
             $0.load(as: UInt32.self)
         }
         
+        let probeStatusRaw: Data
+        let hopCountRaw: Data
+        
         // Parse Probe Status
-        let probeStatusRaw = data.subdata(in: (sequenceByteIndex + 4)..<(sequenceByteIndex + 34))
+        // Probe status will be 30 bytes or 48 bytes, depending on the firmware version of node
+        let payloadLength = data.count - NodeRequest.HEADER_LENGTH
+        if(payloadLength >= Constants.PAYLOAD_LENGTH) {
+            probeStatusRaw = data.subdata(in: (sequenceByteIndex + 4)..<(sequenceByteIndex + 52))
+            hopCountRaw = data.subdata(in: (sequenceByteIndex + 52)..<(sequenceByteIndex + 53))
+        }
+        else {
+            probeStatusRaw = data.subdata(in: (sequenceByteIndex + 4)..<(sequenceByteIndex + 34))
+            hopCountRaw = data.subdata(in: (sequenceByteIndex + 34)..<(sequenceByteIndex + 35))
+        }
+        
         if let ps = ProbeStatus(fromData: probeStatusRaw) {
             self.probeStatus = ps
         }
         
-        let hopCountRaw = data.subdata(in: (sequenceByteIndex + 34)..<(sequenceByteIndex + 35))
         let hopCountInteger = hopCountRaw.withUnsafeBytes {
             $0.load(as: UInt8.self)
         }
+        
         if let hc = HopCount(rawValue: hopCountInteger) {
             self.hopCount = hc
         }
         
-        super.init(requestId: requestId, payloadLength: payloadLength)
+        super.init(requestId: requestId, payloadLength: payloadLength, type: .probeStatus)
     }
 }
 
 extension NodeProbeStatusRequest {
-
     static func fromRaw(data: Data, requestId: UInt32, payloadLength: Int) -> NodeProbeStatusRequest? {
-        if(payloadLength < PAYLOAD_LENGTH) {
+        if(payloadLength < Constants.OLD_PAYLOAD_LENGTH) {
             return nil
         }
             

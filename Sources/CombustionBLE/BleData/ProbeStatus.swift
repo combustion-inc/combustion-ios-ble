@@ -30,16 +30,27 @@ import Foundation
 struct ProbeStatus {
     /// Minimum sequence number of records in Probe's memory.
     let minSequenceNumber: UInt32
+    
     /// Maximum sequence number of records in Probe's memory.
     let maxSequenceNumber: UInt32
+    
     /// Current temperatures sent by Probe.
     let temperatures: ProbeTemperatures
-    // ModeId (Probe color, ID, and mode)
+    
+    /// ModeId (Probe color, ID, and mode)
     let modeId: ModeId
+    
     /// Battery Status and Virtual Sensors
     let batteryStatusVirtualSensors: BatteryStatusVirtualSensors
-    // Prediction Status
+    
+    /// Prediction Status
     let predictionStatus: PredictionStatus
+    
+    /// Food Safe Data
+    let foodSafeData: FoodSafeData?
+    
+    /// Food Safe Status
+    let foodSafeStatus: FoodSafeStatus?
 }
 
 extension ProbeStatus {
@@ -51,6 +62,8 @@ extension ProbeStatus {
         static let MODE_COLOR_ID_RANGE = 21..<22
         static let DEVICE_STATUS_RANGE = 22..<23
         static let PREDICTION_STATUS_RANGE = 23..<30
+        static let FOOD_SAFE_DATA_RANGE = 30..<40
+        static let FOOD_SAFE_STATUS_RANGE = 40..<48
     }
     
     init?(fromData data: Data) {
@@ -81,5 +94,25 @@ extension ProbeStatus {
         // Decode Prediction Status
         let bytes = [UInt8](data.subdata(in: Constants.PREDICTION_STATUS_RANGE))
         predictionStatus = PredictionStatus.fromBytes(bytes)
+        
+        // Decode Food Safe Data
+        // This field will not exist on old probe firmware
+        if data.count >= Constants.FOOD_SAFE_DATA_RANGE.endIndex {
+            let data = data.subdata(in: Constants.FOOD_SAFE_DATA_RANGE)
+            foodSafeData = FoodSafeData.fromRawData(data: data)
+        }
+        else {
+            foodSafeData = nil
+        }
+        
+        // Decode Food Safe Status
+        // This field will not exist on old probe firmware
+        if data.count >= Constants.FOOD_SAFE_STATUS_RANGE.endIndex {
+            let data = data.subdata(in: Constants.FOOD_SAFE_STATUS_RANGE)
+            foodSafeStatus = FoodSafeStatus.fromRawData(data: data)
+        }
+        else {
+            foodSafeStatus = nil
+        }
     }
 }

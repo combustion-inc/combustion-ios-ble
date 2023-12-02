@@ -1,9 +1,9 @@
-//  SetPrediction.swift
+//  ResetFoodSafe.swift
 
 /*--
 MIT License
 
-Copyright (c) 2021 Combustion Inc.
+Copyright (c) 2023 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,21 +26,16 @@ SOFTWARE.
 
 import Foundation
 
-class SetPredictionRequest: Request {
-    init(setPointCelsius: Double, mode: PredictionMode) {
-        let rawSetPoint = UInt16(setPointCelsius / 0.1)        
-        var rawPayload = (UInt16(mode.rawValue) << 10) | (rawSetPoint & 0x3FF)
-        
-        let payload = Data(bytes: &rawPayload, count: MemoryLayout.size(ofValue: rawPayload))
-        
-        super.init(payload: payload, type: .setPrediction)
+class ResetFoodSafeRequest: Request {
+    init() {
+        super.init(payload: Data(), type: .resetFoodSafe)
     }
 }
 
-class SetPredictionResponse : Response { 
+class ResetFoodSafeResponse : Response {
     init(success: Bool, payloadLength: Int) {
         super.init(success:success,
                    payloadLength: payloadLength,
-                   messageType: .setPrediction)
+                   messageType: .resetFoodSafe)
     }
 }

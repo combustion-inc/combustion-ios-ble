@@ -47,7 +47,11 @@ class NodeReadFirmwareRevisionResponse: NodeResponse {
         let fwRevisionRaw = data.subdata(in: Constants.FW_REVISION_RANGE)
         fwRevision = String(decoding: fwRevisionRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))
         
-        super.init(success: success, requestId: requestId, responseId: responseId, payloadLength: payloadLength)
+        super.init(success: success,
+                   requestId: requestId,
+                   responseId: responseId,
+                   payloadLength: payloadLength,
+                   messageType: .probeFirmwareRevision)
     }
 }
 

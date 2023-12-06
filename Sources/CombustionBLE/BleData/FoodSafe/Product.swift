@@ -66,9 +66,9 @@ extension SimplifiedModeProduct {
         case .groundMeats:
             return "Ground Meats"
         case .hamFreshOrSmoked:
-            return "Ham Fresh or Smoked"
+            return "Ham, Fresh or Smoked"
         case .hamCookedAndReheated:
-            return "Ham Cooked and Reheated"
+            return "Ham, Cooked and Reheated"
         case .eggs:
             return "Eggs"
         case .fishAndShellfish:

@@ -99,8 +99,8 @@ public enum IntegratedModeProduct: UInt16, CaseIterable {
     case turkeyGround = 0x000A
     case lamb = 0x000B
     case lambGround = 0x000C
-    case fish = 0x000D
-    case fishGround = 0x000E
+    case fishAndShellfish = 0x000D
+    case fishAndShellfishGround = 0x000E
     case dairyMilkLessThan10PctFat = 0x000F
     
     // 0x0010 - 0x03FE: Resevered
@@ -126,8 +126,8 @@ extension IntegratedModeProduct {
         case .turkeyGround: return "Turkey (Ground)"
         case .lamb: return "Lamb"
         case .lambGround: return "Lamb (Ground)"
-        case .fish: return "Fish"
-        case .fishGround: return "Fish (Ground)"
+        case .fishAndShellfish: return "Fish and Shellfish"
+        case .fishAndShellfishGround: return "Fish and Shellfish (Ground)"
         case .dairyMilkLessThan10PctFat: return "Dairy - Milk (<10% fat)"
         case .custom: return "Custom"
         }

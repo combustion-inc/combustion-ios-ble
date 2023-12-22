@@ -36,8 +36,8 @@ class PredictionManager {
         /// Prediction is considered stale after 15 seconds
         static let PREDICTION_STALE_TIMEOUT = 15.0
         
-        /// Cap the prediction to 4 hours
-        static let MAX_PREDICTION_TIME : UInt = 60*60*4
+        /// Cap the prediction to 6 hours
+        static let MAX_PREDICTION_TIME : UInt = 60*60*6
         
         /// Number of samples to wait between updates to prediction 'seconds remaining',
         /// for syncing time remaining across apps, Displays etc.

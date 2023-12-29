@@ -166,6 +166,10 @@ open class Device : ObservableObject {
     
     /// Called when DFU has completed
     func dfuComplete() {
+        // Clear service controller
+        dfuServiceController = nil
+        
+        // Clear DFU on the DFU manager
         DFUManager.shared.clearCompletedDFU(device: self)
     }
     

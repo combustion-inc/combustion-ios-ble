@@ -40,6 +40,9 @@ class DFUManager {
     /// Singleton accessor for class
     static let shared = DFUManager()
     
+    /// Flag that tracks if any DFUs are currently in progress
+    @Published var dfuIsInProgress = false
+    
     private struct DFU {
         let uniqueIdentifier: String
         let firmware: DFUFirmware
@@ -56,7 +59,7 @@ class DFUManager {
         static let DISPLAY_DFU_NAME = "Display_DFU_"
         static let CHARGER_DFU_NAME = "Charger_DFU_"
         
-        static let RETRY_TIME_DELAY = 10 // seconds
+        static let RETRY_TIME_DELAY = 20 // seconds
     }
     
     func setDefaultDFUForType(dfuFile: URL?, dfuType: DFUDeviceType) {
@@ -135,6 +138,9 @@ class DFUManager {
         if let key = dfuTuple?.key {
             runningDFUs.removeValue(forKey: key)
         }
+        
+        // Update DFU in progress flag
+        dfuIsInProgress = !runningDFUs.isEmpty
     }
     
     private func dfuAdvertisingName(for device: Device) -> String {
@@ -145,8 +151,7 @@ class DFUManager {
     }
     
     private func deviceTypeAdvertisingName(for device: Device) -> String {
-        let typeName = (device is Probe) ? Constants.THERMOMETER_DFU_NAME : Constants.DISPLAY_DFU_NAME
-        
+
         if let node = device as? MeatNetNode {
             if node.dfuType == .charger {
                 return Constants.CHARGER_DFU_NAME
@@ -163,6 +168,7 @@ class DFUManager {
                         device: Device,
                         advertisingName: String,
                         firmware: DFUFirmware) -> DFUServiceController?  {
+        
         let initiator = DFUServiceInitiator().with(firmware: firmware)
         
         initiator.delegate = device
@@ -177,6 +183,9 @@ class DFUManager {
         runningDFUs[advertisingName] = DFU(uniqueIdentifier: device.uniqueIdentifier,
                                            firmware: firmware,
                                            startedAt: Date())
+        
+        // Update DFU in progress flag
+        dfuIsInProgress = true
         
         return initiator.start(target: peripheral)
     }

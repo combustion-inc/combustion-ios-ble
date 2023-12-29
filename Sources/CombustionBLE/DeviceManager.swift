@@ -28,6 +28,7 @@ import Foundation
 import SwiftUI
 import NordicDFU
 import CoreBluetooth
+import Combine
 
 // Device Manager protocol to support unit testing
 public protocol DeviceManagerProtocol {
@@ -60,12 +61,17 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
     
     // Bluetooth manager state
     @Published public private(set) var bluetoothState: CBManagerState = .unknown
+    
+    /// Flag that tracks if any DFUs are currently in progress
+    @Published public private(set) var dfuIsInProgress = false
 
     // Struct to store when BLE message was send and the completion handler for message
     private struct MessageHandler {
         let timeSent: Date
         let handler: (Bool) -> Void
     }
+    
+    private var cancellables: Set<AnyCancellable> = []
     
     /// Handler for messages from Probe
     private let messageHandlers = MessageHandlers()
@@ -106,6 +112,13 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
             messageHandlers.checkForTimeout()
         }
+        
+        // Observe flag on DFU manager
+        DFUManager.shared.$dfuIsInProgress
+            .sink { dfuIsInProgress in
+                self.dfuIsInProgress = dfuIsInProgress
+            }
+            .store(in: &cancellables)
     }
     
     /// Adds a device to the local list.

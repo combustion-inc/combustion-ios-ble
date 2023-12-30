@@ -155,11 +155,15 @@ extension NodeRequest {
         switch messageType {
         case .probeStatus:
             return NodeProbeStatusRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
+            
         case .heartbeat:
             return NodeHeartbeatRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
-        case .syncThermometerList:
+            
+        case .syncThermometerList, .connected, .disconnected, .log, .associateNode,
+                .probeModelInformation, .probeFirmwareRevision, .probeHardwareRevision, .sessionInfo:
             // Nothing to do for this message type
             return nil
+
         default:
             print("CombustionBLE : Unknown node request type: \(messageType)")
             return nil

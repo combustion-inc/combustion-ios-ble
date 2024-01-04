@@ -150,11 +150,11 @@ class BleManager : NSObject {
         }
     }
     
-    func startFirmwareUpdate(device: Device, dfu: DFUFirmware) -> DFUServiceController? {
+    func startFirmwareUpdate(device: Device, dfu: DFUFirmware) {
         guard let bleIdentifier = device.bleIdentifier, 
-                let connectedPeripheral = getConnectedPeripheral(identifier: bleIdentifier) else { return nil }
+                let connectedPeripheral = getConnectedPeripheral(identifier: bleIdentifier) else { return }
         
-        return DFUManager.shared.startDFU(peripheral: connectedPeripheral, device: device, firmware: dfu)
+        DFUManager.shared.startDFU(peripheral: connectedPeripheral, device: device, firmware: dfu)
     }
     
     func retryFirmwareUpdate(device: BootloaderDevice) {

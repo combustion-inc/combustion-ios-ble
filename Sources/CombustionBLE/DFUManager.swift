@@ -91,14 +91,16 @@ class DFUManager {
         return .unknown
     }
     
-    func startDFU(peripheral: CBPeripheral, device: Device, firmware: DFUFirmware) -> DFUServiceController? {
+    func startDFU(peripheral: CBPeripheral, device: Device, firmware: DFUFirmware) {
         // Generate advertising name to use for bootloader during DFU
         let advertisingName = dfuAdvertisingName(for: device)
         
-        return runDfu(peripheral: peripheral,
-                      device: device,
-                      advertisingName: advertisingName,
-                      firmware: firmware)
+        print("DFU DFUManager startDFU(): \(advertisingName)")
+        
+        runDfu(peripheral: peripheral,
+               device: device,
+               advertisingName: advertisingName,
+               firmware: firmware)
     }
     
     
@@ -128,7 +130,12 @@ class DFUManager {
         }
     }
     
-    func clearCompletedDFU(device: Device) {
+    func clearInProgressDFU(device: Device) {
+        print("DFU clearInProgressDFU() : aborted \(device.dfuServiceController?.aborted)")
+        
+        // Clear service controller
+        device.dfuServiceController = nil
+        
         // Find the running DFU for specified device
         let dfuTuple = runningDFUs.first { (_, value) in
             value.uniqueIdentifier == device.uniqueIdentifier
@@ -167,7 +174,9 @@ class DFUManager {
     private func runDfu(peripheral: CBPeripheral,
                         device: Device,
                         advertisingName: String,
-                        firmware: DFUFirmware) -> DFUServiceController?  {
+                        firmware: DFUFirmware) {
+        
+        print("DFU DFUManager runDfu(): \(advertisingName)")
         
         let initiator = DFUServiceInitiator().with(firmware: firmware)
         
@@ -180,6 +189,10 @@ class DFUManager {
         // Set the DFU bootloader advertising name
         initiator.alternativeAdvertisingName = advertisingName
         
+        // Adding Nordic recommended delay
+        print("DFU DFUManager runDfu(): \(advertisingName) : setting dataObjectPreparationDelay to 0.75")
+        initiator.dataObjectPreparationDelay = 0.75
+        
         runningDFUs[advertisingName] = DFU(uniqueIdentifier: device.uniqueIdentifier,
                                            firmware: firmware,
                                            startedAt: Date())
@@ -187,7 +200,8 @@ class DFUManager {
         // Update DFU in progress flag
         dfuIsInProgress = true
         
-        return initiator.start(target: peripheral)
+        // Save the service controller
+        device.dfuServiceController = initiator.start(target: peripheral)
     }
     
 }

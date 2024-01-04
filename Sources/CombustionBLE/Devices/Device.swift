@@ -105,7 +105,7 @@ open class Device : ObservableObject {
     /// DFU Upload progress
     @Published public private(set) var dfuUploadProgress: DFUUploadProgress?
     
-    private var dfuServiceController: DFUServiceController? = nil
+    var dfuServiceController: DFUServiceController? = nil
     
     private var rssiEWMA = EWMA(span: 6)
     
@@ -170,7 +170,7 @@ open class Device : ObservableObject {
         dfuServiceController = nil
         
         // Clear DFU on the DFU manager
-        DFUManager.shared.clearCompletedDFU(device: self)
+        DFUManager.shared.clearInProgressDFU(device: self)
     }
     
     /// Updates SKU and Lot number based on Model Info string.
@@ -220,7 +220,7 @@ extension Device {
     public func runSoftwareUpgrade(dfuFile: URL) -> Bool {
         do {
             let dfu = try DFUFirmware(urlToZipFile: dfuFile)
-            dfuServiceController = BleManager.shared.startFirmwareUpdate(device: self, dfu: dfu)
+            BleManager.shared.startFirmwareUpdate(device: self, dfu: dfu)
             return true
         }
         catch {

@@ -59,7 +59,14 @@ class DFUManager {
         static let DISPLAY_DFU_NAME = "Display_DFU_"
         static let CHARGER_DFU_NAME = "Charger_DFU_"
         
-        static let RETRY_TIME_DELAY = 20 // seconds
+        static let DFU_TIMEOUT = 180 // seconds
+    }
+    
+    private init() {
+        // Start a timer check for timed out DFUs
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
+            checkForTimedOutDFUs()
+        }
     }
     
     func setDefaultDFUForType(dfuFile: URL?, dfuType: DFUDeviceType) {
@@ -106,13 +113,34 @@ class DFUManager {
     
     func checkForStuckDFU(peripheral: CBPeripheral, advertisingName: String, device: Device) {
         if let runningDFU = runningDFUs[advertisingName] {
-            // If more than 10 seconds have elapsed, then restart the DFU
+            // If more timeout has elapsed, then cancel the DFU
             let differenceInSeconds = Int(Date().timeIntervalSince(runningDFU.startedAt))
-            if(differenceInSeconds > Constants.RETRY_TIME_DELAY) {
-                _ = runDfu(peripheral: peripheral,
-                           device: device,
-                           advertisingName: advertisingName,
-                           firmware: runningDFU.firmware)
+            print("DFU checkForStuckDFU : \(advertisingName) : \(differenceInSeconds)")
+            
+            // TODO JDJ delete this function
+            
+//            if(differenceInSeconds > Constants.DFU_TIMEOUT) {
+//                clearInProgressDFU(device: device)
+//            }
+        }
+    }
+    
+    
+    private func checkForTimedOutDFUs() {
+        for advertisingName in runningDFUs.keys {
+            if let runningDFU = runningDFUs[advertisingName] {
+                
+                // If timeout has elapsed, then remove DFU from dictionary
+                let differenceInSeconds = Int(Date().timeIntervalSince(runningDFU.startedAt))
+                
+                if(differenceInSeconds > Constants.DFU_TIMEOUT) {
+                    print("DFU checkForTimedOutDFUs : \(advertisingName) has timed out")
+                    
+                    runningDFUs[advertisingName] = nil
+                    
+                    // Update DFU in progress flag
+                    dfuIsInProgress = !runningDFUs.isEmpty
+                }
             }
         }
     }
@@ -120,14 +148,16 @@ class DFUManager {
     func retryDfuOnBootloader(peripheral: CBPeripheral, device: BootloaderDevice) {
         // Device is in bootloader, but DFU was not started by this app instance
         
-        // Use advertising name to determine if device is Display or Thermometer
-        // and restart DFU with the default file for each device type
-        if let firmware = defaultFirmware[device.type] {
-            _ = runDfu(peripheral: peripheral,
-                       device: device,
-                       advertisingName: device.advertisingName,
-                       firmware: firmware)
-        }
+        print("DFU retryDfuOnBootloader() : disabling retry")
+        
+//        // Use advertising name to determine if device is Display or Thermometer
+//        // and restart DFU with the default file for each device type
+//        if let firmware = defaultFirmware[device.type] {
+//            runDfu(peripheral: peripheral,
+//                   device: device,
+//                   advertisingName: device.advertisingName,
+//                   firmware: firmware)
+//        }
     }
     
     func clearInProgressDFU(device: Device) {

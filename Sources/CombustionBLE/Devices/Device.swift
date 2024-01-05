@@ -269,12 +269,19 @@ extension Device: DFUServiceDelegate {
     public func dfuStateDidChange(to state: DFUState) {
         dfuState = state
         
+        print("DFU dfuStateDidChange: \(state)")
+        
         if(dfuState == .completed) {
+            print("DFU dfuStateDidChange: calling dfuComplete()")
             dfuComplete()
         }
     }
     
     public func dfuError(_ error: DFUError, didOccurWithMessage message: String) {
+        print("DFU *******")
+        print("DFU *******")
+        print("DFU *******")
+        print("DFU ******* dfuError: \(error) : \(message)")
         dfuError = DFUErrorMessage(error: error, message: message)
         
         dfuServiceController?.restart()
@@ -293,6 +300,6 @@ extension Device: DFUProgressDelegate {
 
 extension Device: LoggerDelegate {
     public func logWith(_ level: NordicDFU.LogLevel, message: String) {
-        NSLog("LoggerDelegate : \(message)")
+        print("DFU: LoggerDelegate : \(message)")
     }
 }

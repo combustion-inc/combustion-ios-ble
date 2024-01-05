@@ -557,6 +557,7 @@ extension DeviceManager : BleManagerDelegate {
     }
     
     func handleBootloaderAdvertising(advertisingName: String, rssi: NSNumber, peripheral: CBPeripheral) {
+        print("JDJ handleBootloaderAdvertising : \(advertisingName)")
         // If Bootloader is associated with currently running DFU,
         // then check if DFU needs to be restarted
         if let uniqueIdentifier = DFUManager.shared.uniqueIdentifierFrom(advertisingName: advertisingName) {
@@ -565,11 +566,13 @@ extension DeviceManager : BleManagerDelegate {
             }
         }
         else {
-            // If Bootloader is NOT associated with a currently running DFU,
-            // then send data to Device manager to save device and start DFU
-            let device = BootloaderDevice(advertisingName: advertisingName,  RSSI: rssi, identifier: peripheral.identifier)
-            addDevice(device: device)
-            BleManager.shared.retryFirmwareUpdate(device: device)
+            // JDJ ignore bootloader for now
+            
+//            // If Bootloader is NOT associated with a currently running DFU,
+//            // then send data to Device manager to save device and start DFU
+//            let device = BootloaderDevice(advertisingName: advertisingName,  RSSI: rssi, identifier: peripheral.identifier)
+//            addDevice(device: device)
+//            BleManager.shared.retryFirmwareUpdate(device: device)
         }
     }
     

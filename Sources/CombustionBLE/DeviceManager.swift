@@ -97,6 +97,13 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
         connectionManager.dfuModeEnabled = enable
     }
     
+    /// Sets the white list for thermometers.  Framework will only connect to thermometers
+    /// in the white list and nodes that are advertising data from thermometer in whitelist.
+    /// - param whiteList: White list of probes serial numbers
+    public func setThermometerWhiteList(_ whiteList: Set<String>) {
+        connectionManager.setThermometerWhiteList(whiteList)
+    }
+    
     /// Private initializer to enforce singleton
     private init() {
         BleManager.shared.delegate = self

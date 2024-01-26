@@ -34,8 +34,8 @@ class ConnectionManager {
     /// Tracks whether DFU mode is enabled.
     var dfuModeEnabled : Bool = false
     
-    /// White list of thermometer serial numbers to connect to
-    private(set) var thermometerWhiteList: Set<String>? = nil
+    /// List of thermometer serial numbers to connect to
+    private(set) var thermometerAllowList: Set<String>? = nil
     
     private var connectionTimers: [String: Timer] = [:]
     private var lastStatusUpdate: [String: Date] = [:]
@@ -43,57 +43,71 @@ class ConnectionManager {
     /// Number of seconds after which a direct connection should be made to probe
     private let PROBE_STATUS_STALE_TIMEOUT = 10.0
     
-    /// Sets the white list for thermometers.  Framework will only connect to thermometers
-    /// in the white list and nodes that are advertising data from thermometer in whitelist.
+    /// Sets the allow list for thermometers.  Framework will only connect to thermometers
+    /// in the allow list and nodes that are advertising data from thermometer in whitelist.
     /// - param whiteList: White list of probes serial numbers
-    func setThermometerWhiteList(_ whiteList: Set<String>) {
-        thermometerWhiteList = whiteList
+    func setThermometerAllowList(_ allowList: Set<String>) {
+        thermometerAllowList = allowList
     }
     
     func receivedProbeAdvertising(_ probe: Probe?) {
-        guard let probe = probe else { return }
+        // Nothing to do if already connected to probe
+        guard let probe = probe,
+              probe.connectionState != .connected else { return }
         
         var probeStatusStale = true
-        
         if let lastUpdateTime = lastStatusUpdate[probe.serialNumberString] {
             probeStatusStale = Date().timeIntervalSince(lastUpdateTime) > PROBE_STATUS_STALE_TIMEOUT
         }
         
-        // Always connect to probe if DFU mode is enabled
-        if dfuModeEnabled {
+        if dfuModeEnabled { // In DFU mode, connect to probe if its in allow list
+            if probeInAllowList(probe) {
+                probe.connect()
+            }
+        }
+        else if !meatNetEnabled { // If meatnet is not enabled, always connect to probe
             probe.connect()
         }
-        else if meatNetEnabled && // Otherwise if MeatNet is enabled and the probe data is stale, then connect to it
-                    probeInWhiteList(probe) &&
-                    probeStatusStale &&
-                    (probe.connectionState != .connected) &&
-                    (connectionTimers[probe.serialNumberString] == nil) {
-            
-            // Start timer to connect to probe after delay
-            connectionTimers[probe.serialNumberString] = Timer.scheduledTimer(withTimeInterval: 3, repeats: false, block: { [weak self] _ in
+        else { // When MeatNet is enabled and the probe data is stale, then connect to it
+            if probeInAllowList(probe) &&
+                probeStatusStale &&
+                (connectionTimers[probe.serialNumberString] == nil) {
                 
-                if let probe = self?.getProbeWithSerial(probe.serialNumberString) {
-                    probe.connect()
-                }
-                
-                // Clear timer
-                self?.connectionTimers[probe.serialNumberString] = nil
-            })
+                // Start timer to connect to probe after delay
+                connectionTimers[probe.serialNumberString] = Timer.scheduledTimer(withTimeInterval: 3, repeats: false, block: { [weak self] _ in
+                    
+                    if let probe = self?.getProbeWithSerial(probe.serialNumberString) {
+                        probe.connect()
+                    }
+                    
+                    // Clear timer
+                    self?.connectionTimers[probe.serialNumberString] = nil
+                })
+            }
         }
     }
     
     func receivedProbeAdvertising(_ probe: Probe?, from node: MeatNetNode) {
-        guard let probe = probe else { return }
+        // Nothing to do if already connected to node
+        guard node.connectionState != .connected else { return }
         
-        // When meatnet is enabled, try to connect to all Nodes that are advertising
-        // probes in white list
-        if meatNetEnabled && 
-            probeInWhiteList(probe) &&
-            node.connectionState != .connected {
-            node.connect()
-            
-            // Track that data was recieved for probe on node
-            node.dataReceivedFromProbe(probe)
+        if dfuModeEnabled { // DFU mode
+            // Connect to node if its within the DFU range
+            if node.withinProximityRange {
+                node.connect()
+            }
+            // Or if node is probe is in allow list
+            else if let probe = probe, probeInAllowList(probe) {
+                node.connect()
+            }
+        }
+        else if meatNetEnabled { // Meatnet is enabled
+            // Connect to all Nodes that are advertising probes in allow list
+            if let probe = probe,
+                    meatNetEnabled,
+                    probeInAllowList(probe) {
+                node.connect()
+            }
         }
     }
     
@@ -121,10 +135,10 @@ class ConnectionManager {
         return probes.filter { $0.serialNumberString == serial}.first
     }
     
-    private func probeInWhiteList(_ probe: Probe) -> Bool {
-        // If whitelist is nil, then return true
-        guard let whiteList = thermometerWhiteList else { return true}
+    private func probeInAllowList(_ probe: Probe) -> Bool {
+        // If allowList is nil, then return true
+        guard let allowList = thermometerAllowList else { return true}
         
-        return whiteList.contains(probe.serialNumberString)
+        return allowList.contains(probe.serialNumberString)
     }
 }

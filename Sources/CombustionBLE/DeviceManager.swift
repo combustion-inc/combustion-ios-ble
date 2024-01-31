@@ -97,11 +97,11 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
         connectionManager.dfuModeEnabled = enable
     }
     
-    /// Sets the white list for thermometers.  Framework will only connect to thermometers
-    /// in the white list and nodes that are advertising data from thermometer in whitelist.
-    /// - param whiteList: White list of probes serial numbers
-    public func setThermometerWhiteList(_ whiteList: Set<String>) {
-        connectionManager.setThermometerWhiteList(whiteList)
+    /// Sets the allow list for thermometers.  Framework will only connect to thermometers
+    /// in the allow list and nodes that are advertising data from thermometer in whitelist.
+    /// - param allowList: Allow list of probes serial numbers
+    public func setThermometerAllowList(_ allowList: Set<String>) {
+        connectionManager.setThermometerAllowList(allowList)
     }
     
     /// Private initializer to enforce singleton
@@ -647,6 +647,9 @@ extension DeviceManager : BleManagerDelegate {
             
             // Notify connection manager
             connectionManager.receivedProbeAdvertising(probe, from: meatnetNode)
+            
+            // Track that data was recieved for probe on node
+            meatnetNode.dataReceivedFromProbe(probe)
 
         case .unknown:
             print("Found device with unknown type")

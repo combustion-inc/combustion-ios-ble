@@ -105,12 +105,12 @@ open class Device : ObservableObject {
     /// DFU Upload progress
     @Published public private(set) var dfuUploadProgress: DFUUploadProgress?
     
+    /// Last time device received an advertising packet or status notification
+    @Published public var lastUpdateTime = Date()
+    
     private var dfuServiceController: DFUServiceController? = nil
     
     private var rssiEWMA = EWMA(span: 6)
-    
-    /// Time at which device was last updated
-    internal var lastUpdateTime = Date()
     
     public init(uniqueIdentifier: String, bleIdentifier: UUID?, RSSI: NSNumber?) {
         self.uniqueIdentifier = uniqueIdentifier

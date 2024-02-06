@@ -231,6 +231,9 @@ extension Probe {
     /// - param RSSI: Signal strength (not present if via Node)
     /// - param bleIdentifier: BLE UUID (not present if via Node)
     func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, bleIdentifier: UUID?) {
+        
+        lastUpdateTime = Date()
+        
         // Always update probe RSSI and isConnectable flag
         if let RSSI = RSSI {
             self.rssi = RSSI.intValue
@@ -259,8 +262,6 @@ extension Probe {
                     // Update temperatures, virtual sensors, and check for overheating
                     updateTemperatures(temperatures: advertising.temperatures,
                                        virtualSensors: advertising.batteryStatusVirtualSensors.virtualSensors)
-                    
-                    lastUpdateTime = Date()
                 }
             }
             else if(advertising.modeId.mode == .instantRead) {
@@ -270,8 +271,6 @@ extension Probe {
                                      probeColor: advertising.modeId.color,
                                      probeBatteryStatus: advertising.batteryStatusVirtualSensors.batteryStatus,
                                      hopCount: (advertising.type == .probe) ? nil : advertising.hopCount)) {
-                    
-                    lastUpdateTime = Date()
                 }
             }
         }

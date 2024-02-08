@@ -106,12 +106,17 @@ open class Probe : Device {
     
     /// Integer representation of device MAC address
     public var macAddress: UInt64 {
-        return (UInt64(serialNumber) * 10000 + 6912) | 0xC00000000000
+        return Probe.macAddressFromSerialNumber(serialNumber)
     }
     
     /// String representation of device MAC address
     public var macAddressString: String {
         return String(format: "%012llX", macAddress)
+    }
+    
+    // Conversion from probe serial number to mac address
+    static public func macAddressFromSerialNumber(_ serialNumber: UInt32) -> UInt64 {
+        return (UInt64(serialNumber) * 10000 + 6912) | 0xC00000000000
     }
     
     /// Whether or not probe is overheating

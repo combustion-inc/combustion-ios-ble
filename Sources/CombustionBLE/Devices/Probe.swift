@@ -106,12 +106,17 @@ open class Probe : Device {
     
     /// Integer representation of device MAC address
     public var macAddress: UInt64 {
-        return (UInt64(serialNumber) * 10000 + 6912) | 0xC00000000000
+        return Probe.macAddressFromSerialNumber(serialNumber)
     }
     
     /// String representation of device MAC address
     public var macAddressString: String {
         return String(format: "%012llX", macAddress)
+    }
+    
+    // Conversion from probe serial number to mac address
+    static public func macAddressFromSerialNumber(_ serialNumber: UInt32) -> UInt64 {
+        return (UInt64(serialNumber) * 10000 + 6912) | 0xC00000000000
     }
     
     /// Whether or not probe is overheating
@@ -231,6 +236,9 @@ extension Probe {
     /// - param RSSI: Signal strength (not present if via Node)
     /// - param bleIdentifier: BLE UUID (not present if via Node)
     func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, bleIdentifier: UUID?) {
+        
+        lastUpdateTime = Date()
+        
         // Always update probe RSSI and isConnectable flag
         if let RSSI = RSSI {
             self.rssi = RSSI.intValue
@@ -259,8 +267,6 @@ extension Probe {
                     // Update temperatures, virtual sensors, and check for overheating
                     updateTemperatures(temperatures: advertising.temperatures,
                                        virtualSensors: advertising.batteryStatusVirtualSensors.virtualSensors)
-                    
-                    lastUpdateTime = Date()
                 }
             }
             else if(advertising.modeId.mode == .instantRead) {
@@ -270,8 +276,6 @@ extension Probe {
                                      probeColor: advertising.modeId.color,
                                      probeBatteryStatus: advertising.batteryStatusVirtualSensors.batteryStatus,
                                      hopCount: (advertising.type == .probe) ? nil : advertising.hopCount)) {
-                    
-                    lastUpdateTime = Date()
                 }
             }
         }

@@ -90,6 +90,8 @@ open class Probe : Device {
     
     @Published public internal(set) var virtualTemperatures: VirtualTemperatures?
     
+    @Published public internal(set) var mostRecentStatus: ProbeStatus?
+    
     public var hasActivePrediction: Bool {
         guard let info = predictionInfo else { return false }
         
@@ -381,15 +383,24 @@ extension Probe {
 
         // Update most recent status notification time
         lastStatusNotificationTime = Date()
+        
         // Update whether status notifications are stale
         updateStatusNotificationsStale()
         
         // Update time of most recent update of any type
         lastUpdateTime = Date()
+        
+        // Publish most recent status
+        mostRecentStatus = deviceStatus
     }
     
-    func updateWithSessionInformation(_ sessionInformation: SessionInformation) {
-        self.sessionInformation = sessionInformation
+    func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
+        if(sessionInformation?.sessionID != sessionInfo.sessionID) {
+            sessionInformation = sessionInfo
+            
+            // Recent probe status when session ID changes
+            mostRecentStatus = nil
+        }
     }
     
     /// Processes an incoming log response (response to a manual request for prior messages)

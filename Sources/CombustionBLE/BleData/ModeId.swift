@@ -55,9 +55,9 @@ public enum ProbeMode: UInt8, CaseIterable {
     case error       = 0x03
 }
 
-struct ModeId {
-    let id: ProbeID
-    let color: ProbeColor
+public struct ModeId {
+    public let id: ProbeID
+    public let color: ProbeColor
     let mode: ProbeMode
 }
 

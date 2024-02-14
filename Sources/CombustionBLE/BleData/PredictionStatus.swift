@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-struct PredictionStatus {
+public struct PredictionStatus {
     public let predictionState: PredictionState
     public let predictionMode: PredictionMode
     public let predictionType: PredictionType

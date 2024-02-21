@@ -37,7 +37,11 @@ public enum VirtualCoreSensor: UInt8 {
     static let MASK: UInt8 = 0x7
     
     public func temperatureFrom(_ temperatures: ProbeTemperatures) -> Double {
-        return temperatures.values[Int(self.rawValue)]
+        return temperatureFrom(temperatures.values)
+    }
+    
+    public func temperatureFrom(_ temperatures: [Double]) -> Double {
+        return temperatures[Int(self.rawValue)]
     }
 }
 
@@ -50,9 +54,13 @@ public enum VirtualSurfaceSensor: UInt8 {
     static let MASK: UInt8 = 0x3
     
     public func temperatureFrom(_ temperatures: ProbeTemperatures) -> Double {
+        return temperatureFrom(temperatures.values)
+    }
+    
+    public func temperatureFrom(_ temperatures: [Double]) -> Double {
         // Surface range is T4 - T7, therefore add 3
         let surfaceSensorNumber = Int(self.rawValue) + 3
-        return temperatures.values[surfaceSensorNumber]
+        return temperatures[surfaceSensorNumber]
     }
 }
 
@@ -65,9 +73,13 @@ public enum VirtualAmbientSensor: UInt8 {
     static let MASK: UInt8 = 0x3
     
     public func temperatureFrom(_ temperatures: ProbeTemperatures) -> Double {
+        return temperatureFrom(temperatures.values)
+    }
+    
+    public func temperatureFrom(_ temperatures: [Double]) -> Double {
         // Ambient range is T5 - T8, therefore add 4
         let ambientSensorNumber = Int(self.rawValue) + 4
-        return temperatures.values[ambientSensorNumber]
+        return temperatures[ambientSensorNumber]
     }
 }
 
@@ -75,6 +87,14 @@ public struct VirtualSensors {
     public let virtualCore: VirtualCoreSensor
     public let virtualSurface: VirtualSurfaceSensor
     public let virtualAmbient: VirtualAmbientSensor
+    
+    public init(virtualCore: VirtualCoreSensor, 
+                virtualSurface: VirtualSurfaceSensor,
+                virtualAmbient: VirtualAmbientSensor) {
+        self.virtualCore = virtualCore
+        self.virtualSurface = virtualSurface
+        self.virtualAmbient = virtualAmbient
+    }
 }
 
 extension VirtualSensors {

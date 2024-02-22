@@ -127,18 +127,6 @@ open class Probe : Device {
     /// Array of sensor indexes that are overheating
     @Published public internal(set) var overheatingSensors: [Int] = []
     
-    /// Overheating thresholds for each sensor (in degrees C)
-    public static let OVERHEATING_THRESHOLDS: [Double] = [
-        105.0, // T1
-        105.0, // T2
-        115.0, // T3
-        125.0, // T4
-        300.0, // T5
-        300.0, // T6
-        300.0, // T7
-        300.0, // T8
-    ]
-    
     /// Tracks the most recent time a status notification was received.
     @Published public internal(set) var lastStatusNotificationTime = Date()
     
@@ -159,6 +147,35 @@ open class Probe : Device {
    
     /// Last hop count that updated 'normal mode' info (nil = direct from Probe)
     @Published public internal(set) var lastNormalModeHopCount : HopCount? = nil
+    
+    /// Overheating thresholds for each sensor (in degrees C)
+    public static let OVERHEATING_THRESHOLDS: [Double] = [
+        105.0, // T1
+        105.0, // T2
+        115.0, // T3
+        125.0, // T4
+        300.0, // T5
+        300.0, // T6
+        300.0, // T7
+        300.0, // T8
+    ]
+    
+    /// Find overheating sensors by comparing against threshold for each temperature
+    public static func findOverheatingSensors(_ temperatures: [Double]?) -> [Int] {
+        guard let temperatures = temperatures else { return [] }
+        
+        var overheatingSensorList : [Int] = []
+            
+        // Check T1-T8
+        for i in 0...7 {
+            if temperatures[i] >= Probe.OVERHEATING_THRESHOLDS[i] {
+                overheatingSensorList.append(i)
+            }
+        }
+        
+        return overheatingSensorList
+    }
+    
 
     private var predictionManager: PredictionManager
     private var instantReadFilter: InstantReadFilter
@@ -417,21 +434,9 @@ extension Probe {
     private func checkOverheating() {
         guard let currentTemperatures = currentTemperatures else { return }
         
-        var anyOverTemp = false
-        
-        var overheatingSensorList : [Int] = []
-            
-        // Check T1-T8
-        for i in 0...7 {
-            if currentTemperatures.values[i] >= Probe.OVERHEATING_THRESHOLDS[i] {
-                anyOverTemp = true
-                overheatingSensorList.append(i)
-            }
-        }
-        
-        // Update observable variables
-        self.overheating = anyOverTemp
-        self.overheatingSensors = overheatingSensorList
+        // Publish overheating values
+        overheatingSensors = Probe.findOverheatingSensors(currentTemperatures.values)
+        overheating = !overheatingSensors.isEmpty
     }
     
     private func addDataToLog(_ dataPoint: LoggedProbeDataPoint) {

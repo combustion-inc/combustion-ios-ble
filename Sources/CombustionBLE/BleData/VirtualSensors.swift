@@ -83,7 +83,7 @@ public enum VirtualAmbientSensor: UInt8 {
     }
 }
 
-public struct VirtualSensors {
+public struct VirtualSensors: Equatable {
     public let virtualCore: VirtualCoreSensor
     public let virtualSurface: VirtualSurfaceSensor
     public let virtualAmbient: VirtualAmbientSensor

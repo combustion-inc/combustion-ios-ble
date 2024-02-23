@@ -58,7 +58,7 @@ public enum ProbeMode: UInt8, CaseIterable {
 public struct ModeId {
     public let id: ProbeID
     public let color: ProbeColor
-    let mode: ProbeMode
+    public let mode: ProbeMode
 }
 
 extension ModeId {

@@ -36,9 +36,6 @@ class PredictionManager {
         /// Prediction is considered stale after 15 seconds
         static let PREDICTION_STALE_TIMEOUT = 15.0
         
-        /// Cap the prediction to 6 hours
-        static let MAX_PREDICTION_TIME : UInt = 60*60*6
-        
         /// Number of samples to wait between updates to prediction 'seconds remaining',
         /// for syncing time remaining across apps, Displays etc.
         static let PREDICTION_TIME_UPDATE_COUNT : UInt = 3
@@ -130,7 +127,7 @@ class PredictionManager {
         guard predictionStatus.predictionState == .predicting else { return nil }
         
         // Do not return a value if above max seconds remaining
-        guard predictionStatus.predictionValueSeconds <= Constants.MAX_PREDICTION_TIME else { return nil }
+        guard predictionStatus.predictionValueSeconds <= PredictionStatus.MAX_PREDICTION_TIME else { return nil }
         
         let previousSecondsRemaining = previousPredictionInfo?.secondsRemaining
         

@@ -47,6 +47,9 @@ public struct PredictionStatus {
 }
  
 extension PredictionStatus {
+    /// Cap the prediction to 6 hours
+    public static let MAX_PREDICTION_TIME : UInt = 60*60*6
+    
     public static func percentThroughCook(heatStartTemperature: Double?,
                                           predictionSetPointTemperature: Double?,
                                           estimatedCoreTemperature: Double?) -> Int {

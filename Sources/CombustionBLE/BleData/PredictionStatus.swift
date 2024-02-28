@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-struct PredictionStatus {
+public struct PredictionStatus {
     public let predictionState: PredictionState
     public let predictionMode: PredictionMode
     public let predictionType: PredictionType
@@ -34,9 +34,47 @@ struct PredictionStatus {
     public let heatStartTemperature: Double
     public let predictionValueSeconds: UInt
     public let estimatedCoreTemperature: Double
+    
+    public init(predictionState: PredictionState, predictionMode: PredictionMode, predictionType: PredictionType, predictionSetPointTemperature: Double, heatStartTemperature: Double, predictionValueSeconds: UInt, estimatedCoreTemperature: Double) {
+        self.predictionState = predictionState
+        self.predictionMode = predictionMode
+        self.predictionType = predictionType
+        self.predictionSetPointTemperature = predictionSetPointTemperature
+        self.heatStartTemperature = heatStartTemperature
+        self.predictionValueSeconds = predictionValueSeconds
+        self.estimatedCoreTemperature = estimatedCoreTemperature
+    }
 }
  
 extension PredictionStatus {
+    /// Cap the prediction to 6 hours
+    public static let MAX_PREDICTION_TIME : UInt = 60*60*6
+    
+    public static func percentThroughCook(heatStartTemperature: Double?,
+                                          predictionSetPointTemperature: Double?,
+                                          estimatedCoreTemperature: Double?) -> Int {
+        guard let start = heatStartTemperature,
+              let end = predictionSetPointTemperature,
+              let core = estimatedCoreTemperature else { return 0}
+        
+        // Max percentage is 100
+        if(core > end) {
+            return 100
+        }
+        
+        // Minimum percentage is 0
+        if(start > core) {
+            return 0
+        }
+        
+        // This should never happen, but would cause a crash
+        if(end == start) {
+            return 100
+        }
+        
+        return Int(((core - start) / (end - start)) * 100.0)
+    }
+    
     static func fromBytes(_ bytes: [UInt8]) -> PredictionStatus {
         let rawPredictionState = bytes[0] & PredictionState.MASK
         let predictionState = PredictionState(rawValue: rawPredictionState) ?? .unknown

@@ -31,6 +31,13 @@ public struct FoodSafeStatus: Equatable {
     public let logReduction: Double
     public let secondsAboveThreshold: UInt
     public let foodSafeSequenceNumber: UInt
+    
+    public init(state: FoodSafeState, logReduction: Double, secondsAboveThreshold: UInt, foodSafeSequenceNumber: UInt) {
+        self.state = state
+        self.logReduction = logReduction
+        self.secondsAboveThreshold = secondsAboveThreshold
+        self.foodSafeSequenceNumber = foodSafeSequenceNumber
+    }
 }
 
 extension FoodSafeStatus {

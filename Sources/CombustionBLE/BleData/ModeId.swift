@@ -55,10 +55,10 @@ public enum ProbeMode: UInt8, CaseIterable {
     case error       = 0x03
 }
 
-struct ModeId {
-    let id: ProbeID
-    let color: ProbeColor
-    let mode: ProbeMode
+public struct ModeId {
+    public let id: ProbeID
+    public let color: ProbeColor
+    public let mode: ProbeMode
 }
 
 extension ModeId {

@@ -36,9 +36,6 @@ class PredictionManager {
         /// Prediction is considered stale after 15 seconds
         static let PREDICTION_STALE_TIMEOUT = 15.0
         
-        /// Cap the prediction to 6 hours
-        static let MAX_PREDICTION_TIME : UInt = 60*60*6
-        
         /// Number of samples to wait between updates to prediction 'seconds remaining',
         /// for syncing time remaining across apps, Displays etc.
         static let PREDICTION_TIME_UPDATE_COUNT : UInt = 3
@@ -109,13 +106,17 @@ class PredictionManager {
         let secondsRemaining = secondsRemaining(predictionStatus: status,
                                                 sequenceNumber: sequenceNumber)
         
+        let percentThroughCook = PredictionStatus.percentThroughCook(heatStartTemperature: status.heatStartTemperature,
+                                                                     predictionSetPointTemperature: status.predictionSetPointTemperature,
+                                                                     estimatedCoreTemperature: status.estimatedCoreTemperature)
+        
         return PredictionInfo(predictionState: status.predictionState,
                               predictionMode: status.predictionMode,
                               predictionType: status.predictionType,
                               predictionSetPointTemperature: status.predictionSetPointTemperature,
                               estimatedCoreTemperature: status.estimatedCoreTemperature,
                               secondsRemaining: secondsRemaining,
-                              percentThroughCook: percentThroughCook(predictionStatus: status))
+                              percentThroughCook: percentThroughCook)
     }
     
     
@@ -126,7 +127,7 @@ class PredictionManager {
         guard predictionStatus.predictionState == .predicting else { return nil }
         
         // Do not return a value if above max seconds remaining
-        guard predictionStatus.predictionValueSeconds <= Constants.MAX_PREDICTION_TIME else { return nil }
+        guard predictionStatus.predictionValueSeconds <= PredictionStatus.MAX_PREDICTION_TIME else { return nil }
         
         let previousSecondsRemaining = previousPredictionInfo?.secondsRemaining
         
@@ -209,29 +210,6 @@ class PredictionManager {
         
         // Publish new prediction info
         publishPredictionInfo(info)
-    }
-    
-    private func percentThroughCook(predictionStatus: PredictionStatus) -> Int {
-        let start = predictionStatus.heatStartTemperature
-        let end = predictionStatus.predictionSetPointTemperature
-        let core = predictionStatus.estimatedCoreTemperature
-        
-        // Max percentage is 100
-        if(core > end) {
-            return 100
-        }
-        
-        // Minimum percentage is 0
-        if(start > core) {
-            return 0
-        }
-        
-        // This should never happen, but would cause a crash
-        if(end == start) {
-            return 100
-        }
-        
-        return Int(((core - start) / (end - start)) * 100.0)
     }
     
     private func publishPredictionInfo(_ predictionInfo: PredictionInfo?) {

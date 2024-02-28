@@ -27,30 +27,30 @@ SOFTWARE.
 import Foundation
 
 /// Message containing Probe status information.
-struct ProbeStatus {
+public struct ProbeStatus {
     /// Minimum sequence number of records in Probe's memory.
-    let minSequenceNumber: UInt32
+    public let minSequenceNumber: UInt32
     
     /// Maximum sequence number of records in Probe's memory.
-    let maxSequenceNumber: UInt32
+    public let maxSequenceNumber: UInt32
     
     /// Current temperatures sent by Probe.
-    let temperatures: ProbeTemperatures
+    public let temperatures: ProbeTemperatures
     
     /// ModeId (Probe color, ID, and mode)
-    let modeId: ModeId
+    public let modeId: ModeId
     
     /// Battery Status and Virtual Sensors
-    let batteryStatusVirtualSensors: BatteryStatusVirtualSensors
+    public let batteryStatusVirtualSensors: BatteryStatusVirtualSensors
     
     /// Prediction Status
-    let predictionStatus: PredictionStatus
+    public let predictionStatus: PredictionStatus
     
     /// Food Safe Data
-    let foodSafeData: FoodSafeData?
+    public let foodSafeData: FoodSafeData?
     
     /// Food Safe Status
-    let foodSafeStatus: FoodSafeStatus?
+    public let foodSafeStatus: FoodSafeStatus?
 }
 
 extension ProbeStatus {

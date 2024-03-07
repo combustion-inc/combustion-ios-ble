@@ -247,6 +247,9 @@ extension Probe {
         
         /// Number of seconds after which status notifications should be considered stale.
         static let STATUS_NOTIFICATION_STALE_TIMEOUT = 16.0
+        
+        /// Minimu number of seconds before lastUpdateTime is updated
+        static let MINIMUM_LAST_UPDATE_CHANGE = 1.0
     }
     
     /// Updates this Probe with data from an advertisement message.
@@ -256,7 +259,8 @@ extension Probe {
     /// - param bleIdentifier: BLE UUID (not present if via Node)
     func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, bleIdentifier: UUID?) {
         
-        lastUpdateTime = Date()
+        // Set update time
+        setLastUpdateTime()
         
         // Always update probe RSSI and isConnectable flag
         if let RSSI = RSSI {
@@ -405,7 +409,7 @@ extension Probe {
         updateStatusNotificationsStale()
         
         // Update time of most recent update of any type
-        lastUpdateTime = Date()
+        setLastUpdateTime()
         
         // Publish most recent status
         mostRecentStatus = deviceStatus
@@ -428,6 +432,13 @@ extension Probe {
     /// Processes an incoming node log response (response to a manual request for prior messages)
     func processLogResponse(logResponse: NodeReadLogsResponse) {
         addDataToLog(LoggedProbeDataPoint.fromLogResponse(logResponse: logResponse))
+    }
+    
+    private func setLastUpdateTime() {
+        // Do not update value unless its been more 1 second
+        guard Date().timeIntervalSince(lastUpdateTime) > Constants.MINIMUM_LAST_UPDATE_CHANGE else { return }
+        
+        lastUpdateTime = Date()
     }
     
     /// Checks if the probe is currently exceeding any temperature thresholds.

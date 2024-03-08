@@ -417,10 +417,10 @@ extension Probe {
     
     func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
         if(sessionInformation?.sessionID != sessionInfo.sessionID) {
-            sessionInformation = sessionInfo
-            
             // Recent probe status when session ID changes
             mostRecentStatus = nil
+            
+            sessionInformation = sessionInfo
         }
     }
     

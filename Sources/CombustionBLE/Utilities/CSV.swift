@@ -39,13 +39,21 @@ public struct CSV {
         
         output.append("Combustion Inc. Probe Data")
         output.append("App: iOS \(appVersion)")
-        output.append("CSV version: 4")
+        output.append("CSV version: 5")
         output.append("Probe S/N: \(String(format: "%4X", probe.serialNumber))")
         output.append("Probe FW version: \(probe.firmareVersion ?? "??")")
         output.append("Probe HW revision: \(probe.hardwareRevision ?? "??")")
         output.append("Framework: iOS")
         output.append("Sample Period: \(probe.temperatureLogs.first?.sessionInformation.samplePeriod ?? 0)")
         output.append("Created: \(dateString)")
+
+        if let sessionDate = probe.temperatureLogs.first?.startTime {
+            let formattedDate = dateFormatter.string(from: sessionDate)
+            output.append("Session date: \(formattedDate)")
+        } else {
+            output.append("Session date: ??")
+        }
+
         output.append("")
         
         // Header

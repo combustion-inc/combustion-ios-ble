@@ -154,10 +154,10 @@ open class Probe : Device {
         105.0, // T2
         115.0, // T3
         125.0, // T4
-        300.0, // T5
-        300.0, // T6
-        300.0, // T7
-        300.0, // T8
+        315.56, // T5
+        315.56, // T6
+        315.56, // T7
+        315.56, // T8
     ]
     
     /// Find overheating sensors by comparing against threshold for each temperature

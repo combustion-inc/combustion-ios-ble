@@ -51,6 +51,24 @@ public struct ProbeStatus {
     
     /// Food Safe Status
     public let foodSafeStatus: FoodSafeStatus?
+    
+    public init(minSequenceNumber: UInt32,
+                maxSequenceNumber: UInt32,
+                temperatures: ProbeTemperatures,
+                modeId: ModeId,
+                batteryStatusVirtualSensors: BatteryStatusVirtualSensors,
+                predictionStatus: PredictionStatus,
+                foodSafeData: FoodSafeData?,
+                foodSafeStatus: FoodSafeStatus?) {
+        self.minSequenceNumber = minSequenceNumber
+        self.maxSequenceNumber = maxSequenceNumber
+        self.temperatures = temperatures
+        self.modeId = modeId
+        self.batteryStatusVirtualSensors = batteryStatusVirtualSensors
+        self.predictionStatus = predictionStatus
+        self.foodSafeData = foodSafeData
+        self.foodSafeStatus = foodSafeStatus
+    }
 }
 
 extension ProbeStatus {

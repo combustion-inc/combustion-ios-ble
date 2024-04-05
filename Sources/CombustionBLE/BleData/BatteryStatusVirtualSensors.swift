@@ -36,6 +36,11 @@ public enum BatteryStatus: UInt8 {
 public struct BatteryStatusVirtualSensors {
     public let batteryStatus: BatteryStatus
     public let virtualSensors: VirtualSensors
+    
+    public init(batteryStatus: BatteryStatus, virtualSensors: VirtualSensors) {
+        self.batteryStatus = batteryStatus
+        self.virtualSensors = virtualSensors
+    }
 }
 
 extension BatteryStatusVirtualSensors {

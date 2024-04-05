@@ -29,6 +29,11 @@ import Foundation
 public struct SessionInformation {
     public let sessionID: UInt32
     public let samplePeriod: UInt16
+    
+    public init(sessionID: UInt32, samplePeriod: UInt16) {
+        self.sessionID = sessionID
+        self.samplePeriod = samplePeriod
+    }
 }
 
 class SessionInfoRequest: Request {

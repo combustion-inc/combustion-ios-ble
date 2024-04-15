@@ -57,7 +57,7 @@ public class ProbeTemperatureLog : ObservableObject {
     /// data point dictionary. This prevents unnecesary re-sorting of the overall dictionary.
     private var dataPointAccumulator : OrderedSet<LoggedProbeDataPoint>
     
-    init(sessionInfo: SessionInformation) {
+    public init(sessionInfo: SessionInformation) {
         dataPointsDict = OrderedDictionary<UInt32, LoggedProbeDataPoint>()
         dataPointAccumulator = OrderedSet<LoggedProbeDataPoint>()
         sessionInformation = sessionInfo
@@ -183,7 +183,7 @@ public class ProbeTemperatureLog : ObservableObject {
     }
     
     /// Appends data point to the logged probe data.
-    func appendDataPoint(dataPoint: LoggedProbeDataPoint) {
+    public func appendDataPoint(dataPoint: LoggedProbeDataPoint) {
         // Check if new point's sequence number belongs at the end
         if let lastPoint = dataPointsDict.values.last {
             if(dataPoint.sequenceNum == (lastPoint.sequenceNum + 1)) {

@@ -59,6 +59,12 @@ public struct ModeId {
     public let id: ProbeID
     public let color: ProbeColor
     public let mode: ProbeMode
+    
+    public init(id: ProbeID, color: ProbeColor, mode: ProbeMode) {
+        self.id = id
+        self.color = color
+        self.mode = mode
+    }
 }
 
 extension ModeId {

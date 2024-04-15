@@ -45,7 +45,7 @@ extension LoggedProbeDataPoint {
     
     /// Generates a LoggedProbeDataPoint from a previously-parsed DeviceStatus record.
     /// - parameter ProbeStatus: ProbeStatus instance
-    static func fromDeviceStatus(deviceStatus: ProbeStatus) -> LoggedProbeDataPoint {
+    public static func fromDeviceStatus(deviceStatus: ProbeStatus) -> LoggedProbeDataPoint {
         return LoggedProbeDataPoint(sequenceNum: deviceStatus.maxSequenceNumber,
                                     temperatures: deviceStatus.temperatures,
                                     virtualCore: deviceStatus.batteryStatusVirtualSensors.virtualSensors.virtualCore,

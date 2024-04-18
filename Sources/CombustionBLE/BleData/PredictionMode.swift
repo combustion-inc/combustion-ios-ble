@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-public enum PredictionMode: UInt8, CaseIterable {
+public enum PredictionMode: UInt8, CaseIterable, Codable {
     case none = 0x00
     case timeToRemoval = 0x01
     case removalAndResting = 0x02

@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-public enum VirtualCoreSensor: UInt8 {
+public enum VirtualCoreSensor: UInt8, Codable {
     case T1 = 0x00
     case T2 = 0x01
     case T3 = 0x02
@@ -45,7 +45,7 @@ public enum VirtualCoreSensor: UInt8 {
     }
 }
 
-public enum VirtualSurfaceSensor: UInt8 {
+public enum VirtualSurfaceSensor: UInt8, Codable {
     case T4 = 0x00
     case T5 = 0x01
     case T6 = 0x02
@@ -64,7 +64,7 @@ public enum VirtualSurfaceSensor: UInt8 {
     }
 }
 
-public enum VirtualAmbientSensor: UInt8 {
+public enum VirtualAmbientSensor: UInt8, Codable {
     case T5 = 0x00
     case T6 = 0x01
     case T7 = 0x02

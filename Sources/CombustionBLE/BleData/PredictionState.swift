@@ -27,7 +27,7 @@ SOFTWARE.
 import Foundation
 
 /// Enumeration of Battery status
-public enum PredictionState: UInt8 {
+public enum PredictionState: UInt8, Codable {
     case probeNotInserted       = 0x00
     case probeInserted          = 0x01
     case cooking                = 0x02

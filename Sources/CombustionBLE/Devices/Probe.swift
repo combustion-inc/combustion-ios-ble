@@ -357,7 +357,8 @@ extension Probe {
                 foodSafeStatus = deviceStatus.foodSafeStatus
                 
                 // Log the temperature data point for "Normal" status updates
-                addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus))
+                addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus),
+                             sampledAt: Date())
                 
                 // Update normal mode update info for hop count lockout
                 lastNormalMode = Date()
@@ -450,7 +451,7 @@ extension Probe {
         overheating = !overheatingSensors.isEmpty
     }
     
-    private func addDataToLog(_ dataPoint: LoggedProbeDataPoint) {
+    private func addDataToLog(_ dataPoint: LoggedProbeDataPoint, sampledAt: Date? = nil) {
         // Do not store the dataPoint if its sequence number is greater
         // than the probe's max sequence number. This is a safety check
         // for the probe/node sending a record with invalid sequence number
@@ -461,12 +462,12 @@ extension Probe {
         
         if let current = getCurrentTemperatureLog() {
             // Append data to temperature log for current session
-            current.appendDataPoint(dataPoint: dataPoint)
+            current.appendDataPoint(dataPoint: dataPoint, sampledAt: sampledAt)
         }
         else if let sessionInformation = sessionInformation {
             // Create a new Temperature log for session and append data
             let log = ProbeTemperatureLog(sessionInfo: sessionInformation)
-            log.appendDataPoint(dataPoint: dataPoint)
+            log.appendDataPoint(dataPoint: dataPoint, sampledAt: sampledAt)
             temperatureLogs.append(log)
         }
     }

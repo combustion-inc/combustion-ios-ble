@@ -183,7 +183,7 @@ public class ProbeTemperatureLog : ObservableObject {
     }
     
     /// Appends data point to the logged probe data.
-    public func appendDataPoint(dataPoint: LoggedProbeDataPoint) {
+    public func appendDataPoint(dataPoint: LoggedProbeDataPoint, sampledAt: Date? = nil) {
         // Check if new point's sequence number belongs at the end
         if let lastPoint = dataPointsDict.values.last {
             if(dataPoint.sequenceNum == (lastPoint.sequenceNum + 1)) {
@@ -197,18 +197,23 @@ public class ProbeTemperatureLog : ObservableObject {
         } else {
             // If the collection is empty, just add it
             dataPointsDict[dataPoint.sequenceNum] = dataPoint
-            
-            setStartTime(dataPoint: dataPoint)
+        }
+    
+        // Set the start time of this session
+        if let sampledAt = sampledAt {
+            setStartTime(dataPoint: dataPoint, sampledAt: sampledAt)
         }
     }
     
-    private func setStartTime(dataPoint: LoggedProbeDataPoint) {
+    /// Sets the session start time based on the datapoint and sample timestamp.
+    /// - parameter dataPoint: Data point to calculate session start time from
+    /// - parameter sampledAt: Time when data point was sampled
+    private func setStartTime(dataPoint: LoggedProbeDataPoint, sampledAt: Date) {
         // Do not recalculate start time after it has been set
         guard startTime == nil else { return }
  
-        let currentTime = Date()
         let secondDiff = Int(dataPoint.sequenceNum) * Int(sessionInformation.samplePeriod) / 1000
-        startTime = Calendar.current.date(byAdding: .second, value: -1 * secondDiff, to: currentTime)
+        startTime = Calendar.current.date(byAdding: .second, value: -1 * secondDiff, to: sampledAt)
     }
 }
 

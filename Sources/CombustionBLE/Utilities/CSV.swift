@@ -30,7 +30,12 @@ import Foundation
 public struct CSV {
     
     /// Helper function that generates a CSV representation of probe data.
-    private static func probeDataToCsv(probe: Probe, appVersion: String, date: Date) -> String {
+    private static func probeDataToCsv(serialNumber: String,
+                                       temperatureLogs: [ProbeTemperatureLog],
+                                       firmareVersion: String?,
+                                       hardwareRevision: String?,
+                                       appVersion: String,
+                                       date: Date) -> String {
         var output = [String]()
         
         let dateFormatter = DateFormatter()
@@ -40,11 +45,11 @@ public struct CSV {
         output.append("Combustion Inc. Probe Data")
         output.append("App: iOS \(appVersion)")
         output.append("CSV version: 4")
-        output.append("Probe S/N: \(String(format: "%4X", probe.serialNumber))")
-        output.append("Probe FW version: \(probe.firmareVersion ?? "??")")
-        output.append("Probe HW revision: \(probe.hardwareRevision ?? "??")")
+        output.append("Probe S/N: \(String(format: "%4X", serialNumber))")
+        output.append("Probe FW version: \(firmareVersion ?? "??")")
+        output.append("Probe HW revision: \(hardwareRevision ?? "??")")
         output.append("Framework: iOS")
-        output.append("Sample Period: \(probe.temperatureLogs.first?.sessionInformation.samplePeriod ?? 0)")
+        output.append("Sample Period: \(temperatureLogs.first?.sessionInformation.samplePeriod ?? 0)")
         output.append("Created: \(dateString)")
         output.append("")
         
@@ -52,8 +57,8 @@ public struct CSV {
         output.append("Timestamp,SessionID,SequenceNumber,T1,T2,T3,T4,T5,T6,T7,T8,VirtualCoreTemperature,VirtualSurfaceTemperature,VirtualAmbientTemperature,EstimatedCoreTemperature,PredictionSetPoint,VirtualCoreSensor,VirtualSurfaceSensor,VirtualAmbientSensor,PredictionState,PredictionMode,PredictionType,PredictionValueSeconds")
         
         // Add temperature data points
-        if let firstSessionStart = probe.temperatureLogs.first?.startTime?.timeIntervalSince1970 {
-            for session in probe.temperatureLogs {
+        if let firstSessionStart = temperatureLogs.first?.startTime?.timeIntervalSince1970 {
+            for session in temperatureLogs {
                 for dataPoint in session.dataPoints {
                     
                     // Calculate timestamp for current data point
@@ -104,16 +109,25 @@ public struct CSV {
     /// Creates a CSV file for export.
     /// - param probe: Probe for which to create the file
     /// - returns: URL of file
-    public static func createCsvFile(probe: Probe, appVersion: String) -> URL? {
+    public static func createCsvFile(serialNumber: String, 
+                                     temperatureLogs: [ProbeTemperatureLog],
+                                     firmareVersion: String?,
+                                     hardwareRevision: String?,
+                                     appVersion: String) -> URL? {
         let date = Date()
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH_mm_ss"
         let dateString = dateFormatter.string(from: date)
         
-        let filename = "ProbeData_\(String(format: "%4X", probe.serialNumber))_\(dateString).csv"
+        let filename = "ProbeData_\(String(format: "%4X", serialNumber))_\(dateString).csv"
         
         // Generate the CSV
-        let csv = probeDataToCsv(probe: probe, appVersion: appVersion, date: date)
+        let csv = probeDataToCsv(serialNumber: serialNumber,
+                                 temperatureLogs: temperatureLogs,
+                                 firmareVersion: firmareVersion,
+                                 hardwareRevision: hardwareRevision,
+                                 appVersion: appVersion,
+                                 date: date)
         
         // Create the temporary file
         let filePath = NSTemporaryDirectory() + "/" + filename;

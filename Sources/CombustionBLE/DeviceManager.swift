@@ -177,17 +177,11 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
         return getDevices().max{ $0.rssi < $1.rssi }
     }
     
-    /// Checks if specified probe is connected to any meatnet node
+    /// Checks if specified probe is connected to any connected meatnet node
     func isProbeConnectedToMeatnet(_ probe: Probe) -> Bool {
-        let meatnetNodes = getMeatnetNodes()
+        let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
         
-        for node in meatnetNodes {
-            if(node.hasConnectionToProbe(probe.serialNumber)) {
-                return true
-            }
-        }
-        
-        return false
+        return !nodesConnectedToProbe.isEmpty
     }
     
     private func getNodesConnectedToProbe(serialNumber: UInt32) -> [MeatNetNode] {

@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-public enum FoodSafeMode: UInt8 {
+public enum FoodSafeMode: UInt8, Codable {
     case simplified = 0x00
     case integrated = 0x01
     

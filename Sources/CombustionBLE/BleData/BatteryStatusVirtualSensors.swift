@@ -26,7 +26,7 @@ SOFTWARE.
 import Foundation
 
 /// Enumeration of Battery status
-public enum BatteryStatus: UInt8 {
+public enum BatteryStatus: UInt8, Codable {
     case ok = 0x00
     case low = 0x01
     

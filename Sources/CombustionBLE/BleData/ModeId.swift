@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-public enum ProbeID: UInt8, CaseIterable {
+public enum ProbeID: UInt8, CaseIterable, Codable {
     case ID1 = 0x00
     case ID2 = 0x01
     case ID3 = 0x02
@@ -37,7 +37,7 @@ public enum ProbeID: UInt8, CaseIterable {
     case ID8 = 0x07
 }
 
-public enum ProbeColor: UInt8, CaseIterable {
+public enum ProbeColor: UInt8, CaseIterable, Codable {
     case color1 = 0x00
     case color2 = 0x01
     case color3 = 0x02

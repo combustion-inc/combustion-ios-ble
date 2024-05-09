@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-public enum FoodSafeState: UInt8 {
+public enum FoodSafeState: UInt8, Codable {
     case notSafe = 0x00
     case safe = 0x01
     case safetyImpossible = 0x02

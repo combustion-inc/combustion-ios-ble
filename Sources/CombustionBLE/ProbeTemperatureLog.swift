@@ -55,12 +55,21 @@ public class ProbeTemperatureLog : ObservableObject {
     
     /// Temporary place for incoming data points to accumulate prior to being inserted into the main
     /// data point dictionary. This prevents unnecesary re-sorting of the overall dictionary.
-    private var dataPointAccumulator : OrderedSet<LoggedProbeDataPoint>
+    private var dataPointAccumulator = OrderedSet<LoggedProbeDataPoint>()
     
+    /// Initialize empty temperature log
     public init(sessionInfo: SessionInformation) {
         dataPointsDict = OrderedDictionary<UInt32, LoggedProbeDataPoint>()
-        dataPointAccumulator = OrderedSet<LoggedProbeDataPoint>()
         sessionInformation = sessionInfo
+    }
+    
+    /// Initialize with data points
+    public init(sessionInformation: SessionInformation,
+                dataPointsDict: OrderedDictionary<UInt32, LoggedProbeDataPoint>, 
+                startTime: Date?) {
+        self.sessionInformation = sessionInformation
+        self.dataPointsDict = dataPointsDict
+        self.startTime = startTime
     }
     
     /// Finds the missing sequence number range in the specified range of sequence numbers.

@@ -518,6 +518,15 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
 extension DeviceManager : BleManagerDelegate {
     func updateBluetoothState(state: CBManagerState) {
         bluetoothState = state
+        
+        // Set all devices to `disconnected` if bluetooth manager
+        // is not powered on
+        if state != .poweredOn {
+            for device in devices.values {
+                device.updateConnectionState(.disconnected)
+            }
+        }
+
     }
     
     func didConnectTo(identifier: UUID) {

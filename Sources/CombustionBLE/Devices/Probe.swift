@@ -25,6 +25,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
+import Combine
 import Foundation
 
 /// Struct containing info about a Probe device.
@@ -176,18 +177,16 @@ open class Probe : Device {
         return overheatingSensorList
     }
     
-
-    private var predictionManager: PredictionManager
-    private var instantReadFilter: InstantReadFilter
+    private var predictionLinearizer = PredictionLinearizer()
+    private var instantReadFilter = InstantReadFilter()
     private var deviceManager = DeviceManager.shared
+    
+    private var cancellables: Set<AnyCancellable> = []
     
     /// Timer for periodically requesting session information
     private var sessionRequestTimer = Timer()
    
     init(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, identifier: UUID?) {
-        predictionManager = PredictionManager()
-        instantReadFilter = InstantReadFilter()
-        
         serialNumber = advertising.serialNumber
         id = advertising.modeId.id
         color = advertising.modeId.color
@@ -196,7 +195,11 @@ open class Probe : Device {
         
         updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI, bleIdentifier: identifier)
         
-        predictionManager.delegate = self
+        predictionLinearizer.$predictionInfo
+            .sink { predictionInfo in
+                self.predictionInfo = predictionInfo
+            }
+            .store(in: &cancellables)
         
         // Start timer to re-request session information every 5 seconds
         sessionRequestTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true, block: { [weak self] _ in
@@ -343,10 +346,10 @@ extension Probe {
                 
                 // Update sequence number range
                 sequenceNumberRange = deviceStatus.minSequenceNumber...deviceStatus.maxSequenceNumber
-         
+                
                 // Update prediction status
-                predictionManager.updatePredictionStatus(deviceStatus.predictionStatus,
-                                                         sequenceNumber: deviceStatus.maxSequenceNumber)
+                predictionLinearizer.updatePredictionStatus(deviceStatus.predictionStatus,
+                                                            sequenceNumber: deviceStatus.maxSequenceNumber)
                 
                 // Update temperatures, virtual sensors, and check for overheating
                 updateTemperatures(temperatures: deviceStatus.temperatures,
@@ -617,11 +620,5 @@ extension Probe {
     
     private func requestSessionInformation() {
         deviceManager.readSessionInfo(probe: self)
-    }
-}
-
-extension Probe: PredictionManagerDelegate {
-    func publishPredictionInfo(info: PredictionInfo?) {
-        self.predictionInfo = info
     }
 }

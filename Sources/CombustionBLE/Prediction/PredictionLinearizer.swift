@@ -27,11 +27,7 @@ SOFTWARE.
 
 import Foundation
 
-protocol PredictionManagerDelegate: AnyObject {
-    func publishPredictionInfo(info: PredictionInfo?)
-}
-
-class PredictionManager {
+public class PredictionLinearizer {
     private enum Constants {
         /// Prediction is considered stale after 15 seconds
         static let PREDICTION_STALE_TIMEOUT = 15.0
@@ -53,9 +49,8 @@ class PredictionManager {
         static let PREDICTION_STATUS_RATE_MS : Double = 5000.0
     }
     
-    weak var delegate: PredictionManagerDelegate?
+    @Published public var predictionInfo: PredictionInfo?
 
-    private var previousPredictionInfo: PredictionInfo?
     private var previousSequenceNumber: UInt32?
     
     private var linearizationTargetSeconds = 0
@@ -66,12 +61,14 @@ class PredictionManager {
     private var linearizationTimer = Timer()
     private var staleTimer = Timer()
     
-    func updatePredictionStatus(_ predictionStatus: PredictionStatus?, sequenceNumber: UInt32) {
+    public init() { }
+    
+    public func updatePredictionStatus(_ predictionStatus: PredictionStatus?, sequenceNumber: UInt32) {
         // Duplicate status messages are sent when prediction is started. Ignore the duplicate sequence number
         // unless the prediction information has changed
         if let previousSequence = previousSequenceNumber {
             if (previousSequence == sequenceNumber &&
-                predictionStatus?.predictionSetPointTemperature == previousPredictionInfo?.predictionSetPointTemperature) {
+                predictionStatus?.predictionSetPointTemperature == predictionInfo?.predictionSetPointTemperature) {
                 return
             }
         }
@@ -129,7 +126,7 @@ class PredictionManager {
         // Do not return a value if above max seconds remaining
         guard predictionStatus.predictionValueSeconds <= PredictionStatus.MAX_PREDICTION_TIME else { return nil }
         
-        let previousSecondsRemaining = previousPredictionInfo?.secondsRemaining
+        let previousSecondsRemaining = predictionInfo?.secondsRemaining
         
         if(predictionStatus.predictionValueSeconds > Constants.LOW_RESOLUTION_CUTOFF_SECONDS) {
             
@@ -189,7 +186,7 @@ class PredictionManager {
     }
     
     private func updatePredictionSeconds() {
-        guard let previousInfo = previousPredictionInfo else { return }
+        guard let previousInfo = predictionInfo else { return }
 
         currentLinearizationMs -= linearizationTimerUpdateValue
         
@@ -212,12 +209,9 @@ class PredictionManager {
         publishPredictionInfo(info)
     }
     
-    private func publishPredictionInfo(_ predictionInfo: PredictionInfo?) {
-        // Save prediction information
-        previousPredictionInfo = predictionInfo
-        
-        // Send new value to delegate
-        delegate?.publishPredictionInfo(info: predictionInfo)
+    private func publishPredictionInfo(_ info: PredictionInfo?) {
+        // Publish the new value to delegate
+        predictionInfo = info
     }
     
     private func clearLinearizationTimer() {

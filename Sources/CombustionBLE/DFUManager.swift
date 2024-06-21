@@ -65,10 +65,9 @@ class DFUManager {
     func setDefaultDFUForType(dfuFile: URL?, dfuType: DFUDeviceType) {
         guard let dfuFile = dfuFile else { return }
         
-        do {
-            defaultFirmware[dfuType] = try DFUFirmware(urlToZipFile: dfuFile)
+        if let dfu = DFUFirmware(urlToZipFile: dfuFile) {
+            defaultFirmware[dfuType] = dfu
         }
-        catch { }
     }
     
     func uniqueIdentifierFrom(advertisingName: String) -> String? {

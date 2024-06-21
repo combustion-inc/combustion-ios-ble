@@ -87,22 +87,28 @@ public enum IntegratedModeProduct: UInt16, CaseIterable {
     // not selectable in application
     // 0x0000: Default
     
-    case beef = 0x0001
-    case beefGround = 0x0002
-    case chicken = 0x0003
-    case chickenGround = 0x0004
-    case pork = 0x0005
-    case porkGround = 0x0006
-    case ham = 0x0007
-    case hamGround = 0x0008
-    case turkey = 0x0009
-    case turkeyGround = 0x000A
-    case lamb = 0x000B
-    case lambGround = 0x000C
-    case fishAndShellfish = 0x000D
-    case fishAndShellfishGround = 0x000E
+    case meats = 0x0001
+    case meatsGround = 0x0002
+    case deprecatedChicken = 0x0003
+    case poultryGround = 0x0004
+    case deprecatedPork = 0x0005
+    case deprecatedPorkGround = 0x0006
+    case deprecatedHam = 0x0007
+    case deprecatedHamGround = 0x0008
+    case deprecatedTurkey = 0x0009
+    case deprecatedTurkeyGround = 0x000A
+    case deprecatedLamb = 0x000B
+    case deprecatedLambGround = 0x000C
+    case seafood = 0x000D
+    case seafoodGround = 0x000E
     case dairyMilkLessThan10PctFat = 0x000F
-    case game = 0x0010
+    case other = 0x0010
+    case seafoodStuffed = 0x0011
+    case eggs = 0x0012
+    case eggsYolk = 0x0013
+    case eggsWhite = 0x0014
+    case dairyCreamsGreaterThan10PercentFat = 0x0015
+    case dairyOther = 0x0016
     
     // 0x0010 - 0x03FE: Resevered
     
@@ -115,23 +121,19 @@ public enum IntegratedModeProduct: UInt16, CaseIterable {
 extension IntegratedModeProduct {
     public func toString() -> String {
         switch self {
-        case .beef: return "Beef"
-        case .beefGround: return "Beef (Ground)"
-        case .chicken: return "Chicken"
-        case .chickenGround: return "Chicken (Ground)"
-        case .pork: return "Pork"
-        case .porkGround: return "Pork (Ground)"
-        case .ham: return "Ham"
-        case .hamGround: return "Ham (Ground)"
-        case .turkey: return "Turkey"
-        case .turkeyGround: return "Turkey (Ground)"
-        case .lamb: return "Lamb"
-        case .lambGround: return "Lamb (Ground)"
-        case .fishAndShellfish: return "Fish and Shellfish"
-        case .fishAndShellfishGround: return "Fish and Shellfish (Ground)"
+        case .meatsGround: return "Meats (Ground, Chopped, or Stuffed)"
+        case .poultryGround: return "Poultry (Ground, Chopped, or Stuffed)"
+        case .deprecatedPorkGround: return "Pork (Ground, Chopped, or Stuffed)"
+        case .deprecatedHamGround: return "Ham (Ground)"
+        case .deprecatedTurkeyGround: return "Turkey (Ground)"
+        case .deprecatedLambGround: return "Lamb (Ground)"
+        case .seafoodGround: return "Seafood (Ground or Chopped)"
+        case .seafoodStuffed: return "Seafood (Stuffed)"
         case .dairyMilkLessThan10PctFat: return "Dairy - Milk (<10% fat)"
-        case .game: return "Game"
-        case .custom: return "Custom"
+        case .dairyOther: return "Dairy - Ice Cream Mix, Eggnog"
+        case .eggsYolk: return "Eggs yolk"
+        case .eggsWhite: return "Eggs white"
+        default: return "Poultry (Default)"
         }
     }
 }

@@ -218,14 +218,12 @@ extension Device {
     }
     
     public func runSoftwareUpgrade(dfuFile: URL) -> Bool {
-        do {
-            let dfu = try DFUFirmware(urlToZipFile: dfuFile)
-            dfuServiceController = BleManager.shared.startFirmwareUpdate(device: self, dfu: dfu)
-            return true
-        }
-        catch {
+        guard let dfu = DFUFirmware(urlToZipFile: dfuFile) else {
             return false
         }
+        
+        dfuServiceController = BleManager.shared.startFirmwareUpdate(device: self, dfu: dfu)
+        return true
     }
     
     private func handleRSSIUpdate() {

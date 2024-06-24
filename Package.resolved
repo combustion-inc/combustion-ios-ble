@@ -6,8 +6,8 @@
         "repositoryURL": "https://github.com/NordicSemiconductor/IOS-DFU-Library",
         "state": {
           "branch": null,
-          "revision": "f73213f2de57c8c53700725ee2cff6cd35ef66fe",
-          "version": "4.11.1"
+          "revision": "2db0d4f26a4812dfb7553e50e2a10f53f7b95114",
+          "version": "4.15.3"
         }
       },
       {
@@ -24,8 +24,8 @@
         "repositoryURL": "https://github.com/weichsel/ZIPFoundation",
         "state": {
           "branch": null,
-          "revision": "ec32d62d412578542c0ffb7a6ce34d3e64b43b94",
-          "version": "0.9.11"
+          "revision": "02b6abe5f6eef7e3cbd5f247c5cc24e246efcfe0",
+          "version": "0.9.19"
         }
       }
     ]

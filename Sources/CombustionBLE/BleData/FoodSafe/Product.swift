@@ -83,10 +83,7 @@ extension SimplifiedModeProduct {
 
 
 public enum IntegratedModeProduct: UInt16, CaseIterable {
-    // Default value is defined in documentation, but
-    // not selectable in application
-    // 0x0000: Default
-    
+    case poultry = 0x0000
     case meats = 0x0001
     case meatsGround = 0x0002
     case deprecatedChicken = 0x0003

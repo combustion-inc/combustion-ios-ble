@@ -86,16 +86,7 @@ public enum IntegratedModeProduct: UInt16, CaseIterable {
     case poultry = 0x0000
     case meats = 0x0001
     case meatsGround = 0x0002
-    case deprecatedChicken = 0x0003
     case poultryGround = 0x0004
-    case deprecatedPork = 0x0005
-    case deprecatedPorkGround = 0x0006
-    case deprecatedHam = 0x0007
-    case deprecatedHamGround = 0x0008
-    case deprecatedTurkey = 0x0009
-    case deprecatedTurkeyGround = 0x000A
-    case deprecatedLamb = 0x000B
-    case deprecatedLambGround = 0x000C
     case seafood = 0x000D
     case seafoodGround = 0x000E
     case dairyMilkLessThan10PctFat = 0x000F
@@ -113,24 +104,4 @@ public enum IntegratedModeProduct: UInt16, CaseIterable {
     
     // 10 bit enum value
     static let MASK: UInt16 = 0x3FF
-}
-
-extension IntegratedModeProduct {
-    public func toString() -> String {
-        switch self {
-        case .meatsGround: return "Meats (Ground, Chopped, or Stuffed)"
-        case .poultryGround: return "Poultry (Ground, Chopped, or Stuffed)"
-        case .deprecatedPorkGround: return "Pork (Ground, Chopped, or Stuffed)"
-        case .deprecatedHamGround: return "Ham (Ground)"
-        case .deprecatedTurkeyGround: return "Turkey (Ground)"
-        case .deprecatedLambGround: return "Lamb (Ground)"
-        case .seafoodGround: return "Seafood (Ground or Chopped)"
-        case .seafoodStuffed: return "Seafood (Stuffed)"
-        case .dairyMilkLessThan10PctFat: return "Dairy - Milk (<10% fat)"
-        case .dairyOther: return "Dairy - Ice Cream Mix, Eggnog"
-        case .eggsYolk: return "Eggs yolk"
-        case .eggsWhite: return "Eggs white"
-        default: return "Poultry (Default)"
-        }
-    }
 }

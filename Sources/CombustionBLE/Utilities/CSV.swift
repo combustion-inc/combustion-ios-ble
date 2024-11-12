@@ -45,7 +45,7 @@ public struct CSV {
         output.append("Combustion Inc. Probe Data")
         output.append("App: iOS \(appVersion)")
         output.append("CSV version: 4")
-        output.append("Probe S/N: \(String(format: "%4X", serialNumber))")
+        output.append("Probe S/N: \(serialNumber)")
         output.append("Probe FW version: \(firmareVersion ?? "??")")
         output.append("Probe HW revision: \(hardwareRevision ?? "??")")
         output.append("Framework: iOS")
@@ -119,7 +119,7 @@ public struct CSV {
         dateFormatter.dateFormat = "yyyy-MM-dd HH_mm_ss"
         let dateString = dateFormatter.string(from: date)
         
-        let filename = "ProbeData_\(String(format: "%4X", serialNumber))_\(dateString).csv"
+        let filename = "ProbeData_\(serialNumber)_\(dateString).csv"
         
         // Generate the CSV
         let csv = probeDataToCsv(serialNumber: serialNumber,

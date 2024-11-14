@@ -1,0 +1,81 @@
+//  NodeReadFeatureFlagsRequest.swift
+
+/*--
+MIT License
+
+Copyright (c) 2021 Combustion Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+--*/
+
+import Foundation
+
+class NodeReadFeatureFlagsRequest: NodeRequest {
+    
+    private enum Constants {
+        static let PAYLOAD_LENGTH = 4
+    }
+    
+    init(serialNumber: String) {
+        var serialNumberBytes = serialNumber
+        var payload = Data()
+        payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
+        
+        super.init(outgoingPayload: payload, type: .getFeatureFlags)
+    }
+}
+
+class NodeReadFeatureFlagsResponse : NodeResponse {
+    
+    enum Constants {
+        static let MINIMUM_PAYLOAD_LENGTH = 14
+        
+        static let SERIAL_RANGE = NodeResponse.HEADER_LENGTH..<(NodeResponse.HEADER_LENGTH + 4)
+        static let FEATURE_FLAG_RANGE = (NodeResponse.HEADER_LENGTH + 10)..<(NodeResponse.HEADER_LENGTH + 14)
+    }
+    
+    let nodeSerialNumber: String
+    let flags: FeatureFlags
+    
+    init(data: Data, success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
+        
+        let serialRaw = data.subdata(in: Constants.SERIAL_RANGE)
+        nodeSerialNumber = String(decoding: serialRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))
+        
+        let flagData = data.subdata(in: Constants.FEATURE_FLAG_RANGE)
+        flags = FeatureFlags.fromRawData(data: flagData)
+        
+        super.init(success: success,
+                   requestId: requestId,
+                   responseId: responseId,
+                   payloadLength: payloadLength,
+                   messageType: .getFeatureFlags)
+    }
+}
+
+extension NodeReadFeatureFlagsResponse {
+
+    static func fromRaw(data: Data, success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) -> NodeReadFeatureFlagsResponse? {
+        if(payloadLength < Constants.MINIMUM_PAYLOAD_LENGTH) {
+            return nil
+        }
+            
+        return NodeReadFeatureFlagsResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: payloadLength)
+    }
+}

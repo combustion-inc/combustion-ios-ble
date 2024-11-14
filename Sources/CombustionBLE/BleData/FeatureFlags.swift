@@ -1,4 +1,4 @@
-//  NodeMessageType.swift
+//  FeatureFlags.swift
 
 /*--
 MIT License
@@ -26,27 +26,32 @@ SOFTWARE.
 
 import Foundation
 
-enum NodeMessageType: UInt8, CaseIterable  {
-    case setID = 0x01
-    case setColor = 0x02
-    case sessionInfo = 0x03
-    case log = 0x04
-    case setPrediction = 0x05
-    case readOverTemperature = 0x06
-    case configureFoodSafe = 0x07
-    case resetFoodSafe = 0x08
-    case getFeatureFlags = 0x30
+public struct FeatureFlags: Equatable {
     
-    case connected = 0x40
-    case disconnected = 0x41
-    case readNodeList = 0x42
-    case readNetworkTopology = 0x43
-    case readProbeList = 0x44
-    case probeStatus = 0x45
-    case probeFirmwareRevision = 0x46
-    case probeHardwareRevision = 0x47
-    case probeModelInformation = 0x48
-    case heartbeat = 0x49
-    case associateNode = 0x4A
-    case syncThermometerList = 0x4B
+    let wifi: Bool
+    
+    static let MASK: UInt8 = 0x0001
+}
+
+extension FeatureFlags {
+
+    /// Parses feature flag data from reversed set of bytes
+    static func fromReversed(bytes: [UInt8]) -> FeatureFlags {
+        let wifi = (bytes[0] & FeatureFlags.MASK) == 1
+        
+        return FeatureFlags(wifi: wifi)
+    }
+
+
+    /// Parses feature flag data from raw data buffer
+    static func fromRawData(data: Data) -> FeatureFlags {
+
+        // Reverse the byte order (this is a little-endian packed bitfield)
+        var bytes : [UInt8] = []
+        for byte in data {
+            bytes.insert(byte as UInt8, at: 0)
+        }
+        
+        return fromReversed(bytes: bytes)
+    }
 }

@@ -30,6 +30,10 @@ import Foundation
 /// can be a MeatNet Node.
 public class MeatNetNode: Device {
     
+    public enum FeatureFlag: CaseIterable {
+        case wifi
+    }
+    
     /// Serial Number
     @Published public internal(set) var serialNumberString: String?
     
@@ -38,6 +42,9 @@ public class MeatNetNode: Device {
     
     /// DFU device type
     @Published public internal(set) var dfuType: DFUDeviceType = .unknown
+    
+    /// Feature Flags
+    @Published public private(set) var featureFlags: [FeatureFlag]?
     
     /// Meatnet node name
     public var name: String {
@@ -70,6 +77,8 @@ public class MeatNetNode: Device {
         static let PROBE_REMOVE_CONNECTION_TIMEOUT = 30.0
     }
     
+    private var deviceManager = DeviceManager.shared
+    
     init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
         super.init(uniqueIdentifier: identifier.uuidString, bleIdentifier: identifier, RSSI: RSSI)
         updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI)
@@ -77,8 +86,20 @@ public class MeatNetNode: Device {
     
     func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber) {
         // Always update probe RSSI and isConnectable flag
+       
         self.rssi = RSSI.intValue
         self.isConnectable = isConnectable
+        
+        if self.serialNumberString == nil {
+            self.serialNumberString = String(format: "%08X", advertising.serialNumber)
+        }
+        
+        updateMissingInfo()
+    }
+    
+    override func updateConnectionState(_ state: Device.ConnectionState) {
+        super.updateConnectionState(state)
+        updateMissingInfo()
     }
     
     func dataReceivedFromProbe(_ probe: Probe?) {
@@ -116,6 +137,12 @@ public class MeatNetNode: Device {
             }
         }
     }
+    
+    func updateMissingInfo() {
+        if featureFlags == nil {
+            deviceManager.readFeatureFlags(device: self)
+        }
+    }
 
     /// Special handling for MeatNetNode model info.  Need to decode model info string
     /// to determine DFU type
@@ -128,5 +155,15 @@ public class MeatNetNode: Device {
         else if(modelInfo.contains("Charger")) {
             dfuType = .charger
         }
+    }
+    
+    func updateFeatureFlags(_ flags: FeatureFlags) {
+        var updatedFlags: [FeatureFlag] = []
+        
+        if flags.wifi {
+            updatedFlags.append(.wifi)
+        }
+        
+        self.featureFlags = updatedFlags
     }
 }

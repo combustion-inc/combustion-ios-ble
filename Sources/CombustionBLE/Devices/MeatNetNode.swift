@@ -139,7 +139,7 @@ public class MeatNetNode: Device {
     }
     
     func updateMissingInfo() {
-        if featureFlags == nil {
+        if featureFlags == nil, checkDeviceSupportForFeatureFlags() {
             deviceManager.readFeatureFlags(device: self)
         }
     }
@@ -165,5 +165,21 @@ public class MeatNetNode: Device {
         }
         
         self.featureFlags = updatedFlags
+    }
+    
+    func checkDeviceSupportForFeatureFlags() -> Bool {
+        // if we can't determine the verison yet, we should check for feature flags
+        guard let version = firmareVersion else { return true }
+        
+        return switch dfuType {
+        case .display:
+            version >= "2.1.0"
+        case .charger:
+            version >= "2.1.0"
+        case .thermometer:
+            false
+        case .unknown:
+            false
+        }
     }
 }

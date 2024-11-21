@@ -30,14 +30,14 @@ public struct FeatureFlags: Equatable {
     
     let wifi: Bool
     
-    static let MASK: UInt8 = 0x0001
+    static let WIFI_MASK: UInt8 = 0x0001
 }
 
 extension FeatureFlags {
 
     /// Parses feature flag data from reversed set of bytes
     static func fromReversed(bytes: [UInt8]) -> FeatureFlags {
-        let wifi = (bytes[0] & FeatureFlags.MASK) == 1
+        let wifi = (bytes[0] & FeatureFlags.WIFI_MASK) == 1
         
         return FeatureFlags(wifi: wifi)
     }

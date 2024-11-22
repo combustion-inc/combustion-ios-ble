@@ -79,6 +79,8 @@ public class MeatNetNode: Device {
     
     private var deviceManager = DeviceManager.shared
     
+    var lastMissingInfoCheck: Date?
+    
     init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
         super.init(uniqueIdentifier: identifier.uuidString, bleIdentifier: identifier, RSSI: RSSI)
         updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI)
@@ -90,16 +92,7 @@ public class MeatNetNode: Device {
         self.rssi = RSSI.intValue
         self.isConnectable = isConnectable
         
-        if self.serialNumberString == nil {
-            self.serialNumberString = String(format: "%08X", advertising.serialNumber)
-        }
-        
-        updateMissingInfo()
-    }
-    
-    override func updateConnectionState(_ state: Device.ConnectionState) {
-        super.updateConnectionState(state)
-        updateMissingInfo()
+        updateMissingInfoIfRequired()
     }
     
     func dataReceivedFromProbe(_ probe: Probe?) {
@@ -138,10 +131,21 @@ public class MeatNetNode: Device {
         }
     }
     
-    func updateMissingInfo() {
+    func updateMissingInfoIfRequired() {
+        var shouldCheckForMissingInfo: Bool = true
+
+        // only attempt at most once every 10 seconds
+        if let date = lastMissingInfoCheck, Date().timeIntervalSince(date) < 5 {
+            shouldCheckForMissingInfo = false
+        }
+        
+        guard shouldCheckForMissingInfo else { return }
+        
         if featureFlags == nil, checkDeviceSupportForFeatureFlags() {
             deviceManager.readFeatureFlags(device: self)
         }
+        
+        lastMissingInfoCheck = Date()
     }
 
     /// Special handling for MeatNetNode model info.  Need to decode model info string

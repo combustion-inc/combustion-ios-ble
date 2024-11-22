@@ -135,7 +135,7 @@ class BleManager : NSObject {
     func readSerialNumber(identifier: String) {
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
            let characteristic = serialNumberCharacteristics[identifier] {
-            // Initiate read of hardware revision
+            // Initiate read of serial number
             connectionPeripheral.readValue(for: characteristic)
         }
     }

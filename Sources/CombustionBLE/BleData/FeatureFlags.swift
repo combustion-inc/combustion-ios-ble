@@ -37,7 +37,7 @@ extension FeatureFlags {
 
     /// Parses feature flag data from reversed set of bytes
     static func fromReversed(bytes: [UInt8]) -> FeatureFlags {
-        let wifi = (bytes[0] & FeatureFlags.WIFI_MASK) == 1
+        let wifi = (bytes[3] & FeatureFlags.WIFI_MASK) == 1
         
         return FeatureFlags(wifi: wifi)
     }

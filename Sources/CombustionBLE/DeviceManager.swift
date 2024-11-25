@@ -40,9 +40,13 @@ public protocol DeviceManagerProtocol {
                               completionHandler: @escaping MessageHandlers.SuccessCompletionHandler)
 }
 
+public protocol DeviceResponseHandlerProtocol: AnyObject {
+    func handleResponse(identifier: UUID, response: NodeResponse)
+}
+
 /// Singleton that provides list of detected Devices
 /// (either via Bluetooth or from a list in the Cloud)
-public class DeviceManager : DeviceManagerProtocol, ObservableObject {
+open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     
     /// Singleton accessor for class
     public static let shared = DeviceManager()
@@ -78,6 +82,8 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
     
     /// Connection manager to handle BLE connection logic
     private let connectionManager = ConnectionManager()
+    
+    public weak var deviceResponseHandler: DeviceResponseHandlerProtocol?
     
     public func addSimulatedProbe() {
         addDevice(device: SimulatedProbe())
@@ -523,6 +529,11 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
         // Send request to device
         BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
     }
+    
+    public func sendNodeRequest(node: MeatNetNode,
+                                           request: NodeRequest) {
+        BleManager.shared.sendRequestToNodes([node], request: request)
+    }
 }
 
 extension DeviceManager : BleManagerDelegate {
@@ -844,7 +855,8 @@ extension DeviceManager : BleManagerDelegate {
             }
         case .setPrediction, .configureFoodSafe, .resetFoodSafe:
             messageHandlers.callNodeSuccessCompletionHandler(response: response)
-            
+        case .custom(_):
+            deviceResponseHandler?.handleResponse(identifier: identifier, response: response)
         default: break
         }
 

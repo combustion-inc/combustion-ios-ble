@@ -27,7 +27,7 @@ SOFTWARE.
 import Foundation
 
 /// Class representing a Combustion BLE Node UART request.
-class NodeRequest : NodeUARTMessage {
+open class NodeRequest : NodeUARTMessage {
     /// Length of header component of message.
     static let HEADER_LENGTH = 10
     
@@ -35,7 +35,7 @@ class NodeRequest : NodeUARTMessage {
     var data = Data()
     
     /// Random ID for this request, for tracking request-response pairs
-    var requestId : UInt32
+    public var requestId : UInt32
     
     /// Length of payload
     let payloadLength: Int
@@ -46,7 +46,7 @@ class NodeRequest : NodeUARTMessage {
     /// Constructor for generating a new Request object.
     /// - parameter payloadLength: Length of payload of message
     /// - parameter type: Type of message
-    init(outgoingPayload: Data, type: NodeMessageType) {
+    public init(outgoingPayload: Data, type: NodeMessageType) {
         self.messageType = type
         
         // Sync Bytes { 0xCA, 0xFE }
@@ -57,7 +57,7 @@ class NodeRequest : NodeUARTMessage {
         var crcData = Data()
         
         // Message type
-        crcData.append(type.rawValue)
+        crcData.append(type.value)
         
         // Request ID
         self.requestId = UInt32.random(in: 1...UInt32.max)
@@ -109,7 +109,7 @@ extension NodeRequest {
             $0.load(as: UInt8.self)
         }
         
-        guard let messageType = NodeMessageType(rawValue: typeRaw) else {
+        guard let messageType = NodeMessageType.create(rawValue: typeRaw) else {
             print("CombustionBLE : NodeRequest::fromData(): Unknown message type in request : \(typeRaw)")
             return nil
         }
@@ -134,6 +134,12 @@ extension NodeRequest {
         
         let crcDataLength = 6 + Int(payloadLength)
         var crcData = data.dropFirst(4)
+        
+        guard crcData.count - crcDataLength > -1 else {
+            print("CombustionBLE : NodeRequest::fromData(): invalid CRC data length ")
+            return nil
+        }
+        
         crcData = crcData.dropLast(crcData.count - crcDataLength)
         
         let calculatedCRC = crcData.crc16ccitt()

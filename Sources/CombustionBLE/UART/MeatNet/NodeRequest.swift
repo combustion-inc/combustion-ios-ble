@@ -29,7 +29,7 @@ import Foundation
 /// Class representing a Combustion BLE Node UART request.
 open class NodeRequest : NodeUARTMessage {
     /// Length of header component of message.
-    static let HEADER_LENGTH = 10
+    public static let HEADER_LENGTH = 10
     
     /// Contains message data.
     var data = Data()
@@ -38,10 +38,10 @@ open class NodeRequest : NodeUARTMessage {
     public var requestId : UInt32
     
     /// Length of payload
-    let payloadLength: Int
+    public let payloadLength: Int
     
     /// Node message type
-    let messageType: NodeMessageType
+    public let messageType: NodeMessageType
     
     /// Constructor for generating a new Request object.
     /// - parameter payloadLength: Length of payload of message
@@ -84,7 +84,7 @@ open class NodeRequest : NodeUARTMessage {
     /// Constructor for an incoming Request object (from MeatNet).
     /// - parameter requestId: Request ID of this message from the Network
     /// - parameter payloadLength: Length of this message's payload
-    init(requestId: UInt32, payloadLength: Int, type: NodeMessageType) {
+    public init(requestId: UInt32, payloadLength: Int, type: NodeMessageType) {
         self.payloadLength = payloadLength
         self.requestId = requestId
         self.messageType = type
@@ -168,9 +168,24 @@ extension NodeRequest {
                 .probeModelInformation, .probeFirmwareRevision, .probeHardwareRevision, .sessionInfo, .getFeatureFlags:
             // Nothing to do for this message type
             return nil
+        case .custom(let address):
+            return NodeCustomRequest(data: data, requestId: requestId, payloadLength: Int(payloadLength), address: address)
         default:
             print("CombustionBLE : Unknown node request type: \(messageType)")
             return nil
         }
+    }
+}
+
+public class NodeCustomRequest: NodeRequest {
+    
+    public let requestData: Data
+    
+    public init(data: Data, requestId: UInt32, payloadLength: Int, address: UInt8) {
+        self.requestData = data
+             
+        super.init(requestId: requestId,
+                   payloadLength: payloadLength,
+                   type: .custom(address: address))
     }
 }

@@ -42,6 +42,7 @@ public protocol DeviceManagerProtocol {
 
 public protocol DeviceResponseHandlerProtocol: AnyObject {
     func handleResponse(identifier: UUID, response: NodeResponse)
+    func handleRequest(identifier: UUID, request: NodeRequest)
 }
 
 /// Singleton that provides list of detected Devices
@@ -879,6 +880,9 @@ extension DeviceManager : BleManagerDelegate {
         }
         else if let heartBeatRequest = request as? NodeHeartbeatRequest {
             // TODO handle heartBeatRequest
+        }
+        else if let request = request as? NodeCustomRequest {
+            deviceResponseHandler?.handleRequest(identifier: identifier, request: request)
         }
     }
     

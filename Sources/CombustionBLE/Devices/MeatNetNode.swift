@@ -30,6 +30,10 @@ import Foundation
 /// can be a MeatNet Node.
 public class MeatNetNode: Device {
     
+    public enum FeatureFlag: CaseIterable {
+        case wifi
+    }
+    
     /// Serial Number
     @Published public internal(set) var serialNumberString: String?
     
@@ -38,6 +42,9 @@ public class MeatNetNode: Device {
     
     /// DFU device type
     @Published public internal(set) var dfuType: DFUDeviceType = .unknown
+    
+    /// Feature Flags
+    @Published public private(set) var featureFlags: [FeatureFlag]?
     
     /// Meatnet node name
     public var name: String {
@@ -70,6 +77,10 @@ public class MeatNetNode: Device {
         static let PROBE_REMOVE_CONNECTION_TIMEOUT = 30.0
     }
     
+    private var deviceManager = DeviceManager.shared
+    
+    var lastMissingInfoCheck: Date?
+    
     init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
         super.init(uniqueIdentifier: identifier.uuidString, bleIdentifier: identifier, RSSI: RSSI)
         updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI)
@@ -77,8 +88,11 @@ public class MeatNetNode: Device {
     
     func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber) {
         // Always update probe RSSI and isConnectable flag
+       
         self.rssi = RSSI.intValue
         self.isConnectable = isConnectable
+        
+        updateMissingInfoIfRequired()
     }
     
     func dataReceivedFromProbe(_ probe: Probe?) {
@@ -116,6 +130,23 @@ public class MeatNetNode: Device {
             }
         }
     }
+    
+    func updateMissingInfoIfRequired() {
+        var shouldCheckForMissingInfo: Bool = true
+
+        // only attempt at most once every 10 seconds
+        if let date = lastMissingInfoCheck, Date().timeIntervalSince(date) < 5 {
+            shouldCheckForMissingInfo = false
+        }
+        
+        guard shouldCheckForMissingInfo else { return }
+        
+        if featureFlags == nil, checkDeviceSupportForFeatureFlags() {
+            deviceManager.readFeatureFlags(device: self)
+        }
+        
+        lastMissingInfoCheck = Date()
+    }
 
     /// Special handling for MeatNetNode model info.  Need to decode model info string
     /// to determine DFU type
@@ -127,6 +158,32 @@ public class MeatNetNode: Device {
         }
         else if(modelInfo.contains("Charger")) {
             dfuType = .charger
+        }
+    }
+    
+    func updateFeatureFlags(_ flags: FeatureFlags) {
+        var updatedFlags: [FeatureFlag] = []
+        
+        if flags.wifi {
+            updatedFlags.append(.wifi)
+        }
+        
+        self.featureFlags = updatedFlags
+    }
+    
+    func checkDeviceSupportForFeatureFlags() -> Bool {
+        // if we can't determine the verison yet, we should check for feature flags
+        guard let version = firmareVersion else { return true }
+        
+        return switch dfuType {
+        case .display:
+            version >= "2.1.0"
+        case .charger:
+            version >= "2.1.0"
+        case .thermometer:
+            false
+        case .unknown:
+            false
         }
     }
 }

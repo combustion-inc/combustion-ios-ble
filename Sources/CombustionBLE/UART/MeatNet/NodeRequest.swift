@@ -137,7 +137,6 @@ extension NodeRequest {
         crcData = crcData.dropLast(crcData.count - crcDataLength)
         
         let calculatedCRC = crcData.crc16ccitt()
-        
         guard crc == calculatedCRC else {
             print("NodeRequest::fromData(): Invalid CRC")
             return nil
@@ -160,10 +159,9 @@ extension NodeRequest {
             return NodeHeartbeatRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
             
         case .syncThermometerList, .connected, .disconnected, .log, .associateNode,
-                .probeModelInformation, .probeFirmwareRevision, .probeHardwareRevision, .sessionInfo:
+                .probeModelInformation, .probeFirmwareRevision, .probeHardwareRevision, .sessionInfo, .getFeatureFlags:
             // Nothing to do for this message type
             return nil
-
         default:
             print("CombustionBLE : Unknown node request type: \(messageType)")
             return nil

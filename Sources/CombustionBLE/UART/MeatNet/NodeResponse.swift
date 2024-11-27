@@ -150,6 +150,8 @@ extension NodeResponse {
             return NodeReadHardwareRevisionResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .probeModelInformation:
             return NodeReadModelInfoResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .getFeatureFlags:
+            return NodeReadFeatureFlagsResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
 //        case .readOverTemperature:
 //            return NodeReadOverTemperatureResponse(data: data, success: success, payloadLength: Int(payloadLength))
         default:

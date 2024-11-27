@@ -381,6 +381,16 @@ public class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
     }
     
+    public func readFeatureFlags(device: MeatNetNode) {
+        if let serialNumber = device.serialNumberString {
+            let request = NodeReadFeatureFlagsRequest(serialNumber: serialNumber)
+            BleManager.shared.sendRequestToNodes([device], request: request)
+        }
+        else if let bleIdentifier = device.bleIdentifier {
+            BleManager.shared.readSerialNumber(identifier: bleIdentifier)
+        }
+    }
+    
     /// Sends a request to the probe to read the session information.
     ///
     /// - parameter device: Device to read session info
@@ -766,7 +776,6 @@ extension DeviceManager : BleManagerDelegate {
             if let readOverTemperatureResponse = response as? ReadOverTemperatureResponse {
                 messageHandlers.callReadOverTemperatureCompletionHandler(identifier, response: readOverTemperatureResponse)
             }
-            
         // Messages with success completion handlers
         case .configureFoodSafe, 
                 .resetFoodSafe,
@@ -828,7 +837,11 @@ extension DeviceManager : BleManagerDelegate {
                let probe = findProbeBySerialNumber(serialNumber: readLogsResponse.probeSerialNumber) {
                     probe.processLogResponse(logResponse: readLogsResponse)
                 }
-            
+        case .getFeatureFlags:
+            if let featureFlagsResponse = response as? NodeReadFeatureFlagsResponse,
+               let device = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode {
+                device.updateFeatureFlags(featureFlagsResponse.flags)
+            }
         case .setPrediction, .configureFoodSafe, .resetFoodSafe:
             messageHandlers.callNodeSuccessCompletionHandler(response: response)
             

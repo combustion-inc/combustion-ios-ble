@@ -27,26 +27,26 @@ SOFTWARE.
 import Foundation
 
 /// Class representing a Combustion BLE Node UART request.
-class NodeRequest : NodeUARTMessage {
+open class NodeRequest : NodeUARTMessage {
     /// Length of header component of message.
-    static let HEADER_LENGTH = 10
+    public static let HEADER_LENGTH = 10
     
     /// Contains message data.
     var data = Data()
     
     /// Random ID for this request, for tracking request-response pairs
-    var requestId : UInt32
+    public var requestId : UInt32
     
     /// Length of payload
-    let payloadLength: Int
+    public let payloadLength: Int
     
     /// Node message type
-    let messageType: NodeMessageType
+    public let messageType: NodeMessageType
     
     /// Constructor for generating a new Request object.
     /// - parameter payloadLength: Length of payload of message
     /// - parameter type: Type of message
-    init(outgoingPayload: Data, type: NodeMessageType) {
+    public init(outgoingPayload: Data, type: NodeMessageType) {
         self.messageType = type
         
         // Sync Bytes { 0xCA, 0xFE }
@@ -57,7 +57,7 @@ class NodeRequest : NodeUARTMessage {
         var crcData = Data()
         
         // Message type
-        crcData.append(type.rawValue)
+        crcData.append(type.value)
         
         // Request ID
         self.requestId = UInt32.random(in: 1...UInt32.max)
@@ -84,7 +84,7 @@ class NodeRequest : NodeUARTMessage {
     /// Constructor for an incoming Request object (from MeatNet).
     /// - parameter requestId: Request ID of this message from the Network
     /// - parameter payloadLength: Length of this message's payload
-    init(requestId: UInt32, payloadLength: Int, type: NodeMessageType) {
+    public init(requestId: UInt32, payloadLength: Int, type: NodeMessageType) {
         self.payloadLength = payloadLength
         self.requestId = requestId
         self.messageType = type
@@ -109,7 +109,7 @@ extension NodeRequest {
             $0.load(as: UInt8.self)
         }
         
-        guard let messageType = NodeMessageType(rawValue: typeRaw) else {
+        guard let messageType = NodeMessageType.create(rawValue: typeRaw) else {
             print("CombustionBLE : NodeRequest::fromData(): Unknown message type in request : \(typeRaw)")
             return nil
         }
@@ -134,6 +134,12 @@ extension NodeRequest {
         
         let crcDataLength = 6 + Int(payloadLength)
         var crcData = data.dropFirst(4)
+        
+        guard crcData.count - crcDataLength > -1 else {
+            print("CombustionBLE : NodeRequest::fromData(): invalid CRC data length ")
+            return nil
+        }
+        
         crcData = crcData.dropLast(crcData.count - crcDataLength)
         
         let calculatedCRC = crcData.crc16ccitt()
@@ -162,9 +168,24 @@ extension NodeRequest {
                 .probeModelInformation, .probeFirmwareRevision, .probeHardwareRevision, .sessionInfo, .getFeatureFlags:
             // Nothing to do for this message type
             return nil
+        case .custom(let address):
+            return NodeCustomRequest(data: data, requestId: requestId, payloadLength: Int(payloadLength), address: address)
         default:
             print("CombustionBLE : Unknown node request type: \(messageType)")
             return nil
         }
+    }
+}
+
+public class NodeCustomRequest: NodeRequest {
+    
+    public let requestData: Data
+    
+    public init(data: Data, requestId: UInt32, payloadLength: Int, address: UInt8) {
+        self.requestData = data
+             
+        super.init(requestId: requestId,
+                   payloadLength: payloadLength,
+                   type: .custom(address: address))
     }
 }

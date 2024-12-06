@@ -26,21 +26,21 @@ SOFTWARE.
 
 import Foundation
 
-class NodeResponse : NodeUARTMessage {
-    static let HEADER_LENGTH = 15
+open class NodeResponse : NodeUARTMessage {
+    public static let HEADER_LENGTH = 15
     
     // Node Response messages have the leftmost bit in the 'message type' field set to 1.
-    static let RESPONSE_TYPE_FLAG : UInt8 = 0x80
+    public static let RESPONSE_TYPE_FLAG : UInt8 = 0x80
     
-    let success: Bool
-    let payloadLength: Int
+    public let success: Bool
+    public let payloadLength: Int
     
-    let requestId: UInt32
-    let responseId: UInt32
+    public let requestId: UInt32
+    public let responseId: UInt32
     
-    let messageType: NodeMessageType
+    public let messageType: NodeMessageType
     
-    init(success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int, messageType: NodeMessageType) {
+    public init(success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int, messageType: NodeMessageType) {
         self.success = success
         self.payloadLength = payloadLength
         self.requestId = requestId
@@ -72,7 +72,7 @@ extension NodeResponse {
             return nil
         }
         
-        guard let messageType = NodeMessageType(rawValue: (typeRaw & ~RESPONSE_TYPE_FLAG)) else {
+        guard let messageType = NodeMessageType.create(rawValue: (typeRaw & ~RESPONSE_TYPE_FLAG)) else {
             print("NodeResponse::fromData(): Unknown message type in response")
             return nil
         }
@@ -152,11 +152,27 @@ extension NodeResponse {
             return NodeReadModelInfoResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .getFeatureFlags:
             return NodeReadFeatureFlagsResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .custom(let address):
+            return NodeCustomResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength), messageType: messageType)
 //        case .readOverTemperature:
 //            return NodeReadOverTemperatureResponse(data: data, success: success, payloadLength: Int(payloadLength))
         default:
             print("Unknown node response type: \(messageType)")
             return nil
         }
+    }
+}
+
+public class NodeCustomResponse: NodeResponse {
+    
+    public let data: Data
+    
+    public init(data: Data, success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int, messageType: NodeMessageType) {
+        self.data = data
+        super.init(success: success,
+                   requestId: requestId,
+                   responseId: responseId,
+                   payloadLength: payloadLength,
+                   messageType: messageType)
     }
 }

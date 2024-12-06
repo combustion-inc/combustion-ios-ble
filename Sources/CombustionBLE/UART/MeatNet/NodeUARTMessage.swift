@@ -27,7 +27,7 @@ SOFTWARE.
 import Foundation
 
 /// Class representing a Combustion BLE Node UART request.
-class NodeUARTMessage {
+open class NodeUARTMessage {
     static func fromData(_ data : Data) -> [NodeUARTMessage] {
         var messages = [NodeUARTMessage]()
         

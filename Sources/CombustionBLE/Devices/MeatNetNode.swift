@@ -173,11 +173,11 @@ public class MeatNetNode: Device {
     
     func checkDeviceSupportForFeatureFlags() -> Bool {
         // if we can't determine the verison yet, we should check for feature flags
-        guard let version = firmareVersion else { return true }
+        guard let version = firmareVersion?.replacingOccurrences(of: "v", with: "") else { return true }
         
         return switch dfuType {
         case .display:
-            version >= "2.1.0"
+            version >= "2.1.0" || version == "2.0.0-162-gc0cd"
         case .charger:
             version >= "2.1.0"
         case .thermometer:

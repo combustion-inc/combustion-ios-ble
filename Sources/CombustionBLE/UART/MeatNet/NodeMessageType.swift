@@ -26,27 +26,95 @@ SOFTWARE.
 
 import Foundation
 
-enum NodeMessageType: UInt8, CaseIterable  {
-    case setID = 0x01
-    case setColor = 0x02
-    case sessionInfo = 0x03
-    case log = 0x04
-    case setPrediction = 0x05
-    case readOverTemperature = 0x06
-    case configureFoodSafe = 0x07
-    case resetFoodSafe = 0x08
-    case getFeatureFlags = 0x30
+public enum NodeMessageType: Hashable, CaseIterable {
     
-    case connected = 0x40
-    case disconnected = 0x41
-    case readNodeList = 0x42
-    case readNetworkTopology = 0x43
-    case readProbeList = 0x44
-    case probeStatus = 0x45
-    case probeFirmwareRevision = 0x46
-    case probeHardwareRevision = 0x47
-    case probeModelInformation = 0x48
-    case heartbeat = 0x49
-    case associateNode = 0x4A
-    case syncThermometerList = 0x4B
+    case setID
+    case setColor
+    case sessionInfo
+    case log
+    case setPrediction
+    case readOverTemperature
+    case configureFoodSafe
+    case resetFoodSafe
+    case getFeatureFlags
+    
+    case connected
+    case disconnected
+    case readNodeList
+    case readNetworkTopology
+    case readProbeList
+    case probeStatus
+    case probeFirmwareRevision
+    case probeHardwareRevision
+    case probeModelInformation
+    case heartbeat
+    case associateNode
+    case syncThermometerList
+    
+    case custom(address: UInt8)
+    
+    public static var allCases: [NodeMessageType] {
+        return [.setID,
+            .setColor,
+            .sessionInfo,
+            .log,
+            .setPrediction,
+            .readOverTemperature,
+            .configureFoodSafe,
+            .resetFoodSafe,
+            .getFeatureFlags,
+            .connected,
+            .disconnected,
+            .readNodeList,
+            .readNetworkTopology,
+            .readProbeList,
+            .probeStatus,
+            .probeFirmwareRevision,
+            .probeHardwareRevision,
+            .probeModelInformation,
+            .heartbeat,
+            .associateNode,
+            .syncThermometerList]
+    }
+}
+
+extension NodeMessageType {
+    
+    public var value : UInt8 {
+        return switch self {
+        case .setID: 0x01
+        case .setColor: 0x02
+        case .sessionInfo: 0x03
+        case .log: 0x04
+        case .setPrediction: 0x05
+        case .readOverTemperature: 0x06
+        case .configureFoodSafe: 0x07
+        case .resetFoodSafe: 0x08
+        case .getFeatureFlags: 0x30
+        case .connected: 0x40
+        case .disconnected: 0x41
+        case .readNodeList: 0x42
+        case .readNetworkTopology: 0x43
+        case .readProbeList: 0x44
+        case .probeStatus: 0x45
+        case .probeFirmwareRevision: 0x46
+        case .probeHardwareRevision: 0x47
+        case .probeModelInformation: 0x48
+        case .heartbeat: 0x49
+        case .associateNode: 0x4A
+        case .syncThermometerList: 0x4B
+        case .custom(let value):
+            value
+        }
+    }
+    
+    
+    public static func create(rawValue: UInt8) -> NodeMessageType? {
+        if let value = allCases.first(where: { $0.value == rawValue }) {
+            return value
+        }
+        else {
+            return .custom(address: rawValue)
+        }
+    }
 }

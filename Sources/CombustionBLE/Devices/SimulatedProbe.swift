@@ -107,7 +107,7 @@ public class SimulatedProbe: Probe {
                                       predictionStatus: predictionStatus,
                                       foodSafeData: nil,
                                       foodSafeStatus: nil,
-                                      overheatingSensors: [])
+                                      overheatingSensors: OverheatingSensors(sensorIndexes: []))
         
         updateProbeStatus(deviceStatus: probeStatus)
     }

@@ -149,34 +149,6 @@ open class Probe : Device {
     /// Last hop count that updated 'normal mode' info (nil = direct from Probe)
     @Published public internal(set) var lastNormalModeHopCount : HopCount? = nil
     
-    /// Overheating thresholds for each sensor (in degrees C)
-    private static let OVERHEATING_THRESHOLDS: [Double] = [
-        105.0, // T1
-        105.0, // T2
-        115.0, // T3
-        125.0, // T4
-        315.56, // T5
-        315.56, // T6
-        315.56, // T7
-        315.56, // T8
-    ]
-    
-    /// Find overheating sensors by comparing against threshold for each temperature
-    static func findOverheatingSensors(_ temperatures: [Double]?) -> [Int] {
-        guard let temperatures = temperatures else { return [] }
-        
-        var overheatingSensorList : [Int] = []
-            
-        // Check T1-T8
-        for i in 0...7 {
-            if temperatures[i] >= Probe.OVERHEATING_THRESHOLDS[i] {
-                overheatingSensorList.append(i)
-            }
-        }
-        
-        return overheatingSensorList
-    }
-    
     private var predictionLinearizer = PredictionLinearizer()
     private var instantReadFilter = InstantReadFilter()
     private var deviceManager = DeviceManager.shared
@@ -360,7 +332,7 @@ extension Probe {
                 foodSafeStatus = deviceStatus.foodSafeStatus
                 
                 // Overheating sensors
-                overheatingSensors = deviceStatus.overheatingSensors
+                overheatingSensors = deviceStatus.overheatingSensors.sensorIndexes
                 overheating = !overheatingSensors.isEmpty
                 
                 // Log the temperature data point for "Normal" status updates

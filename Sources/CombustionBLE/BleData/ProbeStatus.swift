@@ -53,7 +53,7 @@ public struct ProbeStatus {
     public let foodSafeStatus: FoodSafeStatus?
     
     /// Overheating sensors
-    public let overheatingSensors: [Int]
+    public let overheatingSensors: OverheatingSensors
     
     public init(minSequenceNumber: UInt32,
                 maxSequenceNumber: UInt32,
@@ -63,7 +63,7 @@ public struct ProbeStatus {
                 predictionStatus: PredictionStatus,
                 foodSafeData: FoodSafeData?,
                 foodSafeStatus: FoodSafeStatus?,
-                overheatingSensors: [Int]) {
+                overheatingSensors: OverheatingSensors) {
         self.minSequenceNumber = minSequenceNumber
         self.maxSequenceNumber = maxSequenceNumber
         self.temperatures = temperatures
@@ -141,18 +141,12 @@ extension ProbeStatus {
         
         // Decode Over heating flags
         if data.count >= Constants.OVERHEAT_BYTE_RANGE.endIndex {
-            let data = data.subdata(in: Constants.OVERHEAT_BYTE_RANGE)
-            var sensors = [Int]()
-            for i in 0..<8 {
-                if (data[0] & (1 << i)) != 0 {
-                    sensors.append(i)
-                }
-            }
-            overheatingSensors = sensors
+            let byte = data.subdata(in: Constants.OVERHEAT_BYTE_RANGE)[0]
+            overheatingSensors = OverheatingSensors.fromByte(byte)
         }
         else {
             // If status does not contain flags, then calculate from temperatures
-            overheatingSensors = Probe.findOverheatingSensors(temperatures.values)
+            overheatingSensors = OverheatingSensors.fromTemperatures(temperatures.values)
         }
     }
 }

@@ -149,34 +149,6 @@ open class Probe : Device {
     /// Last hop count that updated 'normal mode' info (nil = direct from Probe)
     @Published public internal(set) var lastNormalModeHopCount : HopCount? = nil
     
-    /// Overheating thresholds for each sensor (in degrees C)
-    public static let OVERHEATING_THRESHOLDS: [Double] = [
-        105.0, // T1
-        105.0, // T2
-        115.0, // T3
-        125.0, // T4
-        315.56, // T5
-        315.56, // T6
-        315.56, // T7
-        315.56, // T8
-    ]
-    
-    /// Find overheating sensors by comparing against threshold for each temperature
-    public static func findOverheatingSensors(_ temperatures: [Double]?) -> [Int] {
-        guard let temperatures = temperatures else { return [] }
-        
-        var overheatingSensorList : [Int] = []
-            
-        // Check T1-T8
-        for i in 0...7 {
-            if temperatures[i] >= Probe.OVERHEATING_THRESHOLDS[i] {
-                overheatingSensorList.append(i)
-            }
-        }
-        
-        return overheatingSensorList
-    }
-    
     private var predictionLinearizer = PredictionLinearizer()
     private var instantReadFilter = InstantReadFilter()
     private var deviceManager = DeviceManager.shared
@@ -359,6 +331,10 @@ extension Probe {
                 foodSafeData = deviceStatus.foodSafeData
                 foodSafeStatus = deviceStatus.foodSafeStatus
                 
+                // Overheating sensors
+                overheatingSensors = deviceStatus.overheatingSensors.sensorIndexes
+                overheating = !overheatingSensors.isEmpty
+                
                 // Log the temperature data point for "Normal" status updates
                 addDataToLog(LoggedProbeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus),
                              sampledAt: Date())
@@ -401,8 +377,8 @@ extension Probe {
             if let missingRange = missingRange {
                 // Request missing records
                 deviceManager.requestLogsFrom(self,
-                                                     minSequence: missingRange.lowerBound,
-                                                     maxSequence: missingRange.upperBound)
+                                              minSequence: missingRange.lowerBound,
+                                              maxSequence: missingRange.upperBound)
             }
         }
 
@@ -443,15 +419,6 @@ extension Probe {
         guard Date().timeIntervalSince(lastUpdateTime) > Constants.MINIMUM_LAST_UPDATE_CHANGE else { return }
         
         lastUpdateTime = Date()
-    }
-    
-    /// Checks if the probe is currently exceeding any temperature thresholds.
-    private func checkOverheating() {
-        guard let currentTemperatures = currentTemperatures else { return }
-        
-        // Publish overheating values
-        overheatingSensors = Probe.findOverheatingSensors(currentTemperatures.values)
-        overheating = !overheatingSensors.isEmpty
     }
     
     private func addDataToLog(_ dataPoint: LoggedProbeDataPoint, sampledAt: Date? = nil) {
@@ -613,9 +580,6 @@ extension Probe {
         virtualTemperatures = VirtualTemperatures(coreTemperature: core,
                                                   surfaceTemperature: surface,
                                                   ambientTemperature: ambient)
-        
-        // Check if the probe is overheating
-        checkOverheating()
     }
     
     private func requestSessionInformation() {

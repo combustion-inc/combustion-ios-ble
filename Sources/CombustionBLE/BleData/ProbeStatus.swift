@@ -90,7 +90,7 @@ extension ProbeStatus {
         static let OVERHEAT_BYTE_RANGE = 48..<49
     }
     
-    init?(fromData data: Data) {
+    init?(fromData data: Data, overheatRange: Range<Int> = Constants.OVERHEAT_BYTE_RANGE) {
         guard data.count >= Constants.PREDICTION_STATUS_RANGE.endIndex else { return nil }
         
         let minRaw = data.subdata(in: Constants.MIN_SEQ_RANGE)
@@ -140,8 +140,8 @@ extension ProbeStatus {
         }
         
         // Decode Over heating flags
-        if data.count >= Constants.OVERHEAT_BYTE_RANGE.endIndex {
-            let byte = data.subdata(in: Constants.OVERHEAT_BYTE_RANGE)[0]
+        if data.count >= overheatRange.endIndex {
+            let byte = data.subdata(in: overheatRange)[0]
             overheatingSensors = OverheatingSensors.fromByte(byte)
         }
         else {

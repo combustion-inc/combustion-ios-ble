@@ -53,18 +53,21 @@ class NodeProbeStatusRequest: NodeRequest {
         let hopCountRaw: Data
         
         // Parse Probe Status
-        // Probe status will be 30 bytes or 48 bytes, depending on the firmware version of node
         let payloadLength = data.count - NodeRequest.HEADER_LENGTH
+        
+        // Note - ProbeStatus can parse the entire payload intelligently. Pass it the entire remainder of
+        // the message.
+        probeStatusRaw = data.subdata(in: (sequenceByteIndex + 4)..<data.count)
+        
+        // Probe status will be 30 bytes or 48 bytes, depending on the firmware version of node
         if(payloadLength >= Constants.PAYLOAD_LENGTH) {
-            probeStatusRaw = data.subdata(in: (sequenceByteIndex + 4)..<(sequenceByteIndex + 52))
             hopCountRaw = data.subdata(in: (sequenceByteIndex + 52)..<(sequenceByteIndex + 53))
         }
         else {
-            probeStatusRaw = data.subdata(in: (sequenceByteIndex + 4)..<(sequenceByteIndex + 34))
             hopCountRaw = data.subdata(in: (sequenceByteIndex + 34)..<(sequenceByteIndex + 35))
         }
         
-        if let ps = ProbeStatus(fromData: probeStatusRaw) {
+        if let ps = ProbeStatus(fromData: probeStatusRaw, overheatRange: 49..<50) {
             self.probeStatus = ps
         }
         

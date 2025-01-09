@@ -141,8 +141,16 @@ extension ProbeStatus {
         
         // Decode Over heating flags
         if data.count >= overheatRange.endIndex {
-            let byte = data.subdata(in: overheatRange)[0]
-            overheatingSensors = OverheatingSensors.fromByte(byte)
+            
+            // Sanity check for overheating flags. If none of the temperatures are
+            // above previous temperature thresholds, then there are no overheating sensors
+            if !OverheatingSensors.fromTemperatures(temperatures.values).isAnySensorOverheating() {
+                overheatingSensors = OverheatingSensors.fromBools([])
+            }
+            else {
+                let byte = data.subdata(in: overheatRange)[0]
+                overheatingSensors = OverheatingSensors.fromByte(byte)
+            }
         }
         else {
             // If status does not contain flags, then calculate from temperatures

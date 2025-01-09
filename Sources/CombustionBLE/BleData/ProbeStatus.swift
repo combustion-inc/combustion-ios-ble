@@ -143,7 +143,8 @@ extension ProbeStatus {
         if data.count >= overheatRange.endIndex {
             
             // Sanity check for overheating flags. If none of the temperatures are
-            // above previous temperature thresholds, then there are no overheating sensors
+            // above previous temperature thresholds, then there are no overheating sensors.
+            // This check was added due to a bug in Node (display and booster) firmware versions < 2.2.0
             if !OverheatingSensors.fromTemperatures(temperatures.values).isAnySensorOverheating() {
                 overheatingSensors = OverheatingSensors.fromBools([])
             }

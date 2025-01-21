@@ -30,6 +30,7 @@ public enum NodeMessageType: Hashable, CaseIterable {
     
     case setID
     case setColor
+    case setPowerMode
     case sessionInfo
     case log
     case setPrediction
@@ -90,6 +91,7 @@ extension NodeMessageType {
         case .readOverTemperature: 0x06
         case .configureFoodSafe: 0x07
         case .resetFoodSafe: 0x08
+        case .setPowerMode: 0x09
         case .getFeatureFlags: 0x30
         case .connected: 0x40
         case .disconnected: 0x41

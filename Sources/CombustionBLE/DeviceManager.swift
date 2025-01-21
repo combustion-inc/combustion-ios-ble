@@ -295,6 +295,22 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
     }
     
+    /// Set probe power mode on a specified node
+    /// - parameter probe: Probe to set the power mode on
+    /// - parameter powerMode: new power mode
+    /// - parameter completionHandler: Completion handler to be called once operation is complete
+    public func setProbePowerMode(_ probe: Probe, powerMode: ProbePowerMode, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        let request = SetPowerModeRequest(mode: powerMode)
+        
+        // Store completion handler
+        messageHandlers.addSuccessCompletionHandler(probe, request: request, completionHandler: completionHandler)
+        
+        // Send request to probe
+        if let bleIdentifier = probe.bleIdentifier {
+            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+        }
+    }
+    
     /// Sends a request to the device to set/change the set point temperature for the time to
     /// removal prediction.  If a prediction is not currently active, it will be started.  If a
     /// removal prediction is currently active, then the set point will be modified.  If another
@@ -792,6 +808,7 @@ extension DeviceManager : BleManagerDelegate {
         case .configureFoodSafe, 
                 .resetFoodSafe,
                 .setColor,
+                .setPowerMode,
                 .setID,
                 .setPrediction:
                 messageHandlers.callSuccessHandler(identifier, response: response)

@@ -55,41 +55,52 @@ public enum ProbeMode: UInt8, CaseIterable {
     case error       = 0x03
 }
 
+public enum ProbePowerMode: UInt8, CaseIterable {
+    case normal   = 0x00
+    case alwaysOn = 0x01
+}
+
 public struct ModeId {
     public let id: ProbeID
     public let color: ProbeColor
     public let mode: ProbeMode
+    public let powerMode : ProbePowerMode
     
-    public init(id: ProbeID, color: ProbeColor, mode: ProbeMode) {
+    public init(id: ProbeID, color: ProbeColor, mode: ProbeMode, powerMode: ProbePowerMode) {
         self.id = id
         self.color = color
         self.mode = mode
+        self.powerMode = powerMode
     }
 }
 
 extension ModeId {
     private enum Constants {
-        static let PRODE_ID_MASK: UInt8 = 0x7
-        static let PRODE_ID_SHIFT: UInt8 = 5
-        static let PRODE_COLOR_MASK: UInt8 = 0x7
-        static let PRODE_COLOR_SHIFT: UInt8 = 2
-        static let PRODE_MODE_MASK: UInt8 = 0x3
+        static let PROBE_ID_MASK: UInt8 = 0x7
+        static let PROBE_ID_SHIFT: UInt8 = 5
+        static let PROBE_COLOR_MASK: UInt8 = 0x7
+        static let PROBE_COLOR_SHIFT: UInt8 = 2
+        static let PROBE_MODE_MASK: UInt8 = 0x3
+        static let PROBE_POWER_MODE_MASK: UInt8 = 0x4
     }
     
     static func fromByte(_ byte: UInt8) -> ModeId {
-        let rawProbeID = (byte  >> Constants.PRODE_ID_SHIFT ) & Constants.PRODE_ID_MASK
+        let rawProbeID = (byte  >> Constants.PROBE_ID_SHIFT ) & Constants.PROBE_ID_MASK
         let id = ProbeID(rawValue: rawProbeID) ?? .ID1
         
-        let rawProbeColor = (byte >> Constants.PRODE_COLOR_SHIFT) & Constants.PRODE_COLOR_MASK
+        let rawProbeColor = (byte >> Constants.PROBE_COLOR_SHIFT) & Constants.PROBE_COLOR_MASK
         let color =  ProbeColor(rawValue: rawProbeColor) ?? .color1
         
-        let rawMode = byte & (Constants.PRODE_MODE_MASK)
+        let rawMode = byte & (Constants.PROBE_MODE_MASK)
         let mode = ProbeMode(rawValue: rawMode) ?? .normal
         
-        return ModeId(id: id, color: color, mode: mode)
+        let rawPowerMode = byte & (Constants.PROBE_POWER_MODE_MASK)
+        let powerMode = ProbePowerMode(rawValue: rawPowerMode) ?? .normal
+        
+        return ModeId(id: id, color: color, mode: mode, powerMode: powerMode)
     }
     
     static func defaultValues() -> ModeId {
-        return ModeId(id: .ID1, color: .color1, mode: .normal)
+        return ModeId(id: .ID1, color: .color1, mode: .normal, powerMode: .normal)
     }
 }

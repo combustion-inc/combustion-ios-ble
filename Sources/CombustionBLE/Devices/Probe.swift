@@ -223,7 +223,7 @@ extension Probe {
         /// Number of seconds after which status notifications should be considered stale.
         static let STATUS_NOTIFICATION_STALE_TIMEOUT = 16.0
         
-        /// Minimu number of seconds before lastUpdateTime is updated
+        /// Minimum number of seconds before lastUpdateTime is updated
         static let MINIMUM_LAST_UPDATE_CHANGE = 1.0
     }
     

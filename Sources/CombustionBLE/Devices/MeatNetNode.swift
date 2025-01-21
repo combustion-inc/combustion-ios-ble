@@ -76,7 +76,7 @@ public class MeatNetNode: Device {
         /// Number of seconds after which probe should be removed from Node list
         static let PROBE_REMOVE_CONNECTION_TIMEOUT = 30.0
         
-        /// Minimu number of seconds before lastUpdateTime is updated
+        /// Minimum number of seconds before lastUpdateTime is updated
         static let MINIMUM_LAST_UPDATE_CHANGE = 1.0
     }
     

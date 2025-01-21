@@ -75,6 +75,9 @@ public class MeatNetNode: Device {
     private enum Constants {
         /// Number of seconds after which probe should be removed from Node list
         static let PROBE_REMOVE_CONNECTION_TIMEOUT = 30.0
+        
+        /// Minimum number of seconds before lastUpdateTime is updated
+        static let MINIMUM_LAST_UPDATE_CHANGE = 1.0
     }
     
     private var deviceManager = DeviceManager.shared
@@ -93,6 +96,7 @@ public class MeatNetNode: Device {
         self.isConnectable = isConnectable
         
         updateMissingInfoIfRequired()
+        updateLastUpdateTime()
     }
     
     func dataReceivedFromProbe(_ probe: Probe?) {
@@ -103,6 +107,7 @@ public class MeatNetNode: Device {
         
         // Update last time data was recieved for probe
         lastTimeDataRecieved[probe.serialNumber] = Date()
+        updateLastUpdateTime()
     }
     
     /// Removes probe from probe list
@@ -129,6 +134,8 @@ public class MeatNetNode: Device {
                 removeConnectionToProbe(probeSerial)
             }
         }
+        
+        super.updateDeviceStale()
     }
     
     func updateMissingInfoIfRequired() {
@@ -146,6 +153,12 @@ public class MeatNetNode: Device {
         }
         
         lastMissingInfoCheck = Date()
+    }
+    
+    func updateLastUpdateTime() {
+        guard Date().timeIntervalSince(lastUpdateTime) > Constants.MINIMUM_LAST_UPDATE_CHANGE else { return }
+        
+        lastUpdateTime = Date()
     }
 
     /// Special handling for MeatNetNode model info.  Need to decode model info string

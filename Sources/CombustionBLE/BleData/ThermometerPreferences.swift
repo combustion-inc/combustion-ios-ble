@@ -1,9 +1,7 @@
-//  MessageType.swift
-
 /*--
 MIT License
 
-Copyright (c) 2021 Combustion Inc.
+Copyright (c) 2022 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,17 +22,34 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
-import Foundation
+public enum ProbePowerMode: UInt8, CaseIterable, Codable {
+    case normal   = 0x00
+    case alwaysOn = 0x01
+}
 
-enum MessageType: UInt8, CaseIterable  {
-    case setID = 0x01
-    case setColor = 0x02
-    case sessionInfo = 0x03
-    case log = 0x04
-    case setPrediction = 0x05
-    case readOverTemperature = 0x06
-    case configureFoodSafe = 0x07
-    case resetFoodSafe = 0x08
-    case setPowerMode = 0x09
-    case resetSession = 0x0A
+public struct ThermometerPreferences {
+    
+    public let powerMode: ProbePowerMode
+    
+    public init(powerMode: ProbePowerMode) {
+        self.powerMode = powerMode
+    }
+}
+
+extension ThermometerPreferences {
+    
+    private enum Constants {
+        static let POWER_MODE_MASK: UInt8 = 0x3
+    }
+    
+    static func fromByte(_ byte: UInt8) -> ThermometerPreferences {
+        let rawMode = byte & (Constants.POWER_MODE_MASK)
+        let mode = ProbePowerMode(rawValue: rawMode) ?? .normal
+        
+        return ThermometerPreferences(powerMode: mode)
+    }
+    
+    static func defaultValues() -> ThermometerPreferences {
+        return ThermometerPreferences(powerMode: .normal)
+    }
 }

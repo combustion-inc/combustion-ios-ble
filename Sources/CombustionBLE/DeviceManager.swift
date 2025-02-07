@@ -295,6 +295,21 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
     }
     
+    /// Set probe power mode on a specified node
+    /// - parameter probe: Probe to set the power mode on
+    /// - parameter powerMode: new power mode
+    /// - parameter completionHandler: Completion handler to be called once operation is complete
+    public func setProbePowerMode(_ probe: Probe, powerMode: ProbePowerMode, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        if shouldSendMessageDirectlyTo(probe: probe) {
+            let request = SetPowerModeRequest(mode: powerMode)
+            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+        }
+        else {
+            let request = NodeSetPowerModeRequest(serialNumber: probe.serialNumber, mode: powerMode)
+            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+        }
+    }
+    
     /// Sends a request to the device to set/change the set point temperature for the time to
     /// removal prediction.  If a prediction is not currently active, it will be started.  If a
     /// removal prediction is currently active, then the set point will be modified.  If another
@@ -806,6 +821,7 @@ extension DeviceManager : BleManagerDelegate {
         case .configureFoodSafe, 
                 .resetFoodSafe,
                 .setColor,
+                .setPowerMode,
                 .setID,
                 .setPrediction,
                 .resetSession:
@@ -869,7 +885,7 @@ extension DeviceManager : BleManagerDelegate {
                let device = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode {
                 device.updateFeatureFlags(featureFlagsResponse.flags)
             }
-        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .resetSession:
+        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession:
             messageHandlers.callNodeSuccessCompletionHandler(response: response)
         case .custom(_):
             deviceResponseHandler?.handleResponse(identifier: identifier, response: response)

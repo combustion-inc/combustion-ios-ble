@@ -126,6 +126,8 @@ extension Response {
             return SetIDResponse(success: success, payloadLength: Int(payloadLength))
         case .setColor:
             return SetColorResponse(success: success, payloadLength: Int(payloadLength))
+        case .setPowerMode:
+            return SetPowerModeResponse(success: success, payloadLength: Int(payloadLength))
         case .sessionInfo:
             return SessionInfoResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
         case .setPrediction:

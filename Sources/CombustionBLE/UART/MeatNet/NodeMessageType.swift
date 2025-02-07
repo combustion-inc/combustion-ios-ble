@@ -50,6 +50,7 @@ public enum NodeMessageType: Hashable, CaseIterable {
     case heartbeat
     case associateNode
     case syncThermometerList
+    case resetSession
     
     case custom(address: UInt8)
     
@@ -74,7 +75,8 @@ public enum NodeMessageType: Hashable, CaseIterable {
             .probeModelInformation,
             .heartbeat,
             .associateNode,
-            .syncThermometerList]
+            .syncThermometerList,
+                .resetSession]
     }
 }
 
@@ -103,6 +105,7 @@ extension NodeMessageType {
         case .heartbeat: 0x49
         case .associateNode: 0x4A
         case .syncThermometerList: 0x4B
+        case .resetSession: 0x0A
         case .custom(let value):
             value
         }

@@ -496,6 +496,20 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
     }
     
+    /// Sends a request to reset the current session for a probe
+    ///  - Parameter probe: The probe to reset
+    ///  - parameter completionHandler: Completion handler to be called operation is complete
+    public func resetSession(_ probe: Probe, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        if shouldSendMessageDirectlyTo(probe: probe) {
+            let request = ResetSessionRequest()
+            BleManager.shared.sendRequest(identifier: probe.bleIdentifier, request: request)
+        }
+        else {
+            let request = NodeResetSessionRequest(serialNumber: probe.serialNumber)
+            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+        }
+    }
+    
     /// Set the DFU file to be used on devices with failed software upgrade.
     /// A failed upgrade will occur if the user kills the application in the middle of
     /// the software upgrade process.  After this method is called, DFU will be initiated
@@ -793,7 +807,8 @@ extension DeviceManager : BleManagerDelegate {
                 .resetFoodSafe,
                 .setColor,
                 .setID,
-                .setPrediction:
+                .setPrediction,
+                .resetSession:
                 messageHandlers.callSuccessHandler(identifier, response: response)
         }
     }
@@ -854,7 +869,7 @@ extension DeviceManager : BleManagerDelegate {
                let device = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode {
                 device.updateFeatureFlags(featureFlagsResponse.flags)
             }
-        case .setPrediction, .configureFoodSafe, .resetFoodSafe:
+        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .resetSession:
             messageHandlers.callNodeSuccessCompletionHandler(response: response)
         case .custom(_):
             deviceResponseHandler?.handleResponse(identifier: identifier, response: response)

@@ -60,6 +60,7 @@ public enum NodeMessageType: Hashable, CaseIterable {
             .sessionInfo,
             .log,
             .setPrediction,
+            .setPowerMode,
             .readOverTemperature,
             .configureFoodSafe,
             .resetFoodSafe,

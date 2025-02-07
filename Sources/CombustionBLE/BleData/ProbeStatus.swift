@@ -55,6 +55,9 @@ public struct ProbeStatus {
     /// Overheating sensors
     public let overheatingSensors: OverheatingSensors
     
+    /// Thermometer preferences
+    public let thermometerPreferences: ThermometerPreferences
+    
     public init(minSequenceNumber: UInt32,
                 maxSequenceNumber: UInt32,
                 temperatures: ProbeTemperatures,
@@ -63,7 +66,8 @@ public struct ProbeStatus {
                 predictionStatus: PredictionStatus,
                 foodSafeData: FoodSafeData?,
                 foodSafeStatus: FoodSafeStatus?,
-                overheatingSensors: OverheatingSensors) {
+                overheatingSensors: OverheatingSensors,
+                preferences: ThermometerPreferences) {
         self.minSequenceNumber = minSequenceNumber
         self.maxSequenceNumber = maxSequenceNumber
         self.temperatures = temperatures
@@ -73,6 +77,7 @@ public struct ProbeStatus {
         self.foodSafeData = foodSafeData
         self.foodSafeStatus = foodSafeStatus
         self.overheatingSensors = overheatingSensors
+        self.thermometerPreferences = preferences
     }
 }
 
@@ -88,9 +93,10 @@ extension ProbeStatus {
         static let FOOD_SAFE_DATA_RANGE = 30..<40
         static let FOOD_SAFE_STATUS_RANGE = 40..<48
         static let OVERHEAT_BYTE_RANGE = 48..<49
+        static let PREFERENCES_BYTE_RANGE = 49..<50
     }
     
-    init?(fromData data: Data, overheatRange: Range<Int> = Constants.OVERHEAT_BYTE_RANGE) {
+    init?(fromData data: Data, overheatRange: Range<Int> = Constants.OVERHEAT_BYTE_RANGE, preferencesRange: Range<Int> = Constants.PREFERENCES_BYTE_RANGE) {
         guard data.count >= Constants.PREDICTION_STATUS_RANGE.endIndex else { return nil }
         
         let minRaw = data.subdata(in: Constants.MIN_SEQ_RANGE)
@@ -156,6 +162,15 @@ extension ProbeStatus {
         else {
             // If status does not contain flags, then calculate from temperatures
             overheatingSensors = OverheatingSensors.fromTemperatures(temperatures.values)
+        }
+        
+        if data.count >= preferencesRange.endIndex {
+            let preferencesByte = data.subdata(in: preferencesRange)[0]
+            thermometerPreferences = ThermometerPreferences.fromByte(preferencesByte)
+        }
+        else {
+            // default to normal if no preferences available
+            thermometerPreferences = ThermometerPreferences(powerMode: .normal)
         }
     }
 }

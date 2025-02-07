@@ -67,7 +67,9 @@ class NodeProbeStatusRequest: NodeRequest {
             hopCountRaw = data.subdata(in: (sequenceByteIndex + 34)..<(sequenceByteIndex + 35))
         }
         
-        if let ps = ProbeStatus(fromData: probeStatusRaw, overheatRange: 49..<50) {
+        if let ps = ProbeStatus(fromData: probeStatusRaw,
+                                overheatRange: 49..<50,
+                                preferencesRange: 50..<51) {
             self.probeStatus = ps
         }
         

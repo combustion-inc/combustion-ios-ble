@@ -55,22 +55,15 @@ public enum ProbeMode: UInt8, CaseIterable {
     case error       = 0x03
 }
 
-public enum ProbePowerMode: UInt8, CaseIterable {
-    case normal   = 0x00
-    case alwaysOn = 0x01
-}
-
 public struct ModeId {
     public let id: ProbeID
     public let color: ProbeColor
     public let mode: ProbeMode
-    public let powerMode : ProbePowerMode
     
-    public init(id: ProbeID, color: ProbeColor, mode: ProbeMode, powerMode: ProbePowerMode) {
+    public init(id: ProbeID, color: ProbeColor, mode: ProbeMode) {
         self.id = id
         self.color = color
         self.mode = mode
-        self.powerMode = powerMode
     }
 }
 
@@ -81,7 +74,6 @@ extension ModeId {
         static let PROBE_COLOR_MASK: UInt8 = 0x7
         static let PROBE_COLOR_SHIFT: UInt8 = 2
         static let PROBE_MODE_MASK: UInt8 = 0x3
-        static let PROBE_POWER_MODE_MASK: UInt8 = 0x4
     }
     
     static func fromByte(_ byte: UInt8) -> ModeId {
@@ -94,13 +86,10 @@ extension ModeId {
         let rawMode = byte & (Constants.PROBE_MODE_MASK)
         let mode = ProbeMode(rawValue: rawMode) ?? .normal
         
-        let rawPowerMode = byte & (Constants.PROBE_POWER_MODE_MASK)
-        let powerMode = ProbePowerMode(rawValue: rawPowerMode) ?? .normal
-        
-        return ModeId(id: id, color: color, mode: mode, powerMode: powerMode)
+        return ModeId(id: id, color: color, mode: mode)
     }
     
     static func defaultValues() -> ModeId {
-        return ModeId(id: .ID1, color: .color1, mode: .normal, powerMode: .normal)
+        return ModeId(id: .ID1, color: .color1, mode: .normal)
     }
 }

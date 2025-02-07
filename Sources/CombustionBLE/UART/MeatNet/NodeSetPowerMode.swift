@@ -24,20 +24,26 @@ SOFTWARE.
 
 import Foundation
 
-class SetPowerModeRequest: Request {
-    init(mode: ProbePowerMode) {
+class NodeSetPowerModeRequest: NodeRequest {
+    init(serialNumber: UInt32, mode: ProbePowerMode) {
+        var serialNumberBytes = serialNumber
+        
         var payload = Data()
+        
+        payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
         
         var modeBytes = mode.rawValue
         payload.append(Data(bytes: &modeBytes, count: MemoryLayout.size(ofValue: modeBytes)))
         
-        super.init(payload: payload, type: .setPowerMode)
+        super.init(outgoingPayload: payload, type: .setPowerMode)
     }
 }
 
-class SetPowerModeResponse : Response {
-    init(success: Bool, payloadLength: Int) {
+class NodeSetPowerModeResponse : NodeResponse {
+    init(success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
         super.init(success: success,
+                   requestId: requestId,
+                   responseId: responseId,
                    payloadLength: payloadLength,
                    messageType: .setPowerMode)
     }

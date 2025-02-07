@@ -1,7 +1,9 @@
+//  ModeId.swift
+
 /*--
 MIT License
 
-Copyright (c) 2021 Combustion Inc.
+Copyright (c) 2022 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,23 +24,34 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
-import Foundation
+public enum ProbePowerMode: UInt8, CaseIterable, Codable {
+    case normal   = 0x00
+    case alwaysOn = 0x01
+}
 
-class SetPowerModeRequest: Request {
-    init(mode: ProbePowerMode) {
-        var payload = Data()
-        
-        var modeBytes = mode.rawValue
-        payload.append(Data(bytes: &modeBytes, count: MemoryLayout.size(ofValue: modeBytes)))
-        
-        super.init(payload: payload, type: .setPowerMode)
+public struct ThermometerPreferences {
+    
+    public let powerMode: ProbePowerMode
+    
+    public init(powerMode: ProbePowerMode) {
+        self.powerMode = powerMode
     }
 }
 
-class SetPowerModeResponse : Response {
-    init(success: Bool, payloadLength: Int) {
-        super.init(success: success,
-                   payloadLength: payloadLength,
-                   messageType: .setPowerMode)
+extension ThermometerPreferences {
+    
+    private enum Constants {
+        static let POWER_MODE_MASK: UInt8 = 0x3
+    }
+    
+    static func fromByte(_ byte: UInt8) -> ThermometerPreferences {
+        let rawMode = byte & (Constants.POWER_MODE_MASK)
+        let mode = ProbePowerMode(rawValue: rawMode) ?? .normal
+        
+        return ThermometerPreferences(powerMode: mode)
+    }
+    
+    static func defaultValues() -> ThermometerPreferences {
+        return ThermometerPreferences(powerMode: .normal)
     }
 }

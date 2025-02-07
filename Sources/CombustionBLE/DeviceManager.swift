@@ -300,14 +300,13 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// - parameter powerMode: new power mode
     /// - parameter completionHandler: Completion handler to be called once operation is complete
     public func setProbePowerMode(_ probe: Probe, powerMode: ProbePowerMode, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        let request = SetPowerModeRequest(mode: powerMode)
-        
-        // Store completion handler
-        messageHandlers.addSuccessCompletionHandler(probe, request: request, completionHandler: completionHandler)
-        
-        // Send request to probe
-        if let bleIdentifier = probe.bleIdentifier {
-            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+        if shouldSendMessageDirectlyTo(probe: probe) {
+            let request = SetPowerModeRequest(mode: powerMode)
+            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+        }
+        else {
+            let request = NodeSetPowerModeRequest(serialNumber: probe.serialNumber, mode: powerMode)
+            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
         }
     }
     
@@ -871,7 +870,7 @@ extension DeviceManager : BleManagerDelegate {
                let device = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode {
                 device.updateFeatureFlags(featureFlagsResponse.flags)
             }
-        case .setPrediction, .configureFoodSafe, .resetFoodSafe:
+        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode:
             messageHandlers.callNodeSuccessCompletionHandler(response: response)
         case .custom(_):
             deviceResponseHandler?.handleResponse(identifier: identifier, response: response)

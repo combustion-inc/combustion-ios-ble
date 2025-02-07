@@ -1,5 +1,3 @@
-//  ModeId.swift
-
 /*--
 MIT License
 

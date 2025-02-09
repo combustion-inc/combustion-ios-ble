@@ -30,6 +30,7 @@ public enum NodeMessageType: Hashable, CaseIterable {
     
     case setID
     case setColor
+    case setPowerMode
     case sessionInfo
     case log
     case setPrediction
@@ -50,6 +51,7 @@ public enum NodeMessageType: Hashable, CaseIterable {
     case heartbeat
     case associateNode
     case syncThermometerList
+    case resetSession
     
     case custom(address: UInt8)
     
@@ -59,6 +61,7 @@ public enum NodeMessageType: Hashable, CaseIterable {
             .sessionInfo,
             .log,
             .setPrediction,
+            .setPowerMode,
             .readOverTemperature,
             .configureFoodSafe,
             .resetFoodSafe,
@@ -74,7 +77,8 @@ public enum NodeMessageType: Hashable, CaseIterable {
             .probeModelInformation,
             .heartbeat,
             .associateNode,
-            .syncThermometerList]
+            .syncThermometerList,
+                .resetSession]
     }
 }
 
@@ -90,6 +94,7 @@ extension NodeMessageType {
         case .readOverTemperature: 0x06
         case .configureFoodSafe: 0x07
         case .resetFoodSafe: 0x08
+        case .setPowerMode: 0x09
         case .getFeatureFlags: 0x30
         case .connected: 0x40
         case .disconnected: 0x41
@@ -103,6 +108,7 @@ extension NodeMessageType {
         case .heartbeat: 0x49
         case .associateNode: 0x4A
         case .syncThermometerList: 0x4B
+        case .resetSession: 0x0A
         case .custom(let value):
             value
         }

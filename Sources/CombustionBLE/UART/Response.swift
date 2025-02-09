@@ -126,6 +126,8 @@ extension Response {
             return SetIDResponse(success: success, payloadLength: Int(payloadLength))
         case .setColor:
             return SetColorResponse(success: success, payloadLength: Int(payloadLength))
+        case .setPowerMode:
+            return SetPowerModeResponse(success: success, payloadLength: Int(payloadLength))
         case .sessionInfo:
             return SessionInfoResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
         case .setPrediction:
@@ -136,6 +138,8 @@ extension Response {
             return ConfigureFoodSafeResponse(success: success, payloadLength: Int(payloadLength))
         case .resetFoodSafe:
             return ResetFoodSafeResponse(success: success, payloadLength: Int(payloadLength))
+        case .resetSession:
+            return ResetSessionResponse(success: success, payloadLength: Int(payloadLength))
         }
     }
 }

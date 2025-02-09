@@ -1,5 +1,3 @@
-//  MessageType.swift
-
 /*--
 MIT License
 
@@ -26,15 +24,27 @@ SOFTWARE.
 
 import Foundation
 
-enum MessageType: UInt8, CaseIterable  {
-    case setID = 0x01
-    case setColor = 0x02
-    case sessionInfo = 0x03
-    case log = 0x04
-    case setPrediction = 0x05
-    case readOverTemperature = 0x06
-    case configureFoodSafe = 0x07
-    case resetFoodSafe = 0x08
-    case setPowerMode = 0x09
-    case resetSession = 0x0A
+class NodeSetPowerModeRequest: NodeRequest {
+    init(serialNumber: UInt32, mode: ProbePowerMode) {
+        var serialNumberBytes = serialNumber
+        
+        var payload = Data()
+        
+        payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
+        
+        var modeBytes = mode.rawValue
+        payload.append(Data(bytes: &modeBytes, count: MemoryLayout.size(ofValue: modeBytes)))
+        
+        super.init(outgoingPayload: payload, type: .setPowerMode)
+    }
+}
+
+class NodeSetPowerModeResponse : NodeResponse {
+    init(success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
+        super.init(success: success,
+                   requestId: requestId,
+                   responseId: responseId,
+                   payloadLength: payloadLength,
+                   messageType: .setPowerMode)
+    }
 }

@@ -1,9 +1,7 @@
-//  MessageType.swift
-
 /*--
 MIT License
 
-Copyright (c) 2021 Combustion Inc.
+Copyright (c) 2023 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,15 +24,18 @@ SOFTWARE.
 
 import Foundation
 
-enum MessageType: UInt8, CaseIterable  {
-    case setID = 0x01
-    case setColor = 0x02
-    case sessionInfo = 0x03
-    case log = 0x04
-    case setPrediction = 0x05
-    case readOverTemperature = 0x06
-    case configureFoodSafe = 0x07
-    case resetFoodSafe = 0x08
-    case setPowerMode = 0x09
-    case resetSession = 0x0A
+class ResetSessionRequest: Request {
+    init() {
+        let payload = Data()
+        
+        super.init(payload: payload, type: .resetSession)
+    }
+}
+
+class ResetSessionResponse : Response {
+    init(success: Bool, payloadLength: Int) {
+        super.init(success:success,
+                   payloadLength: payloadLength,
+                   messageType: .resetSession)
+    }
 }

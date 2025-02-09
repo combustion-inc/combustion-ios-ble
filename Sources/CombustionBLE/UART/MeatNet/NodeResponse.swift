@@ -154,6 +154,8 @@ extension NodeResponse {
             return NodeReadFeatureFlagsResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .setPowerMode:
             return NodeSetPowerModeResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .resetSession:
+            return NodeResetSessionResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .custom(let address):
             return NodeCustomResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength), messageType: messageType)
 //        case .readOverTemperature:

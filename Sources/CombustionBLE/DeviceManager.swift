@@ -517,7 +517,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     public func resetSession(_ probe: Probe, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
         if shouldSendMessageDirectlyTo(probe: probe) {
             let request = ResetSessionRequest()
-            BleManager.shared.sendRequest(identifier: probe.bleIdentifier, request: request)
+            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
         }
         else {
             let request = NodeResetSessionRequest(serialNumber: probe.serialNumber)

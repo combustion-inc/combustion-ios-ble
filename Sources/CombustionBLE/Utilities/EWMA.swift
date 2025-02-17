@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-class EWMA {
+public class EWMA {
     private var alpha: Float
     private var ewma: Float
     private var seeded: Bool
@@ -45,7 +45,7 @@ class EWMA {
     /// Gets the current value.
     ///
     /// - Returns: Current value for the moving average.
-    func get() -> Float {
+    public func get() -> Float {
         return ewma
     }
     

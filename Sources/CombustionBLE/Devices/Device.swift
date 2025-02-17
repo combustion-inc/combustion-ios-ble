@@ -110,7 +110,7 @@ open class Device : ObservableObject {
     
     private var dfuServiceController: DFUServiceController? = nil
     
-    private var rssiEWMA = EWMA(span: 6)
+    public var rssiEWMA = EWMA(span: 6)
     
     public init(uniqueIdentifier: String, bleIdentifier: UUID?, RSSI: NSNumber?) {
         self.uniqueIdentifier = uniqueIdentifier

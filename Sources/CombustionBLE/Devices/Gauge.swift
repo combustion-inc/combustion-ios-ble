@@ -25,8 +25,13 @@ SOFTWARE.
 
 import Foundation
 
-class Gauge: MeatNetNode {
+public class Gauge: MeatNetNode {
     
     @Published public internal(set) var currentTemperature: GaugeTemperature?
+    
+    /// Current session information
+    @Published public internal(set) var sessionInformation: SessionInformation?
+    
+    @Published public internal(set) var mostRecentStatus: GaugeStatus?
 
 }

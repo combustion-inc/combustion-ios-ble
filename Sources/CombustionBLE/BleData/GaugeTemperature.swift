@@ -23,13 +23,43 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
+import Foundation
+
 /// Contains most recent gauge temperatures, in celcius.
 public struct GaugeTemperature: Equatable {
 
-    // ambient sensory
-    public let value: Double
+    // ambient sensor
+    public let value: Double?
     
-    public init(value: Double) {
+    public init(value: Double?) {
         self.value = value
+    }
+}
+
+extension GaugeTemperature {
+
+    /// Parses temperature data from reversed set of bytes
+    static func fromReversed(bytes: [UInt8]) -> GaugeTemperature {
+        var rawTemps: [UInt16] = []
+        
+        // Add the temperatures in reverse order (reversed as it's a little-endian packed bitfield)
+        rawTemps.insert(UInt16(bytes[0]  & 0xFF) <<  5 | UInt16(bytes[1]  & 0xF8) >> 3, at: 0 )
+
+        let temperatures = rawTemps.map { Double($0) * 0.05 - 20.0 }
+        
+        return GaugeTemperature(value: temperatures.first ?? 0)
+    }
+
+
+    /// Parses temperature data from raw data buffer
+    static func fromRawData(data: Data) -> GaugeTemperature {
+
+        // Reverse the byte order (this is a little-endian packed bitfield)
+        var bytes : [UInt8] = []
+        for byte in data {
+            bytes.insert(byte as UInt8, at: 0)
+        }
+        
+        return fromReversed(bytes: bytes)
     }
 }

@@ -1,4 +1,4 @@
-//  Gauge.swift
+//  GaugeTemperature.swift
 /*--
 MIT License
 
@@ -23,10 +23,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
-import Foundation
+/// Contains most recent gauge temperatures, in celcius.
+public struct GaugeTemperature: Equatable {
 
-class Gauge: MeatNetNode {
+    // ambient sensory
+    public let value: Double
     
-    @Published public internal(set) var currentTemperature: GaugeTemperature?
-
+    public init(value: Double) {
+        self.value = value
+    }
 }

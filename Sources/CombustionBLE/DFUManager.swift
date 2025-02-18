@@ -32,6 +32,7 @@ public enum DFUDeviceType {
     case thermometer
     case display
     case charger
+    case gauge
     case unknown
 }
 
@@ -58,6 +59,7 @@ class DFUManager {
         static let THERMOMETER_DFU_NAME = "Thermom_DFU_"
         static let DISPLAY_DFU_NAME = "Display_DFU_"
         static let CHARGER_DFU_NAME = "Charger_DFU_"
+        static let GAUGE_DFU_NAME = "Gauge_DFU_"
         
         static let RETRY_TIME_DELAY = 20 // seconds
     }
@@ -76,16 +78,17 @@ class DFUManager {
     }
     
     static func bootloaderTypeFrom(advertisingName: String) -> DFUDeviceType {
-        if(advertisingName.contains(Constants.THERMOMETER_DFU_NAME)) {
+        if advertisingName.contains(Constants.THERMOMETER_DFU_NAME) {
             return .thermometer
         }
-        
-        if(advertisingName.contains(Constants.DISPLAY_DFU_NAME)) {
+        else if advertisingName.contains(Constants.DISPLAY_DFU_NAME) {
             return .display
         }
-        
-        if(advertisingName.contains(Constants.CHARGER_DFU_NAME)) {
+        else if advertisingName.contains(Constants.CHARGER_DFU_NAME) {
             return .charger
+        }
+        else if advertisingName.contains(Constants.GAUGE_DFU_NAME) {
+            return .gauge
         }
         
         return .unknown
@@ -156,8 +159,11 @@ class DFUManager {
             if node.dfuType == .charger {
                 return Constants.CHARGER_DFU_NAME
             }
-            else if(node.dfuType == .display) {
+            else if node.dfuType == .display {
                 return Constants.DISPLAY_DFU_NAME
+            }
+            else if node.dfuType == .gauge {
+                return Constants.GAUGE_DFU_NAME
             }
         }
 

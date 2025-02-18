@@ -63,6 +63,9 @@ public class MeatNetNode: Device {
         case .thermometer:
             // Node should not have a DFU type of thermometer
             return "Unknown \(serialNumber)"
+        
+        case .gauge:
+            return "Gauge \(serialNumber)"
         }
 
     }
@@ -166,11 +169,14 @@ public class MeatNetNode: Device {
     override func updateWithModelInfo(_ modelInfo: String) {
         super.updateWithModelInfo(modelInfo)
         
-        if(modelInfo.contains("Timer")) {
+        if modelInfo.contains("Timer") {
             dfuType = .display
         }
-        else if(modelInfo.contains("Charger")) {
+        else if modelInfo.contains("Charger") {
             dfuType = .charger
+        }
+        else if modelInfo.contains("Gauge") {
+            dfuType = .gauge
         }
     }
     
@@ -190,8 +196,10 @@ public class MeatNetNode: Device {
         
         return switch dfuType {
         case .display:
-            version >= "2.1.0" || version == "2.0.0-162-gc0cd"
+            version >= "2.1.0"
         case .charger:
+            version >= "2.1.0"
+        case .gauge:
             version >= "2.1.0"
         case .thermometer:
             false

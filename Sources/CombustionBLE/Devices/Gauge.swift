@@ -25,7 +25,7 @@ SOFTWARE.
 
 import Foundation
 
-public class Gauge: MeatNetNode {
+public class GrillGauge: MeatNetNode {
     
     @Published public internal(set) var currentTemperature: GaugeTemperature?
     
@@ -33,5 +33,8 @@ public class Gauge: MeatNetNode {
     @Published public internal(set) var sessionInformation: SessionInformation?
     
     @Published public internal(set) var mostRecentStatus: GaugeStatus?
+    
+    /// Whether or not probe is overheating
+    @Published public internal(set) var overheating: Bool = false
 
 }

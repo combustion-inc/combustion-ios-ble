@@ -34,60 +34,60 @@ class ConnectionManager {
     /// Tracks whether DFU mode is enabled.
     var dfuModeEnabled : Bool = false
     
-    /// List of thermometer serial numbers to connect to
-    private(set) var thermometerAllowList: Set<String>? = nil
+    /// List of device serial numbers to connect to
+    private(set) var deviceAllowList: Set<String>? = nil
     
     private var connectionTimers: [String: Timer] = [:]
     private var lastStatusUpdate: [String: Date] = [:]
     
     /// Number of seconds after which a direct connection should be made to probe
-    private let PROBE_STATUS_STALE_TIMEOUT = 10.0
+    private let DEVICE_STATUS_STALE_TIMEOUT = 10.0
     
-    /// Sets the allow list for thermometers.  Framework will only connect to thermometers
-    /// in the allow list and nodes that are advertising data from thermometer in whitelist.
-    /// - param whiteList: White list of probes serial numbers
-    func setThermometerAllowList(_ allowList: Set<String>) {
-        thermometerAllowList = allowList
+    /// Sets the allow list for devices.  Framework will only connect to devices
+    /// in the allow list and nodes that are advertising data from device in whitelist.
+    /// - param whiteList: White list of device serial numbers
+    func setDeviceAllowList(_ allowList: Set<String>) {
+        deviceAllowList = allowList
     }
     
-    func receivedProbeAdvertising(_ probe: Probe?) {
+    func receivedDeviceAdvertising(_ device: Device?) {
         // Nothing to do if already connected to probe
-        guard let probe = probe,
-              probe.connectionState != .connected else { return }
+        guard let device = device,
+              device.connectionState != .connected else { return }
         
-        var probeStatusStale = true
-        if let lastUpdateTime = lastStatusUpdate[probe.serialNumberString] {
-            probeStatusStale = Date().timeIntervalSince(lastUpdateTime) > PROBE_STATUS_STALE_TIMEOUT
+        var deviceStatusStale = true
+        if let lastUpdateTime = lastStatusUpdate[device.uniqueIdentifier] {
+            deviceStatusStale = Date().timeIntervalSince(lastUpdateTime) > DEVICE_STATUS_STALE_TIMEOUT
         }
         
-        if dfuModeEnabled { // In DFU mode, connect to probe if its in allow list
-            if probeInAllowList(probe) {
-                probe.connect()
+        if dfuModeEnabled { // In DFU mode, connect to device if its in allow list
+            if deviceInAllowList(device) {
+                device.connect()
             }
         }
-        else if !meatNetEnabled { // If meatnet is not enabled, always connect to probe
-            probe.connect()
+        else if !meatNetEnabled { // If meatnet is not enabled, always connect to device
+            device.connect()
         }
-        else { // When MeatNet is enabled and the probe data is stale, then connect to it
-            if probeInAllowList(probe) &&
-                probeStatusStale &&
-                (connectionTimers[probe.serialNumberString] == nil) {
+        else { // When MeatNet is enabled and the device data is stale, then connect to it
+            if deviceInAllowList(device) &&
+                deviceStatusStale &&
+                (connectionTimers[device.uniqueIdentifier] == nil) {
                 
                 // Start timer to connect to probe after delay
-                connectionTimers[probe.serialNumberString] = Timer.scheduledTimer(withTimeInterval: 3, repeats: false, block: { [weak self] _ in
+                connectionTimers[device.uniqueIdentifier] = Timer.scheduledTimer(withTimeInterval: 3, repeats: false, block: { [weak self] _ in
                     
-                    if let probe = self?.getProbeWithSerial(probe.serialNumberString) {
-                        probe.connect()
+                    if let device = self?.getDeviceWithIdentifier(device.uniqueIdentifier) {
+                        device.connect()
                     }
                     
                     // Clear timer
-                    self?.connectionTimers[probe.serialNumberString] = nil
+                    self?.connectionTimers[device.uniqueIdentifier] = nil
                 })
             }
         }
     }
     
-    func receivedProbeAdvertising(_ probe: Probe?, from node: MeatNetNode) {
+    func receivedDeviceAdvertising(_ device: Device?, from node: MeatNetNode) {
         // Nothing to do if already connected to node
         guard node.connectionState != .connected else { return }
         
@@ -96,49 +96,49 @@ class ConnectionManager {
             if node.withinProximityRange {
                 node.connect()
             }
-            // Or if node is probe is in allow list
-            else if let probe = probe, probeInAllowList(probe) {
+            // Or if node is connected to device is in allow list
+            else if let device = device, deviceInAllowList(device) {
                 node.connect()
             }
         }
         else if meatNetEnabled { // Meatnet is enabled
-            // Connect to all Nodes that are advertising probes in allow list
-            if let probe = probe,
-                    meatNetEnabled,
-                    probeInAllowList(probe) {
+            // Connect to all Nodes that are advertising devices in allow list
+            if let device = device,
+               meatNetEnabled,
+               deviceInAllowList(device) {
                 node.connect()
             }
         }
     }
     
-    func receivedStatusFor(_ probe: Probe, node: MeatNetNode?) {
+    func receivedStatusFor(_ device: Device, node: MeatNetNode?) {
+        guard let identifier = device.uniqueIdentifier as? String else { return }
         let directConnection = node == nil
         
-        lastStatusUpdate[probe.serialNumberString] = Date()
+        lastStatusUpdate[identifier] = Date()
         
-        // Track that data was recieved for probe on node
-        node?.dataReceivedFromProbe(probe)
+        // Track that data was recieved for gauge on node
+        node?.dataReceivedFromDevice(device)
         
-        // if receiving status from meatnet and DFU disabled, then disconnect from probe
+        // if receiving status from meatnet and DFU disabled, then disconnect from gauge
         if !directConnection && meatNetEnabled && !dfuModeEnabled {
             
-            if let probe = getProbeWithSerial(probe.serialNumberString),
-               probe.connectionState == .connected {
-                probe.disconnect()
+            if let device = getDeviceWithIdentifier(identifier),
+               device.connectionState == .connected {
+                device.disconnect()
             }
         }
     }
     
-    private func getProbeWithSerial(_ serial: String) -> Probe? {
-        let probes = DeviceManager.shared.getProbes()
-        
-        return probes.filter { $0.serialNumberString == serial}.first
+    private func getDeviceWithIdentifier(_ identifier: String) -> Device? {
+        let devices = DeviceManager.shared.getDevices()
+        return devices.filter { $0.uniqueIdentifier == identifier}.first
     }
     
-    private func probeInAllowList(_ probe: Probe) -> Bool {
+    private func deviceInAllowList(_ device: Device) -> Bool {
         // If allowList is nil, then return true
-        guard let allowList = thermometerAllowList else { return true}
+        guard let allowList = deviceAllowList else { return true}
         
-        return allowList.contains(probe.serialNumberString)
+        return allowList.contains(device.uniqueIdentifier)
     }
 }

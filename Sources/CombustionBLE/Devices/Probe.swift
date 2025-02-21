@@ -250,7 +250,7 @@ extension Probe {
         
         // Only update rest of data if not connected to probe (directly or through meatnet).
         // Otherwise, rely on status notifications to update data
-        if(connectionState != .connected && !deviceManager.isProbeConnectedToMeatnet(self)) {
+        if(connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(self)) {
             if(advertising.modeId.mode == .normal) {
                 // If we should update normal mode, do so, but since this is Advertising info
                 // and does not contain Prediction information, DO NOT lock it out. We want to
@@ -347,7 +347,7 @@ extension Probe {
                 updated = true
             }
         }
-        else if(deviceStatus.modeId.mode == .instantRead ){
+        else if(deviceStatus.modeId.mode == .instantRead) {
             // Update Instant Read temperature, including hop count information.
             updated = updateInstantRead(deviceStatus.temperatures.values[0],
                                         probeId: deviceStatus.modeId.id,

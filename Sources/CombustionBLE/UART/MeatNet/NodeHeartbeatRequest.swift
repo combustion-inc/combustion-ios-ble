@@ -145,6 +145,9 @@ extension NodeHeartbeatRequest.ConnectionDetail {
         case .meatNetNode:
             let serialRaw = data.subdata(in: Constants.NODE_SERIAL_RANGE)
             serialNumber = String(decoding: serialRaw, as: UTF8.self)
+        case .gauge:
+            let serialRaw = data.subdata(in: Constants.NODE_SERIAL_RANGE)
+            serialNumber = String(decoding: serialRaw, as: UTF8.self)
         case .unknown:
             serialNumber = ""
         }

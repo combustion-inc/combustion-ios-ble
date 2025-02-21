@@ -37,14 +37,14 @@ public class MeatNetNode: Device {
     /// Serial Number
     @Published public internal(set) var serialNumberString: String?
     
-    /// Dictionary of Probes connected to this Node's Network
-    @Published public var probes: [UInt32 : Probe] = [:]
+    /// Dictionary of Devices connected to this Node's Network
+    @Published public var devices: [String : Device] = [:]
     
     /// DFU device type
     @Published public internal(set) var dfuType: DFUDeviceType = .unknown
     
     /// Feature Flags
-    @Published public private(set) var featureFlags: [FeatureFlag]?
+    @Published public internal(set) var featureFlags: [FeatureFlag]?
     
     /// Meatnet node name
     public var name: String {
@@ -63,21 +63,21 @@ public class MeatNetNode: Device {
         case .thermometer:
             // Node should not have a DFU type of thermometer
             return "Unknown \(serialNumber)"
-        
+            
         case .gauge:
             return "Gauge \(serialNumber)"
         }
-
+        
     }
     
-    /// Dictionary of last time data was received for each connected probe
-    /// key = Probe serial
-    /// value = Last time advertising or status was recieved from probe over this node
-    private var lastTimeDataRecieved: [UInt32: Date] = [:]
+    /// Dictionary of last time data was received for each connected device
+    /// key = Device serial
+    /// value = Last time advertising or status was recieved from device over this node
+    private var lastTimeDataRecieved: [String: Date] = [:]
     
     private enum Constants {
-        /// Number of seconds after which probe should be removed from Node list
-        static let PROBE_REMOVE_CONNECTION_TIMEOUT = 30.0
+        /// Number of seconds after which device should be removed from Node list
+        static let DEVICE_REMOVE_CONNECTION_TIMEOUT = 30.0
         
         /// Minimum number of seconds before lastUpdateTime is updated
         static let MINIMUM_LAST_UPDATE_CHANGE = 1.0
@@ -87,14 +87,21 @@ public class MeatNetNode: Device {
     
     var lastMissingInfoCheck: Date?
     
+    init(isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
+        super.init(uniqueIdentifier: identifier.uuidString, bleIdentifier: identifier, RSSI: RSSI)
+        
+        updateMissingInfoIfRequired()
+        updateLastUpdateTime()
+    }
+    
     init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
         super.init(uniqueIdentifier: identifier.uuidString, bleIdentifier: identifier, RSSI: RSSI)
         updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI)
     }
     
     func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber) {
-        // Always update probe RSSI and isConnectable flag
-       
+        // Always update device RSSI and isConnectable flag
+        
         self.rssi = RSSI.intValue
         self.isConnectable = isConnectable
         
@@ -102,39 +109,39 @@ public class MeatNetNode: Device {
         updateLastUpdateTime()
     }
     
-    func dataReceivedFromProbe(_ probe: Probe?) {
-        guard let probe = probe else { return }
+    func dataReceivedFromDevice(_ device: Device?) {
+        guard let device = device else { return }
         
-        // Add connection to probe
-        probes[probe.serialNumber] = probe
+        // Add connection to gauge
+        devices[device.uniqueIdentifier] = device
         
-        // Update last time data was recieved for probe
-        lastTimeDataRecieved[probe.serialNumber] = Date()
+        // Update last time data was recieved for device
+        lastTimeDataRecieved[device.uniqueIdentifier] = Date()
         updateLastUpdateTime()
     }
     
-    /// Removes probe from probe list
-    private func removeConnectionToProbe(_ serialNumber: UInt32) {
-        probes[serialNumber] = nil
+    /// Removes device from device list
+    private func removeConnectionToDevice(_ identifier: String) {
+        devices[identifier] = nil
     }
     
-    /// Returns true if node has connection to probe.
-    func hasConnectionToProbe(_ serialNumber: UInt32) -> Bool {
-        return probes[serialNumber] != nil
+    /// Returns true if node has connection to device.
+    func hasConnectionToDevice(_ identifier: String) -> Bool {
+        return devices[identifier] != nil
     }
     
     /// Updates whether the device is stale. Called on a timer interval by DeviceManager.
     override func updateDeviceStale() {
-        for probeSerial in probes.keys {
-            if let lastUpdateTime = lastTimeDataRecieved[probeSerial] {
-                // If not data has been received from probe for timeout length, then remove from list
-                if(Date().timeIntervalSince(lastUpdateTime) > Constants.PROBE_REMOVE_CONNECTION_TIMEOUT) {
-                    removeConnectionToProbe(probeSerial)
+        for deviceSerial in devices.keys {
+            if let lastUpdateTime = lastTimeDataRecieved[deviceSerial] {
+                // If not data has been received from device for timeout length, then remove from list
+                if(Date().timeIntervalSince(lastUpdateTime) > Constants.DEVICE_REMOVE_CONNECTION_TIMEOUT) {
+                    removeConnectionToDevice(deviceSerial)
                 }
             }
             else {
-                // This should not happen, but if no update time for probe, then remove from list
-                removeConnectionToProbe(probeSerial)
+                // This should not happen, but if no update time for device, then remove from list
+                removeConnectionToDevice(deviceSerial)
             }
         }
         
@@ -143,7 +150,7 @@ public class MeatNetNode: Device {
     
     func updateMissingInfoIfRequired() {
         var shouldCheckForMissingInfo: Bool = true
-
+        
         // only attempt at most once every 10 seconds
         if let date = lastMissingInfoCheck, Date().timeIntervalSince(date) < 5 {
             shouldCheckForMissingInfo = false
@@ -163,7 +170,7 @@ public class MeatNetNode: Device {
         
         lastUpdateTime = Date()
     }
-
+    
     /// Special handling for MeatNetNode model info.  Need to decode model info string
     /// to determine DFU type
     override func updateWithModelInfo(_ modelInfo: String) {

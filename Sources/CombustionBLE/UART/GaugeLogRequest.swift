@@ -1,5 +1,4 @@
-//  MessageType.swift
-
+//  GaugeLogRequest.swift
 /*--
 MIT License
 
@@ -26,16 +25,19 @@ SOFTWARE.
 
 import Foundation
 
-enum MessageType: UInt8, CaseIterable  {
-    case setID = 0x01
-    case setColor = 0x02
-    case sessionInfo = 0x03
-    case log = 0x04
-    case setPrediction = 0x05
-    case readOverTemperature = 0x06
-    case configureFoodSafe = 0x07
-    case resetFoodSafe = 0x08
-    case setPowerMode = 0x09
-    case resetSession = 0x0A
-    case gaugeLog = 0x0B
+class GaugeLogRequest: Request {
+    
+    init(minSequence: UInt32, maxSequence: UInt32) {
+        var payload = Data()
+        
+        var min = minSequence
+        payload.append(Data(bytes: &min, count: MemoryLayout.size(ofValue: min)))
+        
+        var max = maxSequence
+        payload.append(Data(bytes: &max, count: MemoryLayout.size(ofValue: max)))
+        
+        super.init(payload: payload, type: .gaugeLog)
+    }
 }
+
+

@@ -31,6 +31,7 @@ public enum CombustionProductType: UInt8 {
     case unknown = 0x00
     case probe = 0x01
     case meatNetNode = 0x02
+    case gauge = 0x03
 }
 
 /// Struct containing advertising data received from device.
@@ -123,7 +124,6 @@ extension AdvertisingData {
             hopCount = HopCount.from(networkInfoByte: byte)
         } else {
             hopCount = HopCount.defaultValues()
-            
         }
     }
 }

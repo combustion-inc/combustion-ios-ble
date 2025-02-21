@@ -107,8 +107,14 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// Sets the allow list for thermometers.  Framework will only connect to thermometers
     /// in the allow list and nodes that are advertising data from thermometer in whitelist.
     /// - param allowList: Allow list of probes serial numbers
+    /// /// Deprecated. Legacy value - raw, unfiltered instant read reading.
+    @available(*, deprecated)
     public func setThermometerAllowList(_ allowList: Set<String>) {
-        connectionManager.setThermometerAllowList(allowList)
+        connectionManager.setDeviceAllowList(allowList)
+    }
+    
+    public func setDeviceAllowList(_ allowList: Set<String>) {
+        connectionManager.setDeviceAllowList(allowList)
     }
     
     /// Private initializer to enforce singleton
@@ -154,6 +160,14 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
     }
     
+    /// Returns list of gauges
+    /// - returns: List of all known gauges.
+    public func getGauges() -> [GrillGauge] {
+        return Array(devices.values).compactMap { device in
+            return device as? GrillGauge
+        }
+    }
+    
     /// Returns list of MeatNet nodes
     /// - returns: List of all MeatNet nodes
     public func getMeatnetNodes() -> [MeatNetNode] {
@@ -185,20 +199,20 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     }
     
     /// Checks if specified probe is connected to any connected meatnet node
-    func isProbeConnectedToMeatnet(_ probe: Probe) -> Bool {
-        let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
+    func isDeviceConnectedToMeatnet(_ device: Device) -> Bool {
+        let nodesConnectedToDevice = getNodesConnectedToDevice(identifier: device.uniqueIdentifier)
         
-        return !nodesConnectedToProbe.isEmpty
+        return !nodesConnectedToDevice.isEmpty
     }
     
-    private func getNodesConnectedToProbe(serialNumber: UInt32) -> [MeatNetNode] {
+    private func getNodesConnectedToDevice(identifier: String) -> [MeatNetNode] {
         var nodesWithProbe: [MeatNetNode] = []
         
         let meatnetNodes = getMeatnetNodes()
         
         for node in meatnetNodes {
-            // Check Nodes to which we are connected to see if they have a route to the Probe
-            if node.connectionState == .connected, node.hasConnectionToProbe(serialNumber) {
+            // Check Nodes to which we are connected to see if they have a route to the Device
+            if node.connectionState == .connected, node.hasConnectionToDevice(identifier) {
                 nodesWithProbe.append(node)
             }
         }
@@ -208,6 +222,10 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     
     private func shouldSendMessageDirectlyTo(probe: Probe) -> Bool {
         return probe.connectionState == .connected
+    }
+    
+    private func shouldSendMessageDirectlyTo(gauge: GrillGauge) -> Bool {
+        return gauge.connectionState == .connected
     }
     
     func connectToDevice(_ device: Device) {
@@ -238,6 +256,31 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// - parameter device: Device from which to request messages
     /// - parameter minSequence: Minimum sequence number to request
     /// - parameter maxSequence: Maximum sequence number to request
+    func requestLogsFrom(_ gauge: GrillGauge, minSequence: UInt32, maxSequence: UInt32) {
+        guard let serialNumber = gauge.serialNumber,
+                let serialNumberString = gauge.serialNumberString else { return }
+        
+        if shouldSendMessageDirectlyTo(gauge: gauge) {
+            // Request logs directly from Probe.
+            let request = GaugeLogRequest(minSequence: minSequence,
+                                     maxSequence: maxSequence)
+            
+            BleManager.shared.sendRequest(identifier: gauge.bleIdentifier, request: request)
+        }
+        else {
+            // Send message to all nodes that have a route to the gauge
+            let nodesConnectedToProbe = getNodesConnectedToDevice(identifier: gauge.uniqueIdentifier)
+            let request = NodeGaugeReadLogsRequest(serialNumber: serialNumber,
+                                              minSequence: minSequence,
+                                              maxSequence: maxSequence)
+            BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
+        }
+    }
+    
+    /// Request log messages from the specified device.
+    /// - parameter device: Device from which to request messages
+    /// - parameter minSequence: Minimum sequence number to request
+    /// - parameter maxSequence: Maximum sequence number to request
     func requestLogsFrom(_ probe: Probe, minSequence: UInt32, maxSequence: UInt32) {
         if shouldSendMessageDirectlyTo(probe: probe) {
             // Request logs directly from Probe.
@@ -249,7 +292,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
         else {
             // Send message to all nodes that have a route to the probe
-            let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
+            let nodesConnectedToProbe = getNodesConnectedToDevice(identifier: probe.uniqueIdentifier)
             let request = NodeReadLogsRequest(serialNumber: probe.serialNumber,
                                               minSequence: minSequence,
                                               maxSequence: maxSequence)
@@ -426,7 +469,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
         else {
             // Send message to all nodes that have a route to the probe
-            let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
+            let nodesConnectedToProbe = getNodesConnectedToDevice(identifier: probe.uniqueIdentifier)
             
             // Send request to device
             let request = NodeReadSessionInfoRequest(serialNumber: probe.serialNumber)
@@ -444,7 +487,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
         else {
             // Send message to all nodes that have a route to the probe
-            let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
+            let nodesConnectedToProbe = getNodesConnectedToDevice(identifier: probe.uniqueIdentifier)
             
             let request = NodeReadFirmwareRevisionRequest(serialNumber: probe.serialNumber)
             BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
@@ -461,7 +504,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
         else {
             // Send message to all nodes that have a route to the probe
-            let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
+            let nodesConnectedToProbe = getNodesConnectedToDevice(identifier: probe.uniqueIdentifier)
             
             let request = NodeReadHardwareRevisionRequest(serialNumber: probe.serialNumber)
             BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
@@ -478,7 +521,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
         else {
             // Send message to all nodes that have a route to the probe
-            let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
+            let nodesConnectedToProbe = getNodesConnectedToDevice(identifier: probe.uniqueIdentifier)
             
             let request = NodeReadModelInfoRequest(serialNumber: probe.serialNumber)
             BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
@@ -551,7 +594,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
                                    request: NodeRequest,
                                    completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
         // Send message to all nodes that have a route to the probe
-        let nodesConnectedToProbe = getNodesConnectedToProbe(serialNumber: probe.serialNumber)
+        let nodesConnectedToProbe = getNodesConnectedToDevice(identifier: probe.uniqueIdentifier)
         
         // Store completion handler
         messageHandlers.addNodeSuccessCompletionHandler(request: request, completionHandler: completionHandler)
@@ -617,6 +660,14 @@ extension DeviceManager : BleManagerDelegate {
         connectionManager.receivedStatusFor(probe, node: node)
     }
     
+    private func updateDeviceWithNodeStatus(serialNumber: UInt32, status: GaugeStatus, hopCount: HopCount, node: MeatNetNode) {
+        guard let gauge = findGaugeBySerialNumber(serialNumber: serialNumber) else { return }
+        
+        gauge.updateGaugeStatus(deviceStatus: status, hopCount: hopCount)
+        
+        connectionManager.receivedStatusFor(gauge, node: node)
+    }
+    
     func handleBootloaderAdvertising(advertisingName: String, rssi: NSNumber, peripheral: CBPeripheral) {
         // If Bootloader is associated with currently running DFU,
         // then check if DFU needs to be restarted
@@ -675,7 +726,7 @@ extension DeviceManager : BleManagerDelegate {
             let probe = updateProbeWithAdvertising(advertising: advertising, isConnectable: isConnectable, rssi: rssi, identifier: identifier)
             
             // Notify connection manager
-            connectionManager.receivedProbeAdvertising(probe)
+            connectionManager.receivedDeviceAdvertising(probe)
             
         case .meatNetNode:
 
@@ -700,16 +751,35 @@ extension DeviceManager : BleManagerDelegate {
             let probe = updateProbeWithAdvertising(advertising: advertising, isConnectable: nil, rssi: nil, identifier: nil)
             
             // Notify connection manager
-            connectionManager.receivedProbeAdvertising(probe, from: meatnetNode)
+            connectionManager.receivedDeviceAdvertising(probe, from: meatnetNode)
             
             // Track that data was recieved for probe on node
-            meatnetNode.dataReceivedFromProbe(probe)
-
+            meatnetNode.dataReceivedFromDevice(probe)
+        case .gauge:
+            let gauge: GrillGauge
+            
+            // Update gauge if it is in device list
+            if let node = devices[identifier.uuidString] as? GrillGauge {
+                node.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
+                gauge = node
+            }
+            else {
+                // Create node and add to device list
+                gauge = GrillGauge(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
+                addDevice(device: gauge)
+            }
+            
+            // Update the probe associated with this advertising data
+            let probe = updateProbeWithAdvertising(advertising: advertising, isConnectable: nil, rssi: nil, identifier: nil)
+            
+            // Notify connection manager
+            connectionManager.receivedDeviceAdvertising(probe, from: gauge)
+            
+            // Track that data was recieved for probe on node
+            gauge.dataReceivedFromDevice(probe)
         case .unknown:
             print("Found device with unknown type")
-            
         }
-        
     }
     
     /// Finds Device (Node or Probe) by specified BLE identifier.
@@ -743,6 +813,17 @@ extension DeviceManager : BleManagerDelegate {
         }
         
         return foundProbe
+    }
+    
+    private func findGaugeBySerialNumber(serialNumber: UInt32) -> GrillGauge? {
+        var foundGauge : GrillGauge? = nil
+        
+        // TODO: - update to correct value that gauge is keyed by
+        if let gauge = devices[String(serialNumber)] as? GrillGauge {
+            foundGauge = gauge
+        }
+        
+        return foundGauge
     }
     
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String) {
@@ -805,7 +886,10 @@ extension DeviceManager : BleManagerDelegate {
             if let logResponse = response as? LogResponse {
                 updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
             }
-            
+        case .gaugeLog:
+            if let logResponse = response as? GaugeLogResponse {
+                updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
+            }
         case .sessionInfo:
             if let sessionResponse = response as? SessionInfoResponse {
                 if(sessionResponse.success) {
@@ -834,6 +918,14 @@ extension DeviceManager : BleManagerDelegate {
         
         if let probe = findDeviceByBleIdentifier(bleIdentifier: identifier) as? Probe {
             probe.processLogResponse(logResponse: logResponse)
+        }
+    }
+    
+    private func updateDeviceWithLogResponse(identifier: UUID, logResponse: GaugeLogResponse) {
+        guard logResponse.success else { return }
+        
+        if let gauge = findDeviceByBleIdentifier(bleIdentifier: identifier) as? GrillGauge {
+            gauge.processLogResponse(logResponse: logResponse)
         }
     }
     
@@ -880,6 +972,10 @@ extension DeviceManager : BleManagerDelegate {
                let probe = findProbeBySerialNumber(serialNumber: readLogsResponse.probeSerialNumber) {
                     probe.processLogResponse(logResponse: readLogsResponse)
                 }
+        case .gaugeLog:
+            if let readGaugeLogsResponse = response as? NodeGaugeReadLogsResponse, let gauge = findGaugeBySerialNumber(serialNumber: readGaugeLogsResponse.gaugeSerialNumber) {
+                gauge.processLogResponse(logResponse: readGaugeLogsResponse)
+            }
         case .getFeatureFlags:
             if let featureFlagsResponse = response as? NodeReadFeatureFlagsResponse,
                let device = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode {
@@ -905,6 +1001,19 @@ extension DeviceManager : BleManagerDelegate {
                 // Update the Probe based on the information that was received
                 updateDeviceWithNodeStatus(serialNumber: statusRequest.serialNumber,
                                            status: probeStatus,
+                                           hopCount: hopCount,
+                                           node: node)
+            }
+        }
+        else if let statusRequest = request as? NodeGaugeStatusRequest {
+            
+            if let gaugeStatus = statusRequest.gaugeStatus,
+               let node = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode,
+               let hopCount = statusRequest.hopCount {
+                
+                // Update the Gauge based on the information that was received
+                updateDeviceWithNodeStatus(serialNumber: statusRequest.serialNumber,
+                                           status: gaugeStatus,
                                            hopCount: hopCount,
                                            node: node)
             }

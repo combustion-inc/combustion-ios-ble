@@ -158,7 +158,7 @@ open class Probe : Device {
     /// Timer for periodically requesting session information
     private var sessionRequestTimer = Timer()
    
-    init(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, identifier: UUID?) {
+    init(_ advertising: ProbeAdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, identifier: UUID?) {
         serialNumber = advertising.serialNumber
         id = advertising.modeId.id
         color = advertising.modeId.color
@@ -232,7 +232,7 @@ extension Probe {
     /// - param isConnectable: Whether Probe is connectable (not present if via Node)
     /// - param RSSI: Signal strength (not present if via Node)
     /// - param bleIdentifier: BLE UUID (not present if via Node)
-    func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, bleIdentifier: UUID?) {
+    func updateWithAdvertising(_ advertising: ProbeAdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, bleIdentifier: UUID?) {
         
         // Set update time
         setLastUpdateTime()

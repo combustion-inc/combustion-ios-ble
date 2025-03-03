@@ -32,7 +32,7 @@ public class SimulatedProbe: Probe {
     private var fakeSetPoint = 71.0
     
     public init() {
-        let advertising = AdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
+        let advertising = ProbeAdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
                                           fakeTemperatures: ProbeTemperatures.withRandomData())
         super.init(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())
         
@@ -72,7 +72,7 @@ public class SimulatedProbe: Probe {
     }
     
     private func updateFakeAdvertising() {
-        let advertising = AdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
+        let advertising = ProbeAdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
                                           fakeTemperatures: ProbeTemperatures.withRandomData())
         updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), bleIdentifier: nil)
     }

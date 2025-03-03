@@ -1,4 +1,4 @@
-//  AdvertisingData.swift
+//  Accessory.swift
 /*--
 MIT License
 
@@ -23,44 +23,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
-import Foundation
-
-public protocol AdvertisingData {
-    /// Type of Combustion product
-    var type: CombustionProductType { get }
-    /// Product serial number
+/// Representation of a meat net nodes native abilites, such as Grill Gauge
+public protocol Accessory {
+    
+    var parent: MeatNetNode { get }
+     
     var serialNumber: UInt32 { get }
-    /// Network Information
-    var hopCount: HopCount { get }
+    var serialNumberString: String { get }
+    
+    func updateDeviceStatus(deviceStatus: DeviceStatus, hopCount: HopCount?)
+    
+    func updateWithAdvertising(_ advertising: AdvertisingData)
 }
 
-/// Enumeration of Combustion, Inc. product types.
-public enum CombustionProductType: UInt8 {
-    case unknown = 0x00
-    case probe = 0x01
-    case meatNetNode = 0x02
-    case gauge = 0x03
-}
-
-class NodeAdvertisingData: AdvertisingData {
+public extension Accessory {
     
-    var type: CombustionProductType
-    var serialNumber: UInt32
-    var hopCount: HopCount
-    
-    init(type: CombustionProductType, serialNumber: UInt32, hopCount: HopCount) {
-        self.type = type
-        self.serialNumber = serialNumber
-        self.hopCount = hopCount
-    }
-    
-    static func create(fromData data: Data?) -> AdvertisingData? {
-        if let advertising = GaugeAdvertisingData.populate(fromData: data) {
-            return advertising
-        }
-        // add new advertising types here for devices
-        else {
-            return nil
-        }
+    func updateDeviceStatus(deviceStatus: DeviceStatus, hopCount: HopCount? = nil) {
+        self.updateDeviceStatus(deviceStatus: deviceStatus, hopCount: hopCount)
     }
 }

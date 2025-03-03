@@ -25,10 +25,17 @@ SOFTWARE.
 
 import Foundation
 
-public class GrillGauge: MeatNetNode {
+public class GrillGauge: Accessory {
     
-    /// Gauge serial number
-    @Published public private(set) var serialNumber: UInt32?
+    public internal(set) var parent: MeatNetNode
+    
+    // device serial number
+    @Published public private(set) var serialNumber: UInt32
+    
+    /// Returns serial number formatted as a string
+    public var serialNumberString : String {
+        return String(format: "%08X", serialNumber)
+    }
     
     @Published public internal(set) var currentTemperature: GaugeTemperature?
     
@@ -66,17 +73,11 @@ public class GrillGauge: MeatNetNode {
     
     private var deviceManager = DeviceManager.shared
     
-    override init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
-        super.init(advertising, isConnectable: isConnectable, RSSI: RSSI, identifier: identifier)
-    }
-    
-    init?(meatNetNode: MeatNetNode) {
-        guard let bleIdentifierString = meatNetNode.bleIdentifier as? String,
-        let uuid = UUID(uuidString: bleIdentifierString) else { return nil }
+    init(parent: MeatNetNode, advertising: AdvertisingData) {
+        self.parent = parent
+        self.serialNumber = advertising.serialNumber
         
-        super.init(isConnectable: meatNetNode.isConnectable,
-                   RSSI: NSNumber(integerLiteral: meatNetNode.rssi),
-                   identifier: uuid)
+        updateWithAdvertising(advertising)
     }
     
     func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
@@ -88,8 +89,20 @@ public class GrillGauge: MeatNetNode {
         }
     }
     
+    public func updateWithAdvertising(_ advertising: AdvertisingData) {
+        guard let advertisingData = advertising as? GaugeAdvertisingData else { return }
+        
+        parent.updateLastUpdateTime()
+        
+        if(parent.connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(parent)) {
+            updateTemperatures(temperature: advertisingData.temperatures)
+        }
+    }
+    
     /// Updates the Device based on newly-received GaugeStatus message. Requests missing records.
-    func updateGaugeStatus(deviceStatus: GaugeStatus, hopCount: HopCount? = nil) {
+    public func updateDeviceStatus(deviceStatus: DeviceStatus, hopCount: HopCount?) {
+        guard let deviceStatus = deviceStatus as? GaugeStatus else { return }
+        
         // Ignore status messages that have a sequence count lower than any previously
         // received status messages
         guard !isOldStatusUpdate(deviceStatus) else { return }
@@ -118,9 +131,6 @@ public class GrillGauge: MeatNetNode {
             updated = true
         }
         
-        // Request any other missing data (firmware version etc.)
-        updateMissingInfoIfRequired()
-        
         // Check for missing records
         if updated, let current = getCurrentTemperatureLog() {
             
@@ -134,7 +144,7 @@ public class GrillGauge: MeatNetNode {
             
             if let missingRange = missingRange {
                 // Request missing records
-                deviceManager.requestLogsFrom(self,
+                deviceManager.requestLogsFrom(parent,
                                               minSequence: missingRange.lowerBound,
                                               maxSequence: missingRange.upperBound)
             }
@@ -145,9 +155,6 @@ public class GrillGauge: MeatNetNode {
         
         // Update whether status notifications are stale
         updateStatusNotificationsStale()
-        
-        // Update time of most recent update of any type
-        setLastUpdateTime()
         
         // Publish most recent status
         mostRecentStatus = deviceStatus
@@ -227,14 +234,6 @@ public class GrillGauge: MeatNetNode {
     func updateStatusNotificationsStale() {
         statusNotificationsStale = Date().timeIntervalSince(lastStatusNotificationTime) > Constants.STATUS_NOTIFICATION_STALE_TIMEOUT
     }
-    
-    private func setLastUpdateTime() {
-        // Do not update value unless its been more 1 second
-        guard Date().timeIntervalSince(lastUpdateTime) > Constants.MINIMUM_LAST_UPDATE_CHANGE else { return }
-        
-        lastUpdateTime = Date()
-    }
-
 }
 
 extension GrillGauge {

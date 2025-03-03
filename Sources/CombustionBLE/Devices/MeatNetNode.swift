@@ -46,6 +46,9 @@ public class MeatNetNode: Device {
     /// Feature Flags
     @Published public internal(set) var featureFlags: [FeatureFlag]?
     
+    /// Accessory
+    @Published public internal(set) var accessory: Accessory?
+    
     /// Meatnet node name
     public var name: String {
         let serialNumber = serialNumberString ?? ""
@@ -105,6 +108,12 @@ public class MeatNetNode: Device {
         self.rssi = RSSI.intValue
         self.isConnectable = isConnectable
         
+        updateMissingInfoIfRequired()
+        updateLastUpdateTime()
+    }
+    
+    func updateDeviceStatus(deviceStatus: DeviceStatus, hopCount: HopCount? = nil) {
+        accessory?.updateDeviceStatus(deviceStatus: deviceStatus, hopCount: hopCount)
         updateMissingInfoIfRequired()
         updateLastUpdateTime()
     }

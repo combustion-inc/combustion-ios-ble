@@ -26,7 +26,7 @@ SOFTWARE.
 import Foundation
 
 /// Message containing Gauge status information.
-public struct GaugeStatus {
+public struct GaugeStatus: DeviceStatus {
     /// Minimum sequence number of records in Probe's memory.
     public let minSequenceNumber: UInt32
     

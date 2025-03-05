@@ -59,6 +59,8 @@ class DFUManager {
         static let DISPLAY_DFU_NAME = "Display_DFU_"
         static let CHARGER_DFU_NAME = "Charger_DFU_"
         
+        static let THERMOMETER_DEFAULT_BOOTLOADER = "CI Probe BL"
+        
         static let RETRY_TIME_DELAY = 20 // seconds
     }
     
@@ -76,6 +78,10 @@ class DFUManager {
     }
     
     static func bootloaderTypeFrom(advertisingName: String) -> DFUDeviceType {
+        if advertisingName == Constants.THERMOMETER_DEFAULT_BOOTLOADER {
+            return .thermometer
+        }
+        
         if(advertisingName.contains(Constants.THERMOMETER_DFU_NAME)) {
             return .thermometer
         }

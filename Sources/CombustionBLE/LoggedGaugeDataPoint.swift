@@ -23,14 +23,44 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
-public struct LoggedGaugeDataPoint: Equatable {
+public class LoggedDeviceDataPoint: Equatable {
+    public var sequenceNum: UInt32
     
-    public let sequenceNum: UInt32
+    public init(sequenceNum: UInt32) {
+        self.sequenceNum = sequenceNum
+    }
+}
+
+extension LoggedDeviceDataPoint {
+    
+    public static func fromDeviceStatus(deviceStatus: DeviceStatus) -> LoggedDeviceDataPoint {
+        if let deviceStatus = deviceStatus as? GaugeStatus {
+            return LoggedGaugeDataPoint(sequenceNum: deviceStatus.maxSequenceNumber,
+                                 temperatures: deviceStatus.temperature)
+        }
+        else {
+            return LoggedDeviceDataPoint(sequenceNum: deviceStatus.maxSequenceNumber)
+        }
+    }
+}
+
+extension LoggedDeviceDataPoint: Hashable {
+    public static func == (lhs: LoggedDeviceDataPoint, rhs: LoggedDeviceDataPoint) -> Bool {
+        return lhs.sequenceNum == rhs.sequenceNum
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(sequenceNum)
+    }
+}
+
+public class LoggedGaugeDataPoint: LoggedDeviceDataPoint {
+    
     public let temperatures: GaugeTemperature
     
     public init(sequenceNum: UInt32, temperatures: GaugeTemperature) {
-        self.sequenceNum = sequenceNum
         self.temperatures = temperatures
+        super.init(sequenceNum: sequenceNum)
     }
 }
 
@@ -55,12 +85,17 @@ extension LoggedGaugeDataPoint {
     }
 }
 
-extension LoggedGaugeDataPoint: Hashable {
-    public static func == (lhs: LoggedGaugeDataPoint, rhs: LoggedGaugeDataPoint) -> Bool {
-        return lhs.sequenceNum == rhs.sequenceNum
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(sequenceNum)
+extension LoggedGaugeDataPoint {
+    
+    // Generates fake data for UI previews
+    static func withFakeData() -> LoggedGaugeDataPoint {
+        // Workaround limit on static variables being restricted to structs/classes
+        struct S { static var sequenceNum : UInt32 = 0 }
+        S.sequenceNum += 1
+        
+        let temperatures = GaugeTemperature(value: 50.0)
+        
+        return LoggedGaugeDataPoint(sequenceNum: S.sequenceNum,
+                                    temperatures: temperatures)
     }
 }

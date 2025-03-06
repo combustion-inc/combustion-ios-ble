@@ -90,6 +90,10 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         addDevice(device: SimulatedProbe())
     }
     
+    public func addSimulatedGauge() {
+        addDevice(device: SimulatedGauge())
+    }
+    
     public func initBluetooth() {
         BleManager.shared.initBluetooth()
     }
@@ -573,7 +577,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// when a device with failed software upgrade is detected.
     ///
     /// - dfuFiles: DFU files for each DFU type
-    public func restartFailedUpgradesWith(dfuFiles: [DFUDeviceType: URL]) {
+    public func restartFailedUpgradesWith(dfuFiles: [DeviceType: URL]) {
         for (type, dfuFile) in dfuFiles {
             DFUManager.shared.setDefaultDFUForType(dfuFile: dfuFile, dfuType: type)
         }

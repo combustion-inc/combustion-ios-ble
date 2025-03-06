@@ -40,8 +40,8 @@ public class MeatNetNode: Device {
     /// Dictionary of Devices connected to this Node's Network
     @Published public var devices: [String : Device] = [:]
     
-    /// DFU device type
-    @Published public internal(set) var dfuType: DFUDeviceType = .unknown
+    /// dfudevice type
+    @Published public internal(set) var dfuType: DeviceType = .unknown
     
     /// Feature Flags
     @Published public internal(set) var featureFlags: [FeatureFlag]?

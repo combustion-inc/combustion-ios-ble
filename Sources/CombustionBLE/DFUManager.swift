@@ -28,7 +28,10 @@ import CoreBluetooth
 import Foundation
 import NordicDFU
 
-public enum DFUDeviceType {
+@available(*, unavailable, renamed: "DeviceType")
+public enum DFUDeviceType {}
+
+public enum DeviceType: String, Codable {
     case thermometer
     case display
     case charger
@@ -53,7 +56,7 @@ class DFUManager {
     // Dictionary of currently active DFUs. Key = DFU advertising name
     private var runningDFUs = [String: DFU]()
     
-    private var defaultFirmware: [DFUDeviceType: DFUFirmware] = [:]
+    private var defaultFirmware: [DeviceType: DFUFirmware] = [:]
     
     private enum Constants {
         static let THERMOMETER_DFU_NAME = "Thermom_DFU_"
@@ -64,7 +67,7 @@ class DFUManager {
         static let RETRY_TIME_DELAY = 20 // seconds
     }
     
-    func setDefaultDFUForType(dfuFile: URL?, dfuType: DFUDeviceType) {
+    func setDefaultDFUForType(dfuFile: URL?, dfuType: DeviceType) {
         guard let dfuFile = dfuFile else { return }
         
         do {
@@ -77,7 +80,7 @@ class DFUManager {
         return runningDFUs[advertisingName]?.uniqueIdentifier
     }
     
-    static func bootloaderTypeFrom(advertisingName: String) -> DFUDeviceType {
+    static func bootloaderTypeFrom(advertisingName: String) -> DeviceType {
         if advertisingName.contains(Constants.THERMOMETER_DFU_NAME) {
             return .thermometer
         }

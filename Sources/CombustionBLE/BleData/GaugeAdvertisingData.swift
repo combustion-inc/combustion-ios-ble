@@ -96,3 +96,21 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         return GaugeAdvertisingData(type: .gauge, serialNumber: serialNumber, hopCount: hopCount, temperature: temperatures)
     }
 }
+
+extension GaugeAdvertisingData {
+    // Fake data initializer for previews
+    public convenience init(fakeSerial: UInt32) {
+        self.init(type: .gauge,
+                  serialNumber: fakeSerial,
+                  hopCount: HopCount.defaultValues(),
+                  temperature: GaugeTemperature.withFakeData())
+    }
+    
+    // Fake data initializer for Simulated Gauge
+    public convenience init(fakeSerial: UInt32, fakeTemperatures: GaugeTemperature) {
+        self.init(type: .gauge,
+                  serialNumber: fakeSerial,
+                  hopCount: HopCount.defaultValues(),
+                  temperature: fakeTemperatures)
+    }
+}

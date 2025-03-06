@@ -23,14 +23,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
+import Foundation
+
 /// Representation of a meat net nodes native abilites, such as Grill Gauge
 public protocol Accessory {
-    
+        
     var parent: MeatNetNode { get }
+    
+    var type: DeviceType { get }
      
     var serialNumber: UInt32 { get }
     var serialNumberString: String { get }
     
+    /// Tracks whether status notification data has become stale.
+    var statusNotificationsStale: Bool { get }
+    
+    var deviceTemperatureLogs: [DeviceTemperatureLog] { get }
+        
     func updateDeviceStatus(deviceStatus: DeviceStatus, hopCount: HopCount?)
     
     func updateWithAdvertising(_ advertising: AdvertisingData)

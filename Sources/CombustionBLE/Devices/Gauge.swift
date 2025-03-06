@@ -27,6 +27,10 @@ import Foundation
 
 public class GrillGauge: Accessory {
     
+    public var type: DeviceType {
+        return .gauge
+    }
+    
     public internal(set) var parent: MeatNetNode
     
     // device serial number
@@ -66,7 +70,7 @@ public class GrillGauge: Accessory {
     @Published public internal(set) var lastNormalModeHopCount : HopCount? = nil
     
     /// Stores historical values of temperatures
-    public internal(set) var temperatureLogs: [GaugeTemperatureLog] = []
+    public internal(set) var deviceTemperatureLogs: [DeviceTemperatureLog] = []
     
     /// Tracks what percent of logs on probe have been synced to the app
     @Published public internal(set) var percentOfLogsSynced: Int?
@@ -220,15 +224,15 @@ public class GrillGauge: Accessory {
         }
         else if let sessionInformation = sessionInformation {
             // Create a new Temperature log for session and append data
-            let log = GaugeTemperatureLog(sessionInfo: sessionInformation)
+            let log = DeviceTemperatureLog(sessionInfo: sessionInformation)
             log.appendDataPoint(dataPoint: dataPoint, sampledAt: sampledAt)
-            temperatureLogs.append(log)
+            deviceTemperatureLogs.append(log)
         }
     }
     
     // Find the GaugeTemperatureLog that matches current session ID
-    private func getCurrentTemperatureLog() -> GaugeTemperatureLog? {
-        return temperatureLogs.first(where: { $0.sessionInformation.sessionID == sessionInformation?.sessionID } )
+    private func getCurrentTemperatureLog() -> DeviceTemperatureLog? {
+        return deviceTemperatureLogs.first(where: { $0.sessionInformation.sessionID == sessionInformation?.sessionID } )
     }
     
     func updateStatusNotificationsStale() {

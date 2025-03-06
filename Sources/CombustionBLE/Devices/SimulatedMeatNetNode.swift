@@ -1,6 +1,5 @@
-//  SimulatedProbe.swift
-//  Simulated Probe
-
+//
+//  SimulatedMeatNetNode.swift
 /*--
 MIT License
 
@@ -27,16 +26,17 @@ SOFTWARE.
 
 import Foundation
 
-public class SimulatedProbe: Probe {
-    
-    private var fakeSetPoint = 71.0
+public class SimulatedGauge: MeatNetNode {
     
     public init() {
-        let advertising = ProbeAdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
-                                          fakeTemperatures: ProbeTemperatures.withRandomData())
+        let advertising = GaugeAdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
+                                               fakeTemperatures: GaugeTemperature.withRandomData())
         super.init(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())
         
-        firmareVersion = "v1.2.3"
+        self.accessory = GrillGauge(parent: self, advertising: advertising)
+        self.dfuType = .gauge
+                
+        firmareVersion = "v3.0.0"
         hardwareRevision = "v0.31-A1"
         
         // Create timer to update probe with fake advertising packets
@@ -53,7 +53,7 @@ public class SimulatedProbe: Probe {
         
         // Set fake session information
         let fakeSessionInfo = SessionInformation(sessionID: UInt32.random(in: 0..<UInt32.max), samplePeriod: 1000)
-        updateWithSessionInformation(fakeSessionInfo)
+        (accessory as? GrillGauge)?.updateWithSessionInformation(fakeSessionInfo)
     }
     
     public override var name: String {
@@ -62,54 +62,39 @@ public class SimulatedProbe: Probe {
         return String(format: "SIM-\(nameStr)")
     }
     
-    public func setPredictionSetPoint(_ setPoint: Double) {
-        fakeSetPoint = setPoint
-        updateFakeStatus()
-    }
-    
     static func randomeRSSI() -> NSNumber {
-        return NSNumber(value: Int.random(in: -48 ..< -30))
+        return NSNumber(value: Int.random(in: -80 ..< -40))
     }
     
     private func updateFakeAdvertising() {
-        let advertising = ProbeAdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
-                                          fakeTemperatures: ProbeTemperatures.withRandomData())
-        updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), bleIdentifier: nil)
+        let advertising = GaugeAdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
+                                          fakeTemperatures: GaugeTemperature.withRandomData())
+
+        updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI())
+        accessory?.updateWithAdvertising(advertising)
     }
     
     private func updateFakeStatus() {
+        guard let accessory = accessory as? GrillGauge else { return }
         guard connectionState == .connected else { return }
         
-        let firstSeq = temperatureLogs.first?.dataPoints.first?.sequenceNum ?? 0
+        let firstSeq = accessory.deviceTemperatureLogs.first?.dataPoints.first?.sequenceNum ?? 0
 
         let lastSequence: UInt32
 
-        if let last = temperatureLogs.first?.dataPoints.last?.sequenceNum {
+        if let last = accessory.deviceTemperatureLogs.first?.dataPoints.last?.sequenceNum {
             lastSequence = last + 1
         }
         else {
             lastSequence = 0
         }
         
-        let predictionStatus = PredictionStatus(predictionState: .predicting,
-                                                predictionMode: .timeToRemoval,
-                                                predictionType: .none,
-                                                predictionSetPointTemperature: fakeSetPoint,
-                                                heatStartTemperature: 5.0,
-                                                predictionValueSeconds: 3540,
-                                                estimatedCoreTemperature: 30.0)
-        
-        let probeStatus = ProbeStatus(minSequenceNumber: firstSeq,
+        let gaugeStatus = GaugeStatus(minSequenceNumber: firstSeq,
                                       maxSequenceNumber: lastSequence,
-                                      temperatures: ProbeTemperatures.withRandomData(),
-                                      modeId: ModeId.defaultValues(),
-                                      batteryStatusVirtualSensors: BatteryStatusVirtualSensors.defaultValues(),
-                                      predictionStatus: predictionStatus,
-                                      foodSafeData: nil,
-                                      foodSafeStatus: nil,
-                                      overheatingSensors: OverheatingSensors(sensorIndexes: []),
-                                      preferences: .init(powerMode: .normal))
+                                      temperature: GaugeTemperature.withRandomData(),
+                                      overheatingSensors: OverheatingSensors(sensorIndexes: []))
         
-        updateProbeStatus(deviceStatus: probeStatus)
+        accessory.updateDeviceStatus(deviceStatus: gaugeStatus)
     }
 }
+

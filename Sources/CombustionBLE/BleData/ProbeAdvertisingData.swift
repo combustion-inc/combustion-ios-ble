@@ -26,8 +26,6 @@ SOFTWARE.
 
 import Foundation
 
-
-
 /// Struct containing advertising data received from device.
 struct ProbeAdvertisingData: AdvertisingData {
     /// Type of Combustion product

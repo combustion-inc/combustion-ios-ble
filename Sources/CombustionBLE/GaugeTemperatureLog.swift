@@ -26,15 +26,15 @@ SOFTWARE.
 import Foundation
 import OrderedCollections
 
-public class GaugeTemperatureLog : ObservableObject {
+public class DeviceTemperatureLog : ObservableObject {
     
     public let sessionInformation: SessionInformation
     
     /// Buffer of logged data points
-    public var dataPointsDict : OrderedDictionary<UInt32, LoggedGaugeDataPoint>
+    public var dataPointsDict : OrderedDictionary<UInt32, LoggedDeviceDataPoint>
     
     /// Ordered array of data points in the buffer
-    public var dataPoints : [LoggedGaugeDataPoint] {
+    public var dataPoints : [LoggedDeviceDataPoint] {
         get {
             return Array(dataPointsDict.values)
         }
@@ -54,17 +54,17 @@ public class GaugeTemperatureLog : ObservableObject {
     
     /// Temporary place for incoming data points to accumulate prior to being inserted into the main
     /// data point dictionary. This prevents unnecesary re-sorting of the overall dictionary.
-    private var dataPointAccumulator = OrderedSet<LoggedGaugeDataPoint>()
+    private var dataPointAccumulator = OrderedSet<LoggedDeviceDataPoint>()
     
     /// Initialize empty temperature log
     public init(sessionInfo: SessionInformation) {
-        dataPointsDict = OrderedDictionary<UInt32, LoggedGaugeDataPoint>()
+        dataPointsDict = OrderedDictionary<UInt32, LoggedDeviceDataPoint>()
         sessionInformation = sessionInfo
     }
     
     /// Initialize with data points
     public init(sessionInformation: SessionInformation,
-                dataPointsDict: OrderedDictionary<UInt32, LoggedGaugeDataPoint>,
+                dataPointsDict: OrderedDictionary<UInt32, LoggedDeviceDataPoint>,
                 startTime: Date?) {
         self.sessionInformation = sessionInformation
         self.dataPointsDict = dataPointsDict
@@ -166,7 +166,7 @@ public class GaugeTemperatureLog : ObservableObject {
     /// Inserts a new data point. Places it in the accumulator so it can be inserted with additional
     /// records coming in.
     /// - parameter newDataPoint: New data points to be added to the buffer
-    private func insertDataPoint(newDataPoint: LoggedGaugeDataPoint) {
+    private func insertDataPoint(newDataPoint: LoggedDeviceDataPoint) {
         // Add the incoming data point to the accumulator
         let appendResult = dataPointAccumulator.append(newDataPoint)
         if appendResult.inserted {
@@ -191,7 +191,7 @@ public class GaugeTemperatureLog : ObservableObject {
     }
     
     /// Appends data point to the logged probe data.
-    public func appendDataPoint(dataPoint: LoggedGaugeDataPoint, sampledAt: Date? = nil) {
+    public func appendDataPoint(dataPoint: LoggedDeviceDataPoint, sampledAt: Date? = nil) {
         // Check if new point's sequence number belongs at the end
         if let lastPoint = dataPointsDict.values.last {
             if(dataPoint.sequenceNum == (lastPoint.sequenceNum + 1)) {
@@ -216,7 +216,7 @@ public class GaugeTemperatureLog : ObservableObject {
     /// Sets the session start time based on the datapoint and sample timestamp.
     /// - parameter dataPoint: Data point to calculate session start time from
     /// - parameter sampledAt: Time when data point was sampled
-    private func setStartTime(dataPoint: LoggedGaugeDataPoint, sampledAt: Date) {
+    private func setStartTime(dataPoint: LoggedDeviceDataPoint, sampledAt: Date) {
         // Do not recalculate start time after it has been set
         guard startTime == nil else { return }
  
@@ -225,7 +225,7 @@ public class GaugeTemperatureLog : ObservableObject {
     }
 }
 
-extension GaugeTemperatureLog: Identifiable {
+extension DeviceTemperatureLog: Identifiable {
     
     // Use the Session ID for `Identifiable` protocol
     public var id: UInt32 {

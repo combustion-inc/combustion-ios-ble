@@ -63,3 +63,15 @@ extension GaugeTemperature {
         return fromReversed(bytes: bytes)
     }
 }
+
+extension GaugeTemperature {
+    // Generates fake data for UI previews
+    static func withFakeData() -> GaugeTemperature {
+        return GaugeTemperature(value: 50.0)
+    }
+    
+    // Generates randome data for Simulated Gauge
+    static func withRandomData() -> GaugeTemperature {
+        return GaugeTemperature(value: Double.random(in: 45.0 ..< 60.0))
+    }
+}

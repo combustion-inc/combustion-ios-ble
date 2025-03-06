@@ -586,3 +586,25 @@ extension Probe {
         deviceManager.readSessionInfo(probe: self)
     }
 }
+
+extension Probe: Accessory {
+    
+    public var type: DeviceType {
+        return .thermometer
+    }
+    
+    public var deviceTemperatureLogs: [DeviceTemperatureLog] {
+        return []
+    }
+    
+    public var parent: MeatNetNode {
+        fatalError("Probe cannot have a parent")
+    }
+    
+    public func updateWithAdvertising(_ advertising: any AdvertisingData) {
+        guard let advertisingData = advertising as? ProbeAdvertisingData else { return }
+
+        self.updateWithAdvertising(advertisingData, isConnectable: nil, RSSI: nil, bleIdentifier: nil)
+    }
+    
+}

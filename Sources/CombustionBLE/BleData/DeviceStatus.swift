@@ -24,5 +24,6 @@ SOFTWARE.
 --*/
 
 public protocol DeviceStatus {
-    
+    var minSequenceNumber: UInt32 { get }
+    var maxSequenceNumber: UInt32 { get }
 }

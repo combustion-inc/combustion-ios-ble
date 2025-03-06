@@ -52,6 +52,11 @@ class DFUManager {
     // Dictionary of currently active DFUs. Key = DFU advertising name
     private var runningDFUs = [String: DFU]()
     
+    // Dictionary of when unknown bootloader were first detected
+    // Key = CBPeripheral UUID
+    // Value = Time when first detected
+    private var unknownBootloaderDetected = [String: Date]()
+    
     private var defaultFirmware: [DFUDeviceType: DFUFirmware] = [:]
     
     private enum Constants {
@@ -62,6 +67,7 @@ class DFUManager {
         static let THERMOMETER_DEFAULT_BOOTLOADER = "CI Probe BL"
         
         static let RETRY_TIME_DELAY = 20 // seconds
+        static let UNKNOWN_BOOTLOADER_DELAY = 10
     }
     
     func setDefaultDFUForType(dfuFile: URL?, dfuType: DFUDeviceType) {
@@ -121,8 +127,21 @@ class DFUManager {
         }
     }
     
-    func retryDfuOnBootloader(peripheral: CBPeripheral, device: BootloaderDevice) {
-        // Device is in bootloader, but DFU was not started by this app instance
+    /// Restart DFU for "unknown" bootloader. This means a device is advertising from its bootloader
+    /// but the DFU process was not started by this app.
+    /// - Parameters:
+    ///   - peripheral: CBPeripheral
+    ///   - device: BootloaderDevice
+    func restartDfuOnUnknownBootloader(peripheral: CBPeripheral, device: BootloaderDevice) {
+        guard let firstDetected = unknownBootloaderDetected[peripheral.identifier.uuidString] else {
+            // Store that bootloader was first detected
+            unknownBootloaderDetected[peripheral.identifier.uuidString] = Date()
+            return
+        }
+        
+        // Delay before restarting DFU for unknown bootloader
+        let secondsSinceFirstDetected = Int(Date().timeIntervalSince(firstDetected))
+        guard secondsSinceFirstDetected > Constants.UNKNOWN_BOOTLOADER_DELAY else { return }
         
         // Use advertising name to determine if device is Display or Thermometer
         // and restart DFU with the default file for each device type

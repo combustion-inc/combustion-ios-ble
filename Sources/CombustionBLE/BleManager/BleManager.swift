@@ -53,12 +53,7 @@ class BleManager : NSObject {
     
     private(set) var peripherals = Set<CBPeripheral>()
     
-    private var uartCharacteristics: [String: CBCharacteristic] = [:]
-    private var deviceStatusCharacteristics: [String: CBCharacteristic] = [:]
-    private var fwRevisionCharacteristics: [String: CBCharacteristic] = [:]
-    private var hwRevisionCharacteristics: [String: CBCharacteristic] = [:]
-    private var modelNumberCharacteristics: [String: CBCharacteristic] = [:]
-    private var serialNumberCharacteristics: [String: CBCharacteristic] = [:]
+    private var characteristics: [String: [BleCharacteristic: CBCharacteristic]] = [:]
     
     private var manager: CBCentralManager?
     
@@ -67,14 +62,6 @@ class BleManager : NSObject {
         static let DFU_SERVICE          = CBUUID(string: "FE59")
         static let NEEDLE_SERVICE       = CBUUID(string: "00000100-CAAB-3792-3D44-97AE51C1407A")
         static let UART_SERVICE         = CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
-        
-        static let SERIAL_NUMBER_CHAR   = CBUUID(string: "2a25")
-        static let FW_VERSION_CHAR      = CBUUID(string: "2a26")
-        static let HW_REVISION_CHAR     = CBUUID(string: "2a27")
-        static let MODEL_NUMBER_CHAR    = CBUUID(string: "2a24")
-        static let DEVICE_STATUS_CHAR   = CBUUID(string: "00000101-CAAB-3792-3D44-97AE51C1407A")
-        static let UART_RX_CHAR         = CBUUID(string: "6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
-        static let UART_TX_CHAR         = CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
     }
     
     /// Private initializer to enforce singleton
@@ -97,8 +84,24 @@ class BleManager : NSObject {
         guard let identifier = identifier else { return }
         
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
-            let uartChar = uartCharacteristics[identifier] {
+           let uartChar = getCharacteristicFor(identifier, type: .uartRx) {
             connectionPeripheral.writeValue(request.data, for: uartChar, type: .withoutResponse)
+        }
+    }
+    
+    func sendDFURequest(identifier: String?, request: DFURequest) {
+        guard let identifier = identifier else { return }
+        
+        print("JDJ sendDFURequest")
+        
+        if let connectedPeripheral = getConnectedPeripheral(identifier: identifier),
+           let dfuChar = getCharacteristicFor(identifier, type: .dfu) {
+            
+            print("JDJ sendDFURequest - found peripheral")
+            
+            connectedPeripheral.writeValue(request.data,
+                                            for: dfuChar,
+                                            type: .withResponse)
         }
     }
     
@@ -106,7 +109,7 @@ class BleManager : NSObject {
         for node in nodes {
             if let identifier = node.bleIdentifier,
                let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
-               let uartChar = uartCharacteristics[identifier] {
+               let uartChar = getCharacteristicFor(identifier, type: .uartRx) {
                 connectionPeripheral.writeValue(request.data, for: uartChar, type: .withoutResponse)
             }
         }
@@ -116,7 +119,7 @@ class BleManager : NSObject {
         guard let identifier = identifier else { return }
         
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
-           let characteristic = fwRevisionCharacteristics[identifier] {
+           let characteristic = getCharacteristicFor(identifier, type: .firmwareVersion) {
             // Initiate read of firmware revision
             connectionPeripheral.readValue(for: characteristic)
         }
@@ -126,7 +129,7 @@ class BleManager : NSObject {
         guard let identifier = identifier else { return }
         
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
-           let characteristic = hwRevisionCharacteristics[identifier] {
+           let characteristic = getCharacteristicFor(identifier, type: .hardwareRevision) {
             // Initiate read of hardware revision
             connectionPeripheral.readValue(for: characteristic)
         }
@@ -134,7 +137,7 @@ class BleManager : NSObject {
     
     func readSerialNumber(identifier: String) {
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
-           let characteristic = serialNumberCharacteristics[identifier] {
+           let characteristic = getCharacteristicFor(identifier, type: .serialNumber) {
             // Initiate read of serial number
             connectionPeripheral.readValue(for: characteristic)
         }
@@ -144,7 +147,7 @@ class BleManager : NSObject {
         guard let identifier = identifier else { return }
         
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
-           let characteristic = modelNumberCharacteristics[identifier] {
+           let characteristic = getCharacteristicFor(identifier, type: .modelNumber) {
             // Initiate read of hardware revision
             connectionPeripheral.readValue(for: characteristic)
         }
@@ -186,6 +189,20 @@ class BleManager : NSObject {
         // print("Failed to find connection")
         return nil
     }
+    
+    private func storeCharacteristicFor(_ device: CBPeripheral, type: BleCharacteristic, characteristic: CBCharacteristic) {
+        // Creat dictionary for device if it doesnt exists
+        if characteristics[device.identifier.uuidString] == nil {
+            characteristics[device.identifier.uuidString] = [:]
+        }
+        
+        // Store characteristic
+        characteristics[device.identifier.uuidString]?[type] = characteristic
+    }
+    
+    private func getCharacteristicFor(_ peripheralIdentifier: String, type: BleCharacteristic) -> CBCharacteristic? {
+        return characteristics[peripheralIdentifier]?[type]
+    }
 }
 
 // MARK: - CBCantralManagerDelegate
@@ -213,6 +230,8 @@ extension BleManager: CBCentralManagerDelegate{
         
         if let advName = advertisementData[CBAdvertisementDataLocalNameKey] as? String,
            DFUManager.bootloaderTypeFrom(advertisingName: advName) != .unknown {
+            
+            print("JDJ bootloader name \(advName)")
             
             // Store peripheral reference for later use
             peripherals.insert(peripheral)
@@ -290,11 +309,12 @@ extension BleManager: CBCentralManagerDelegate{
 extension BleManager: CBPeripheralDelegate {
     
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
-        // print("\(#function)")
         guard let services = peripheral.services else { return }
         
+        print("JDJ didDiscoverServices")
+        
         for service in services {
-            // print("discovered service : \(service.uuid)")
+            print("JDJ -- discovered service : \(service.uuid.uuidString)")
             peripheral.discoverCharacteristics(nil, for: service)
         }
     }
@@ -302,29 +322,23 @@ extension BleManager: CBPeripheralDelegate {
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         guard let characteristics = service.characteristics else { return }
         
+        print("JDJ didDiscoverCharacteristicsFor : \(service.uuid.uuidString)")
+        
         for characteristic in characteristics {
-            if(characteristic.uuid == Constants.UART_RX_CHAR) {
-                uartCharacteristics[peripheral.identifier.uuidString] = characteristic
-            } else if(characteristic.uuid == Constants.DEVICE_STATUS_CHAR) {
-                deviceStatusCharacteristics[peripheral.identifier.uuidString] = characteristic
-            } else if(characteristic.uuid == Constants.FW_VERSION_CHAR ||
-                      characteristic.uuid == Constants.HW_REVISION_CHAR ||
-                      characteristic.uuid == Constants.MODEL_NUMBER_CHAR ||
-                      characteristic.uuid == Constants.SERIAL_NUMBER_CHAR) {
-                          
-                // Save references to the characteristics for later use
-                if(characteristic.uuid == Constants.FW_VERSION_CHAR) {
-                    fwRevisionCharacteristics[peripheral.identifier.uuidString] = characteristic
-                } else if(characteristic.uuid == Constants.HW_REVISION_CHAR) {
-                    hwRevisionCharacteristics[peripheral.identifier.uuidString] = characteristic
-                } else if(characteristic.uuid == Constants.MODEL_NUMBER_CHAR) {
-                    modelNumberCharacteristics[peripheral.identifier.uuidString] = characteristic
-                } else if(characteristic.uuid == Constants.SERIAL_NUMBER_CHAR) {
-                    serialNumberCharacteristics[peripheral.identifier.uuidString] = characteristic
-                }
-                          
+            print("JDJ -- discovered characteristic : \(characteristic.uuid.uuidString)")
+            
+            if let type = BleCharacteristic.from(characteristic) {
+                
+                // Store characteristic
+                storeCharacteristicFor(peripheral, type: type, characteristic: characteristic)
+                
                 // Read FW version, HW revision, and serial number when the characteristics are discovered
-                peripheral.readValue(for: characteristic)
+                if(type == BleCharacteristic.firmwareVersion ||
+                   type == BleCharacteristic.hardwareRevision ||
+                   type == BleCharacteristic.modelNumber ||
+                   type == BleCharacteristic.serialNumber) {
+                    peripheral.readValue(for: characteristic)
+                }
             }
             
             peripheral.discoverDescriptors(for: characteristic)
@@ -336,12 +350,22 @@ extension BleManager: CBPeripheralDelegate {
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
-        if(characteristic.uuid == Constants.UART_TX_CHAR),
-            let statusChar = deviceStatusCharacteristics[peripheral.identifier.uuidString]  {
+        print("JDJ didUpdateNotificationStateFor : \(characteristic.uuid.uuidString)")
+        
+        if(characteristic.uuid == BleCharacteristic.uartTx.uuid),
+          let statusChar = getCharacteristicFor(peripheral.identifier.uuidString, type: .deviceStatus) {
             // After enabling UART notification
             // Enable notifications for Device status characteristic
             peripheral.setNotifyValue(true, for: statusChar)
-            
+        }
+        else if(characteristic.uuid == BleCharacteristic.deviceStatus.uuid),
+               let statusChar = getCharacteristicFor(peripheral.identifier.uuidString, type: .dfu) {
+            // After enabling STATUS notification
+            // Enable notifications for DFU characteristic
+            peripheral.setNotifyValue(true, for: statusChar)
+        }
+        else if(characteristic.uuid == BleCharacteristic.dfu.uuid) {
+            // After enabling DFU notification
             // Send request the session ID from device
             sendRequest(identifier: peripheral.identifier.uuidString, request: SessionInfoRequest())
         }
@@ -351,30 +375,32 @@ extension BleManager: CBPeripheralDelegate {
         guard let data = characteristic.value else { return }
         
         switch(characteristic.uuid) {
-        case Constants.UART_TX_CHAR:
+        case BleCharacteristic.uartTx.uuid:
             handleUartData(data: data, identifier: peripheral.identifier)
             
-        case Constants.DEVICE_STATUS_CHAR:
+        case BleCharacteristic.deviceStatus.uuid:
             if let status = ProbeStatus(fromData: data) {
                 delegate?.updateDeviceWithStatus(identifier: peripheral.identifier, status: status)
             }
             
-        case Constants.SERIAL_NUMBER_CHAR:
+        case BleCharacteristic.serialNumber.uuid:
             let serialNumber = String(decoding: data, as: UTF8.self)
             delegate?.updateDeviceSerialNumber(identifier: peripheral.identifier, serialNumber: serialNumber)
             
-        case Constants.FW_VERSION_CHAR:
+        case BleCharacteristic.firmwareVersion.uuid:
             let fwVersion = String(decoding: data, as: UTF8.self)
             delegate?.updateDeviceFwVersion(identifier: peripheral.identifier, fwVersion: fwVersion)
             
-        case Constants.HW_REVISION_CHAR:
+        case BleCharacteristic.hardwareRevision.uuid:
             let hwRevision = String(decoding: data, as: UTF8.self)
             delegate?.updateDeviceHwRevision(identifier: peripheral.identifier, hwRevision: hwRevision)
             
-        case Constants.MODEL_NUMBER_CHAR:
+        case  BleCharacteristic.modelNumber.uuid:
             let modelInfo = String(decoding: data, as: UTF8.self)
             delegate?.updateDeviceModelInfo(identifier: peripheral.identifier, modelInfo: modelInfo)
          
+        case BleCharacteristic.dfu.uuid:
+            print("JDJ didUpdateValueFor DFU_CHAR")
             
         default:
             break
@@ -384,9 +410,12 @@ extension BleManager: CBPeripheralDelegate {
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverDescriptorsFor characteristic: CBCharacteristic, error: Error?) {
         guard let descriptors = characteristic.descriptors, !descriptors.isEmpty else { return }
         
+        print("JDJ didDiscoverDescriptorsFor : \(characteristic.uuid.uuidString)")
+        
         for _ in descriptors {
             // Always enable notifications for UART TX characteristic
-            if(characteristic.uuid == Constants.UART_TX_CHAR) {
+            if(characteristic.uuid == BleCharacteristic.uartTx.uuid) {
+                print("JDJ setNotifyValue : Constants.UART_TX_CHAR")
                 peripheral.setNotifyValue(true, for: characteristic)
             }
         }

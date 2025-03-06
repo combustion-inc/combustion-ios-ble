@@ -120,16 +120,21 @@ class DFUManager {
     
     
     func checkForStuckDFU(peripheral: CBPeripheral, advertisingName: String, device: Device) {
-        if let runningDFU = runningDFUs[advertisingName] {
-            // If more than 10 seconds have elapsed, then restart the DFU
-            let differenceInSeconds = Int(Date().timeIntervalSince(runningDFU.startedAt))
-            if(differenceInSeconds > Constants.RETRY_TIME_DELAY) {
-                _ = runDfu(peripheral: peripheral,
-                           device: device,
-                           advertisingName: advertisingName,
-                           firmware: runningDFU.firmware)
-            }
-        }
+        print("JDJ checkForStuckDFU \(advertisingName)")
+        
+        
+        
+        
+//        if let runningDFU = runningDFUs[advertisingName] {
+//            // If more than 10 seconds have elapsed, then restart the DFU
+//            let differenceInSeconds = Int(Date().timeIntervalSince(runningDFU.startedAt))
+//            if(differenceInSeconds > Constants.RETRY_TIME_DELAY) {
+//                _ = runDfu(peripheral: peripheral,
+//                           device: device,
+//                           advertisingName: advertisingName,
+//                           firmware: runningDFU.firmware)
+//            }
+//        }
     }
     
     /// Restart DFU for "unknown" bootloader. This means a device is advertising from its bootloader
@@ -202,6 +207,40 @@ class DFUManager {
                         advertisingName: String,
                         firmware: DFUFirmware) -> DFUServiceController?  {
         
+        print("JDJ DFUManager runDFU - \(advertisingName)")
+
+        NEW_runDFU(device: device,
+                   advertisingName: advertisingName)
+        
+        return nil
+        
+//        return OLD_runDfu(peripheral: peripheral,
+//                          device: device,
+//                          advertisingName: advertisingName,
+//                          firmware: firmware)
+    }
+    
+    private func NEW_runDFU(device: Device,
+                            advertisingName: String) {
+        
+        let nameRequest = DFURequest.set(name: advertisingName)
+        BleManager.shared.sendDFURequest(identifier: device.bleIdentifier,
+                                         request: nameRequest)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            let bootloaderRequest = DFURequest.enterBootloader
+            BleManager.shared.sendDFURequest(identifier: device.bleIdentifier,
+                                             request: bootloaderRequest)
+        }
+    }
+    
+    private func OLD_runDfu(peripheral: CBPeripheral,
+                        device: Device,
+                        advertisingName: String,
+                        firmware: DFUFirmware) -> DFUServiceController?  {
+        
+        print("JDJ DFUManager OLD_runDfu - \(advertisingName)")
+        
         let initiator = DFUServiceInitiator().with(firmware: firmware)
         
         initiator.delegate = device
@@ -223,4 +262,35 @@ class DFUManager {
         return initiator.start(target: peripheral)
     }
     
+}
+
+// TODO JDJ move this somewhere
+enum DFURequest {
+    case enterBootloader
+    case set(name: String)
+    
+    var data: Data {
+        switch self {
+        case .enterBootloader:
+            return Data([ButtonlessDFUOpCode.enterBootloader.code])
+        case .set(let name):
+            var data = Data([ButtonlessDFUOpCode.setName.code])
+            data += UInt8(name.lengthOfBytes(using: String.Encoding.utf8))
+            data += name.utf8
+            return data
+        }
+    }
+}
+
+enum ButtonlessDFUOpCode : UInt8 {
+    /// Jump from the main application to Secure DFU bootloader (DFU mode).
+    case enterBootloader = 0x01
+    /// Set a new advertisement name when jumping to Secure DFU bootloader (DFU mode).
+    case setName         = 0x02
+    /// The response code.
+    case responseCode    = 0x20
+    
+    var code: UInt8 {
+        return rawValue
+    }
 }

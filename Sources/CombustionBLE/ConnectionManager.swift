@@ -137,8 +137,16 @@ class ConnectionManager {
     
     private func deviceInAllowList(_ device: Device) -> Bool {
         // If allowList is nil, then return true
-        guard let allowList = deviceAllowList else { return true}
+        guard let allowList = deviceAllowList else { return true }
         
-        return allowList.contains(device.uniqueIdentifier)
+        if let device = device as? Probe {
+            return allowList.contains(device.serialNumberString)
+        }
+        else if let accessory = (device as? MeatNetNode)?.accessory {
+            return allowList.contains(accessory.serialNumberString)
+        }
+        else {
+            return false
+        }
     }
 }

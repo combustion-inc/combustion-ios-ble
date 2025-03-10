@@ -28,7 +28,7 @@ import Foundation
 /// Representation of a meat net nodes native abilites, such as Grill Gauge
 public protocol Accessory {
         
-    var parent: MeatNetNode { get }
+    var parent: Device { get }
     
     var type: DeviceType { get }
      

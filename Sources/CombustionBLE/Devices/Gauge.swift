@@ -31,7 +31,7 @@ public class GrillGauge: Accessory {
         return .gauge
     }
     
-    public internal(set) var parent: MeatNetNode
+    public internal(set) var parent: Device
     
     // device serial number
     @Published public private(set) var serialNumber: UInt32
@@ -77,6 +77,10 @@ public class GrillGauge: Accessory {
     
     private var deviceManager = DeviceManager.shared
     
+    public var connectionState: Device.ConnectionState {
+        return parent.connectionState
+    }
+    
     init(parent: MeatNetNode, advertising: AdvertisingData) {
         self.parent = parent
         self.serialNumber = advertising.serialNumber
@@ -96,7 +100,7 @@ public class GrillGauge: Accessory {
     public func updateWithAdvertising(_ advertising: AdvertisingData) {
         guard let advertisingData = advertising as? GaugeAdvertisingData else { return }
         
-        parent.updateLastUpdateTime()
+        (parent as? MeatNetNode)?.updateLastUpdateTime()
         
         if(parent.connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(parent)) {
             updateTemperatures(temperature: advertisingData.temperatures)
@@ -146,7 +150,7 @@ public class GrillGauge: Accessory {
             let missingRange = current.missingRange(sequenceRangeStart: deviceStatus.minSequenceNumber,
                                                     sequenceRangeEnd: deviceStatus.maxSequenceNumber)
             
-            if let missingRange = missingRange {
+            if let missingRange = missingRange, let parent = parent as? MeatNetNode {
                 // Request missing records
                 deviceManager.requestLogsFrom(parent,
                                               minSequence: missingRange.lowerBound,

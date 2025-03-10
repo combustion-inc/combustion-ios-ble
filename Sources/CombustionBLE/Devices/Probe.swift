@@ -597,8 +597,8 @@ extension Probe: Accessory {
         return []
     }
     
-    public var parent: MeatNetNode {
-        fatalError("Probe cannot have a parent")
+    public var parent: Device {
+        return self
     }
     
     public func updateWithAdvertising(_ advertising: any AdvertisingData) {

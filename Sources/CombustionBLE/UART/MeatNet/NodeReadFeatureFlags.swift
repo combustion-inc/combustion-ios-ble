@@ -46,7 +46,7 @@ class NodeReadFeatureFlagsResponse : NodeResponse {
     enum Constants {
         static let MINIMUM_PAYLOAD_LENGTH = 14
         
-        static let SERIAL_RANGE = NodeResponse.HEADER_LENGTH..<(NodeResponse.HEADER_LENGTH + 4)
+        static let SERIAL_RANGE = NodeResponse.HEADER_LENGTH..<(NodeResponse.HEADER_LENGTH + 10)
         static let FEATURE_FLAG_RANGE = (NodeResponse.HEADER_LENGTH + 10)..<(NodeResponse.HEADER_LENGTH + 14)
     }
     

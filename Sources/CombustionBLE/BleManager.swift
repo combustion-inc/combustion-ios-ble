@@ -168,7 +168,7 @@ class BleManager : NSObject {
             return
         }
 
-        DFUManager.shared.retryDfuOnBootloader(peripheral: peripheral, device: device)
+        DFUManager.shared.restartDfuOnUnknownBootloader(peripheral: peripheral, device: device)
     }
     
     private func getConnectedPeripheral(identifier: String) -> CBPeripheral? {

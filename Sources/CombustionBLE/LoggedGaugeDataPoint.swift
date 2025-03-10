@@ -29,6 +29,11 @@ public class LoggedDeviceDataPoint: Equatable {
     public init(sequenceNum: UInt32) {
         self.sequenceNum = sequenceNum
     }
+    
+    public func temperatureForChannelIndex(_ index: Int) -> Double? {
+        // override in subclass
+        return nil
+    }
 }
 
 extension LoggedDeviceDataPoint {
@@ -61,6 +66,12 @@ public class LoggedGaugeDataPoint: LoggedDeviceDataPoint {
     public init(sequenceNum: UInt32, temperatures: GaugeTemperature) {
         self.temperatures = temperatures
         super.init(sequenceNum: sequenceNum)
+    }
+    
+    override public func temperatureForChannelIndex(_ index: Int) -> Double? {
+        //gauge only has one temperature sensor, ignore other indexes
+        guard index == 0 else { return nil }
+        return temperatures.value
     }
 }
 

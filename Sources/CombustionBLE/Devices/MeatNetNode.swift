@@ -200,7 +200,7 @@ public class MeatNetNode: Device {
         case .charger:
             version >= "2.1.0"
         case .gauge:
-            version >= "2.1.0"
+            true
         case .thermometer:
             false
         case .unknown:

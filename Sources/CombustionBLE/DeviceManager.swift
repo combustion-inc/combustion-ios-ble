@@ -734,6 +734,31 @@ extension DeviceManager : BleManagerDelegate {
         return foundDevice
     }
     
+    /// Finds Device by serial number string
+    private func findDeviceBySerialNumber(serialNumber: String) -> Device? {
+        var foundDevice : Device? = nil
+        
+        // Search through Devices to see if any devices have matching serial number
+        for(_, device) in devices {
+            if let device = device as? MeatNetNode, let serialNumberString = device.serialNumberString {
+                if serialNumberString == serialNumber {
+                    // We found a device matching this identifier, so break
+                    foundDevice = device
+                    break
+                }
+            }
+            else if let device = device as? Probe {
+                if device.serialNumberString == serialNumber {
+                    // We found a device matching this identifier, so break
+                    foundDevice = device
+                    break
+                }
+            }
+        }
+        
+        return foundDevice
+    }
+    
     private func findProbeBySerialNumber(serialNumber: UInt32) -> Probe? {
         var foundProbe : Probe? = nil
         
@@ -882,7 +907,7 @@ extension DeviceManager : BleManagerDelegate {
                 }
         case .getFeatureFlags:
             if let featureFlagsResponse = response as? NodeReadFeatureFlagsResponse,
-               let device = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode {
+               let device = findDeviceBySerialNumber(serialNumber: featureFlagsResponse.nodeSerialNumber) as? MeatNetNode {
                 device.updateFeatureFlags(featureFlagsResponse.flags)
             }
         case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession:

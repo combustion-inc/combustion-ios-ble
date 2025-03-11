@@ -28,10 +28,14 @@ import CoreBluetooth
 import Foundation
 import NordicDFU
 
-public enum DFUDeviceType {
+@available(*, unavailable, renamed: "DeviceType")
+public enum DFUDeviceType {}
+
+public enum DeviceType: String, Codable {
     case thermometer
     case display
     case charger
+    case gauge
     case unknown
 }
 
@@ -57,12 +61,13 @@ class DFUManager {
     // Value = Time when first detected
     private var unknownBootloaderDetected = [String: Date]()
     
-    private var defaultFirmware: [DFUDeviceType: DFUFirmware] = [:]
+    private var defaultFirmware: [DeviceType: DFUFirmware] = [:]
     
     private enum Constants {
         static let THERMOMETER_DFU_NAME = "Thermom_DFU_"
         static let DISPLAY_DFU_NAME = "Display_DFU_"
         static let CHARGER_DFU_NAME = "Charger_DFU_"
+        static let GAUGE_DFU_NAME = "Gauge_DFU_"
         
         static let THERMOMETER_DEFAULT_BOOTLOADER = "CI Probe BL"
         
@@ -70,7 +75,7 @@ class DFUManager {
         static let UNKNOWN_BOOTLOADER_DELAY = 10
     }
     
-    func setDefaultDFUForType(dfuFile: URL?, dfuType: DFUDeviceType) {
+    func setDefaultDFUForType(dfuFile: URL?, dfuType: DeviceType) {
         guard let dfuFile = dfuFile else { return }
         
         do {
@@ -83,21 +88,21 @@ class DFUManager {
         return runningDFUs[advertisingName]?.uniqueIdentifier
     }
     
-    static func bootloaderTypeFrom(advertisingName: String) -> DFUDeviceType {
+    static func bootloaderTypeFrom(advertisingName: String) -> DeviceType {
         if advertisingName == Constants.THERMOMETER_DEFAULT_BOOTLOADER {
             return .thermometer
         }
-        
-        if(advertisingName.contains(Constants.THERMOMETER_DFU_NAME)) {
+        else if(advertisingName.contains(Constants.THERMOMETER_DFU_NAME)) {
             return .thermometer
         }
-        
-        if(advertisingName.contains(Constants.DISPLAY_DFU_NAME)) {
+        else if advertisingName.contains(Constants.DISPLAY_DFU_NAME) {
             return .display
         }
-        
-        if(advertisingName.contains(Constants.CHARGER_DFU_NAME)) {
+        else if advertisingName.contains(Constants.CHARGER_DFU_NAME) {
             return .charger
+        }
+        else if advertisingName.contains(Constants.GAUGE_DFU_NAME) {
+            return .gauge
         }
         
         return .unknown
@@ -181,8 +186,11 @@ class DFUManager {
             if node.dfuType == .charger {
                 return Constants.CHARGER_DFU_NAME
             }
-            else if(node.dfuType == .display) {
+            else if node.dfuType == .display {
                 return Constants.DISPLAY_DFU_NAME
+            }
+            else if node.dfuType == .gauge {
+                return Constants.GAUGE_DFU_NAME
             }
         }
 

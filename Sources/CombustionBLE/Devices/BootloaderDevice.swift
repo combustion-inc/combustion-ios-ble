@@ -9,7 +9,7 @@ import Foundation
 
 
 public class BootloaderDevice : Device {
-    public let type: DFUDeviceType
+    public let type: DeviceType
     
     private(set) var advertisingName: String
  

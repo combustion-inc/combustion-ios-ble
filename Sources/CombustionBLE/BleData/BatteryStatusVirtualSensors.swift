@@ -33,7 +33,7 @@ public enum BatteryStatus: UInt8, Codable {
     static let MASK: UInt8 = 0x1
 }
 
-public struct BatteryStatusVirtualSensors {
+public struct BatteryStatusVirtualSensors: Equatable {
     public let batteryStatus: BatteryStatus
     public let virtualSensors: VirtualSensors
     

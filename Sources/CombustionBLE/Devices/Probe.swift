@@ -158,7 +158,7 @@ open class Probe : Device {
     /// Timer for periodically requesting session information
     private var sessionRequestTimer = Timer()
    
-    init(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, identifier: UUID?) {
+    init(_ advertising: ProbeAdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, identifier: UUID?) {
         serialNumber = advertising.serialNumber
         id = advertising.modeId.id
         color = advertising.modeId.color
@@ -232,7 +232,7 @@ extension Probe {
     /// - param isConnectable: Whether Probe is connectable (not present if via Node)
     /// - param RSSI: Signal strength (not present if via Node)
     /// - param bleIdentifier: BLE UUID (not present if via Node)
-    func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, bleIdentifier: UUID?) {
+    func updateWithAdvertising(_ advertising: ProbeAdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, bleIdentifier: UUID?) {
         
         // Set update time
         setLastUpdateTime()
@@ -250,7 +250,7 @@ extension Probe {
         
         // Only update rest of data if not connected to probe (directly or through meatnet).
         // Otherwise, rely on status notifications to update data
-        if(connectionState != .connected && !deviceManager.isProbeConnectedToMeatnet(self)) {
+        if(connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(self)) {
             if(advertising.modeId.mode == .normal) {
                 // If we should update normal mode, do so, but since this is Advertising info
                 // and does not contain Prediction information, DO NOT lock it out. We want to
@@ -347,7 +347,7 @@ extension Probe {
                 updated = true
             }
         }
-        else if(deviceStatus.modeId.mode == .instantRead ){
+        else if(deviceStatus.modeId.mode == .instantRead) {
             // Update Instant Read temperature, including hop count information.
             updated = updateInstantRead(deviceStatus.temperatures.values[0],
                                         probeId: deviceStatus.modeId.id,
@@ -585,4 +585,26 @@ extension Probe {
     private func requestSessionInformation() {
         deviceManager.readSessionInfo(probe: self)
     }
+}
+
+extension Probe: Accessory {
+    
+    public var type: DeviceType {
+        return .thermometer
+    }
+    
+    public var deviceTemperatureLogs: [DeviceTemperatureLog] {
+        return []
+    }
+    
+    public var parent: Device {
+        return self
+    }
+    
+    public func updateWithAdvertising(_ advertising: any AdvertisingData) {
+        guard let advertisingData = advertising as? ProbeAdvertisingData else { return }
+
+        self.updateWithAdvertising(advertisingData, isConnectable: nil, RSSI: nil, bleIdentifier: nil)
+    }
+    
 }

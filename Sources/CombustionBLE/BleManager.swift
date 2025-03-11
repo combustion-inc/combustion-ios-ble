@@ -219,8 +219,16 @@ extension BleManager: CBCentralManagerDelegate{
             
             delegate?.handleBootloaderAdvertising(advertisingName: advName, rssi: RSSI, peripheral: peripheral)
         }
-        else if let advData = AdvertisingData(fromData: manufatureData)  {
+        else if let advData = ProbeAdvertisingData(fromData: manufatureData)  {
             // Store peripheral reference for later use
+            peripherals.insert(peripheral)
+            
+            delegate?.updateDeviceWithAdvertising(advertising: advData,
+                                                  isConnectable: isConnectable,
+                                                  rssi: RSSI,
+                                                  identifier: peripheral.identifier)
+        }
+        else if let advData = NodeAdvertisingData.create(fromData: manufatureData) {
             peripherals.insert(peripheral)
             
             delegate?.updateDeviceWithAdvertising(advertising: advData,

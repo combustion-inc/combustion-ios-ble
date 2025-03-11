@@ -140,6 +140,8 @@ extension Response {
             return ResetFoodSafeResponse(success: success, payloadLength: Int(payloadLength))
         case .resetSession:
             return ResetSessionResponse(success: success, payloadLength: Int(payloadLength))
+        case .gaugeLog:
+            return GaugeLogResponse.fromRaw(data: data, success: success, payloadLength: Int(payloadLength))
         }
     }
 }

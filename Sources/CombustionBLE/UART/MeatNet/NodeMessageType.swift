@@ -38,6 +38,7 @@ public enum NodeMessageType: Hashable, CaseIterable {
     case configureFoodSafe
     case resetFoodSafe
     case getFeatureFlags
+    case gaugeLog
     
     case connected
     case disconnected
@@ -53,6 +54,8 @@ public enum NodeMessageType: Hashable, CaseIterable {
     case syncThermometerList
     case resetSession
     
+    case gaugeStatus
+    
     case custom(address: UInt8)
     
     public static var allCases: [NodeMessageType] {
@@ -62,6 +65,7 @@ public enum NodeMessageType: Hashable, CaseIterable {
             .log,
             .setPrediction,
             .setPowerMode,
+            .gaugeLog,
             .readOverTemperature,
             .configureFoodSafe,
             .resetFoodSafe,
@@ -78,7 +82,8 @@ public enum NodeMessageType: Hashable, CaseIterable {
             .heartbeat,
             .associateNode,
             .syncThermometerList,
-                .resetSession]
+            .resetSession,
+            .gaugeStatus]
     }
 }
 
@@ -95,6 +100,7 @@ extension NodeMessageType {
         case .configureFoodSafe: 0x07
         case .resetFoodSafe: 0x08
         case .setPowerMode: 0x09
+        case .gaugeLog: 0x10
         case .getFeatureFlags: 0x30
         case .connected: 0x40
         case .disconnected: 0x41
@@ -109,6 +115,7 @@ extension NodeMessageType {
         case .associateNode: 0x4A
         case .syncThermometerList: 0x4B
         case .resetSession: 0x0A
+        case .gaugeStatus: 0x0B
         case .custom(let value):
             value
         }

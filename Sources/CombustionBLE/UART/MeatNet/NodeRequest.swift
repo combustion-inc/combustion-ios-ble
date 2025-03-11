@@ -160,7 +160,8 @@ extension NodeRequest {
         switch messageType {
         case .probeStatus:
             return NodeProbeStatusRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
-            
+        case .gaugeStatus:
+            return NodeGaugeStatusRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
         case .heartbeat:
             return NodeHeartbeatRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
             

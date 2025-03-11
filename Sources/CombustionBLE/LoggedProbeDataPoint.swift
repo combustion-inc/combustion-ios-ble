@@ -26,8 +26,8 @@ SOFTWARE.
 
 import Foundation
 
-public struct LoggedProbeDataPoint: Equatable {
-    public let sequenceNum: UInt32
+public class LoggedProbeDataPoint: LoggedDeviceDataPoint {
+
     public let temperatures: ProbeTemperatures
     public let virtualCore: VirtualCoreSensor
     public let virtualSurface: VirtualSurfaceSensor
@@ -40,7 +40,7 @@ public struct LoggedProbeDataPoint: Equatable {
     public let estimatedCoreTemperature: Double
     
     public init(sequenceNum: UInt32, temperatures: ProbeTemperatures, virtualCore: VirtualCoreSensor, virtualSurface: VirtualSurfaceSensor, virtualAmbient: VirtualAmbientSensor, predictionState: PredictionState, predictionMode: PredictionMode, predictionType: PredictionType, predictionSetPointTemperature: Double, predictionValueSeconds: UInt, estimatedCoreTemperature: Double) {
-        self.sequenceNum = sequenceNum
+
         self.temperatures = temperatures
         self.virtualCore = virtualCore
         self.virtualSurface = virtualSurface
@@ -51,6 +51,12 @@ public struct LoggedProbeDataPoint: Equatable {
         self.predictionSetPointTemperature = predictionSetPointTemperature
         self.predictionValueSeconds = predictionValueSeconds
         self.estimatedCoreTemperature = estimatedCoreTemperature
+        
+        super.init(sequenceNum: sequenceNum)
+    }
+    
+    override public func temperatureForChannelIndex(_ index: Int) -> Double? {
+        return temperatures.values[index]
     }
 }
 
@@ -133,15 +139,5 @@ extension LoggedProbeDataPoint {
                                     predictionSetPointTemperature: 54.4,
                                     predictionValueSeconds: 600,
                                     estimatedCoreTemperature: 30.0)
-    }
-}
-
-extension LoggedProbeDataPoint: Hashable {
-    public static func == (lhs: LoggedProbeDataPoint, rhs: LoggedProbeDataPoint) -> Bool {
-        return lhs.sequenceNum == rhs.sequenceNum
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(sequenceNum)
     }
 }

@@ -26,7 +26,7 @@ SOFTWARE.
 import Foundation
 
 /// Message containing Gauge status information.
-public struct GaugeStatus {
+public struct GaugeStatus: DeviceStatus {
     /// Minimum sequence number of records in Probe's memory.
     public let minSequenceNumber: UInt32
     
@@ -36,26 +36,16 @@ public struct GaugeStatus {
     /// Current temperature sent by Gauge.
     public let temperature: GaugeTemperature
     
-    /// ModeId (Gauge color, ID, and mode)
-    public let modeId: ModeId
-    
-    /// Battery Status and Virtual Sensors
-    public let batteryStatusVirtualSensors: BatteryStatusVirtualSensors
-    
     /// Overheating sensors
     public let overheatingSensors: OverheatingSensors
     
     public init(minSequenceNumber: UInt32,
                 maxSequenceNumber: UInt32,
                 temperature: GaugeTemperature,
-                modeId: ModeId,
-                batteryStatusVirtualSensors: BatteryStatusVirtualSensors,
                 overheatingSensors: OverheatingSensors) {
         self.minSequenceNumber = minSequenceNumber
         self.maxSequenceNumber = maxSequenceNumber
         self.temperature = temperature
-        self.modeId = modeId
-        self.batteryStatusVirtualSensors = batteryStatusVirtualSensors
         self.overheatingSensors = overheatingSensors
     }
 }
@@ -87,14 +77,6 @@ extension GaugeStatus {
         // Temperatures (8 13-bit) values
         let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
         temperature = GaugeTemperature.fromRawData(data: tempData)
-        
-        // Decode ModeId byte
-        let byte = data.subdata(in: Constants.MODE_COLOR_ID_RANGE)[0]
-        modeId = ModeId.fromByte(byte)
-        
-        // Decode battery status & virutal sensors
-        let batteryByte = data.subdata(in: Constants.DEVICE_STATUS_RANGE)[0]
-        batteryStatusVirtualSensors = BatteryStatusVirtualSensors.fromByte(batteryByte)
         
         // Decode Over heating flags
         let overheatingByte = data.subdata(in: Constants.OVERHEAT_BYTE_RANGE)[0]

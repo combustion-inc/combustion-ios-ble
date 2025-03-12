@@ -34,10 +34,12 @@ protocol BleManagerDelegate: AnyObject {
     func didConnectTo(identifier: UUID)
     func didFailToConnectTo(identifier: UUID)
     func didDisconnectFrom(identifier: UUID)
+    func didCompleteDiscovery(identifier: UUID)
+    func didEnableNotificationsFor(identifier: UUID, characteristic: BleCharacteristic)
     func handleBootloaderAdvertising(advertisingName: String, rssi: NSNumber, peripheral: CBPeripheral)
+    func handleUARTData(identifier: UUID, data: Data)
     func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID)
     func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus)
-    func handleUARTData(identifier: UUID, data: Data)
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String)
     func updateDeviceHwRevision(identifier: UUID, hwRevision: String)
     func updateDeviceSerialNumber(identifier: UUID, serialNumber: String)
@@ -158,6 +160,15 @@ class BleManager : NSObject {
         DFUManager.shared.restartDfuOnUnknownBootloader(peripheral: combustionPeripheral.peripheral, device: device)
     }
     
+    func enableNotificationsFor(_ identifier: String, type: BleCharacteristic) {
+        guard let combustionPeripheral = peripherals[identifier],
+              let char = getCharacteristicFor(identifier, type: type) else { return }
+        
+        print("JDJ enableNotificationsFor \(type)")
+        
+        combustionPeripheral.peripheral.setNotifyValue(true, for: char)
+    }
+    
     private func getConnectedPeripheral(identifier: String) -> CBPeripheral? {
         guard let combustionPeripheral = peripherals[identifier] else { return nil }
         
@@ -167,16 +178,18 @@ class BleManager : NSObject {
         return combustionPeripheral.peripheral
     }
     
-    private func storeCharacteristicFor(_ peripheral: CBPeripheral, type: BleCharacteristic, characteristic: CBCharacteristic) {
-        guard let combustionPeripheral = peripherals[peripheral.identifier.uuidString] else { return }
+    private func storePeripheral(_ peripheral: CBPeripheral) {
+        guard peripherals[peripheral.identifier.uuidString] == nil else { return }
         
-        // Store characteristic
-        combustionPeripheral.storeCharacteristicFor(type: type, characteristic: characteristic)
+        peripherals[peripheral.identifier.uuidString] = CombustionPeripheral(peripheral: peripheral)
+    }
+    
+    private func combustionPeripheralFor(_ peripheral: CBPeripheral) -> CombustionPeripheral? {
+        return peripherals[peripheral.identifier.uuidString]
     }
     
     private func getCharacteristicFor(_ peripheralIdentifier: String, type: BleCharacteristic) -> CBCharacteristic? {
         guard let peripheral = peripherals[peripheralIdentifier] else { return nil }
-        
         return peripheral.characteristics[type]
     }
 }
@@ -207,16 +220,14 @@ extension BleManager: CBCentralManagerDelegate{
         if let advName = advertisementData[CBAdvertisementDataLocalNameKey] as? String,
            DFUManager.bootloaderTypeFrom(advertisingName: advName) != .unknown {
             
-            print("JDJ bootloader name \(advName)")
-            
-            // Store peripheral reference for later use
-            peripherals[peripheral.identifier.uuidString] = CombustionPeripheral(peripheral: peripheral)
+            // Store peripheral reference
+            storePeripheral(peripheral)
             
             delegate?.handleBootloaderAdvertising(advertisingName: advName, rssi: RSSI, peripheral: peripheral)
         }
         else if let advData = ProbeAdvertisingData(fromData: manufatureData)  {
-            // Store peripheral reference for later use
-            peripherals[peripheral.identifier.uuidString] = CombustionPeripheral(peripheral: peripheral)
+            // Store peripheral reference
+            storePeripheral(peripheral)
             
             delegate?.updateDeviceWithAdvertising(advertising: advData,
                                                   isConnectable: isConnectable,
@@ -224,8 +235,8 @@ extension BleManager: CBCentralManagerDelegate{
                                                   identifier: peripheral.identifier)
         }
         else if let advData = NodeAdvertisingData.create(fromData: manufatureData) {
-            // Store peripheral reference for later use
-            peripherals[peripheral.identifier.uuidString] = CombustionPeripheral(peripheral: peripheral)
+            // Store peripheral reference
+            storePeripheral(peripheral)
             
             delegate?.updateDeviceWithAdvertising(advertising: advData,
                                                   isConnectable: isConnectable,
@@ -279,27 +290,27 @@ extension BleManager: CBPeripheralDelegate {
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         guard let services = peripheral.services else { return }
         
-        print("JDJ didDiscoverServices")
-        
         for service in services {
-            print("JDJ -- discovered service : \(service.uuid.uuidString)")
+            // Save discovered service
+            combustionPeripheralFor(peripheral)?.discoveredService(service)
+            
+            // Discover characteristics for that service
             peripheral.discoverCharacteristics(nil, for: service)
         }
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
-        guard let characteristics = service.characteristics else { return }
+        guard let characteristics = service.characteristics,
+            let combustionPeripheral = combustionPeripheralFor(peripheral) else { return }
         
-        print("JDJ didDiscoverCharacteristicsFor : \(service.uuid.uuidString)")
+        // Save that characteristics were discovered for the service
+        combustionPeripheral.discoveredCharacteristicsFor(service)
         
         for characteristic in characteristics {
-            print("JDJ -- discovered characteristic : \(characteristic.uuid.uuidString)")
+            // Save discovered characteristics
+            combustionPeripheral.discoveredCharacteristic(characteristic: characteristic)
             
             if let type = BleCharacteristic.from(characteristic) {
-                
-                // Store characteristic
-                storeCharacteristicFor(peripheral, type: type, characteristic: characteristic)
-                
                 // Read FW version, HW revision, and serial number when the characteristics are discovered
                 if(type == BleCharacteristic.firmwareVersion ||
                    type == BleCharacteristic.hardwareRevision ||
@@ -311,6 +322,10 @@ extension BleManager: CBPeripheralDelegate {
             
             peripheral.discoverDescriptors(for: characteristic)
         }
+        
+        if combustionPeripheral.discoveredCharacteristicForAllServices() {
+            delegate?.didCompleteDiscovery(identifier: peripheral.identifier)
+        }
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
@@ -318,25 +333,9 @@ extension BleManager: CBPeripheralDelegate {
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
-        print("JDJ didUpdateNotificationStateFor : \(characteristic.uuid.uuidString)")
+        guard let characteristicType = BleCharacteristic.from(characteristic) else { return }
         
-        if(characteristic.uuid == BleCharacteristic.uartTx.uuid),
-          let statusChar = getCharacteristicFor(peripheral.identifier.uuidString, type: .deviceStatus) {
-            // After enabling UART notification
-            // Enable notifications for Device status characteristic
-            peripheral.setNotifyValue(true, for: statusChar)
-        }
-        else if(characteristic.uuid == BleCharacteristic.deviceStatus.uuid),
-               let statusChar = getCharacteristicFor(peripheral.identifier.uuidString, type: .dfu) {
-            // After enabling STATUS notification
-            // Enable notifications for DFU characteristic
-            peripheral.setNotifyValue(true, for: statusChar)
-        }
-        else if(characteristic.uuid == BleCharacteristic.dfu.uuid) {
-            // After enabling DFU notification
-            // Send request the session ID from device
-            sendRequest(identifier: peripheral.identifier.uuidString, request: SessionInfoRequest())
-        }
+        delegate?.didEnableNotificationsFor(identifier: peripheral.identifier, characteristic: characteristicType)
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
@@ -344,7 +343,7 @@ extension BleManager: CBPeripheralDelegate {
         
         switch(characteristic.uuid) {
         case BleCharacteristic.uartTx.uuid:
-            handleUartData(data: data, identifier: peripheral.identifier)
+            delegate?.handleUARTData(identifier: peripheral.identifier, data: data)
             
         case BleCharacteristic.deviceStatus.uuid:
             if let status = ProbeStatus(fromData: data) {
@@ -376,20 +375,6 @@ extension BleManager: CBPeripheralDelegate {
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverDescriptorsFor characteristic: CBCharacteristic, error: Error?) {
-        guard let descriptors = characteristic.descriptors, !descriptors.isEmpty else { return }
-        
-        print("JDJ didDiscoverDescriptorsFor : \(characteristic.uuid.uuidString)")
-        
-        for _ in descriptors {
-            // Always enable notifications for UART TX characteristic
-            if(characteristic.uuid == BleCharacteristic.uartTx.uuid) {
-                print("JDJ setNotifyValue : Constants.UART_TX_CHAR")
-                peripheral.setNotifyValue(true, for: characteristic)
-            }
-        }
-    }
-    
-    private func handleUartData(data: Data, identifier: UUID) {
-        delegate?.handleUARTData(identifier: identifier, data: data)
+
     }
 }

@@ -35,5 +35,8 @@ extension BleService {
     var uuid: CBUUID {
         return CBUUID(string: rawValue)
     }
+    
+    static func from(_ service: CBService) -> BleService? {
+        return BleService(rawValue: service.uuid.uuidString)
+    }
 }
-

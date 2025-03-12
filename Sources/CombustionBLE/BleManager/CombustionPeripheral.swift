@@ -27,14 +27,30 @@ import CoreBluetooth
 
 class CombustionPeripheral {
     private(set) var peripheral: CBPeripheral
+    private(set) var discoveredServices: Set<BleService> = []
+    private(set) var discoveredCharacteristicForService: Set<BleService> = []
     private(set) var characteristics: [BleCharacteristic: CBCharacteristic] = [:]
     
     init(peripheral: CBPeripheral) {
         self.peripheral = peripheral
     }
     
-    func storeCharacteristicFor(type: BleCharacteristic, characteristic: CBCharacteristic) {
-        print("JDJ storeCharacteristicFor : \(type) : \(characteristic.uuid.uuidString)")
+    func discoveredService(_ service: CBService) {
+        guard let serviceType = BleService.from(service) else { return }
+        discoveredServices.insert(serviceType)
+    }
+    
+    func discoveredCharacteristicsFor(_ service: CBService) {
+        guard let serviceType = BleService.from(service) else { return }
+        discoveredCharacteristicForService.insert(serviceType)
+    }
+    
+    func discoveredCharacteristic(characteristic: CBCharacteristic) {
+        guard let type = BleCharacteristic.from(characteristic) else { return }
         characteristics[type] = characteristic
+    }
+    
+    func discoveredCharacteristicForAllServices() -> Bool {
+        return discoveredServices.count == discoveredCharacteristicForService.count
     }
 }

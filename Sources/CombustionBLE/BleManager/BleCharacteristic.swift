@@ -27,10 +27,10 @@ import CoreBluetooth
 enum BleCharacteristic: String {
     case deviceStatus = "00000101-CAAB-3792-3D44-97AE51C1407A"
     case dfu = "8EC90003-F315-4F60-9FB8-838830DAEA50"
-    case firmwareVersion = "2a26"
-    case hardwareRevision = "2a27"
-    case modelNumber = "2a24"
-    case serialNumber = "2a25"
+    case firmwareVersion = "2A26"
+    case hardwareRevision = "2A27"
+    case modelNumber = "2A24"
+    case serialNumber = "2A25"
     case uartRx = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
     case uartTx = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 }

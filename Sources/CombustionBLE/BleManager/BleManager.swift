@@ -51,18 +51,9 @@ class BleManager : NSObject {
     
     weak var delegate: BleManagerDelegate?
     
-    private(set) var peripherals = Set<CBPeripheral>()
-    
-    private var characteristics: [String: [BleCharacteristic: CBCharacteristic]] = [:]
+    private var peripherals = [String: CombustionPeripheral]()
     
     private var manager: CBCentralManager?
-    
-    private enum Constants {
-        static let DEVICE_INFO_SERVICE  = CBUUID(string: "180a")
-        static let DFU_SERVICE          = CBUUID(string: "FE59")
-        static let NEEDLE_SERVICE       = CBUUID(string: "00000100-CAAB-3792-3D44-97AE51C1407A")
-        static let UART_SERVICE         = CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
-    }
     
     /// Private initializer to enforce singleton
     private override init() {
@@ -76,7 +67,7 @@ class BleManager : NSObject {
     }
     
     private func startScanning() {
-        manager?.scanForPeripherals(withServices: [Constants.DFU_SERVICE],
+        manager?.scanForPeripherals(withServices: [BleService.dfu.uuid],
                                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
     }
     
@@ -161,47 +152,32 @@ class BleManager : NSObject {
     }
     
     func retryFirmwareUpdate(device: BootloaderDevice) {
-        guard let bleIdentifier = device.bleIdentifier else { return }
-        
-        // Find booloader ble peripheral
-        let uuid = UUID(uuidString: bleIdentifier )
-        let devicePeripherals = peripherals.filter { $0.identifier == uuid }
-        guard let peripheral = devicePeripherals.first else {
-            // print("Failed to find peripherals")
-            return
-        }
+        guard let bleIdentifier = device.bleIdentifier,
+            let combustionPeripheral = peripherals[bleIdentifier] else { return }
 
-        DFUManager.shared.restartDfuOnUnknownBootloader(peripheral: peripheral, device: device)
+        DFUManager.shared.restartDfuOnUnknownBootloader(peripheral: combustionPeripheral.peripheral, device: device)
     }
     
     private func getConnectedPeripheral(identifier: String) -> CBPeripheral? {
-        let uuid = UUID(uuidString: identifier)
-        let devicePeripherals = peripherals.filter { $0.identifier == uuid }
-        guard !devicePeripherals.isEmpty else {
-            // print("Failed to find peripherals")
-            return nil
-        }
+        guard let combustionPeripheral = peripherals[identifier] else { return nil }
         
-        if let connectedPeripheral = devicePeripherals.first(where: { $0.state == .connected }) {
-            return connectedPeripheral
-        }
+        // Check that device is connected
+        guard combustionPeripheral.peripheral.state == .connected else { return nil }
         
-        // print("Failed to find connection")
-        return nil
+        return combustionPeripheral.peripheral
     }
     
-    private func storeCharacteristicFor(_ device: CBPeripheral, type: BleCharacteristic, characteristic: CBCharacteristic) {
-        // Creat dictionary for device if it doesnt exists
-        if characteristics[device.identifier.uuidString] == nil {
-            characteristics[device.identifier.uuidString] = [:]
-        }
+    private func storeCharacteristicFor(_ peripheral: CBPeripheral, type: BleCharacteristic, characteristic: CBCharacteristic) {
+        guard let combustionPeripheral = peripherals[peripheral.identifier.uuidString] else { return }
         
         // Store characteristic
-        characteristics[device.identifier.uuidString]?[type] = characteristic
+        combustionPeripheral.storeCharacteristicFor(type: type, characteristic: characteristic)
     }
     
     private func getCharacteristicFor(_ peripheralIdentifier: String, type: BleCharacteristic) -> CBCharacteristic? {
-        return characteristics[peripheralIdentifier]?[type]
+        guard let peripheral = peripherals[peripheralIdentifier] else { return nil }
+        
+        return peripheral.characteristics[type]
     }
 }
 
@@ -234,13 +210,13 @@ extension BleManager: CBCentralManagerDelegate{
             print("JDJ bootloader name \(advName)")
             
             // Store peripheral reference for later use
-            peripherals.insert(peripheral)
+            peripherals[peripheral.identifier.uuidString] = CombustionPeripheral(peripheral: peripheral)
             
             delegate?.handleBootloaderAdvertising(advertisingName: advName, rssi: RSSI, peripheral: peripheral)
         }
         else if let advData = ProbeAdvertisingData(fromData: manufatureData)  {
             // Store peripheral reference for later use
-            peripherals.insert(peripheral)
+            peripherals[peripheral.identifier.uuidString] = CombustionPeripheral(peripheral: peripheral)
             
             delegate?.updateDeviceWithAdvertising(advertising: advData,
                                                   isConnectable: isConnectable,
@@ -248,7 +224,8 @@ extension BleManager: CBCentralManagerDelegate{
                                                   identifier: peripheral.identifier)
         }
         else if let advData = NodeAdvertisingData.create(fromData: manufatureData) {
-            peripherals.insert(peripheral)
+            // Store peripheral reference for later use
+            peripherals[peripheral.identifier.uuidString] = CombustionPeripheral(peripheral: peripheral)
             
             delegate?.updateDeviceWithAdvertising(advertising: advData,
                                                   isConnectable: isConnectable,
@@ -259,17 +236,8 @@ extension BleManager: CBCentralManagerDelegate{
     
     /// Connect to device with the specified name.
     public func connect(identifier: String) {
-        let uuid = UUID(uuidString: identifier)
-        let devicePeripherals = peripherals.filter { $0.identifier == uuid }
-        guard !devicePeripherals.isEmpty else {
-            print("Failed to find peripheral")
-            return
-        }
-        
-        for peripheral in devicePeripherals {
-            // print("Connecting to peripheral: \(peripheral.name) : \(peripheral.identifier)")
-            manager?.connect(peripheral, options: nil)
-        }
+        guard let combustionPeripheral = peripherals[identifier] else { return }
+        manager?.connect(combustionPeripheral.peripheral, options: nil)
     }
     
     /// Disconnect from device with the specified name.

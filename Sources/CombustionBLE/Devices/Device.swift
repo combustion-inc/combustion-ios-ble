@@ -51,6 +51,11 @@ open class Device : ObservableObject {
     /// identifier for Nodes.
     public var uniqueIdentifier: String
     
+    /// String representation of BLE device identifier (UUID), for this device's bootloader
+    var bootloaderIdentifier: String?
+    
+    var dfuAdvertisingName: String?
+    
     /// Device firmware version
     @Published public internal(set) var firmareVersion: String?
     

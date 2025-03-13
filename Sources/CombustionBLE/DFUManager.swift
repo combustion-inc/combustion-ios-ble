@@ -63,6 +63,16 @@ class DFUManager {
     
     private var defaultFirmware: [DeviceType: NordicDFU.DFUFirmware] = [:]
     
+    private enum State {
+        case requestName
+        case requestBootloader
+    }
+    
+    // TODO JDJ this probably needs work
+    // TODO JDJ should this be on Device
+    // Dictionary of currently DFU states. Key = ble Identifier
+    private var dfuState = [String: State]()
+    
     private enum Constants {
         static let THERMOMETER_DFU_NAME = "Thermom_DFU_"
         static let DISPLAY_DFU_NAME = "Display_DFU_"
@@ -118,18 +128,29 @@ class DFUManager {
                       firmware: firmware)
     }
     
+    func handleAdvertisingBootloader(device: Device, bootloaderIdentifier: String) {
+        // Save bootloader identifier
+        device.bootloaderIdentifier = bootloaderIdentifier
+        
+        print("JDJ connecting to bootloader \(bootloaderIdentifier)")
+        
+        // Connect to bootloader
+        BleManager.shared.connect(identifier: bootloaderIdentifier)
+    }
     
     func checkForStuckDFU(peripheral: CBPeripheral, advertisingName: String, device: Device) {
-        if let runningDFU = runningDFUs[advertisingName] {
-            // If more than 10 seconds have elapsed, then restart the DFU
-            let differenceInSeconds = Int(Date().timeIntervalSince(runningDFU.startedAt))
-            if(differenceInSeconds > Constants.RETRY_TIME_DELAY) {
-                _ = runDfu(peripheral: peripheral,
-                           device: device,
-                           advertisingName: advertisingName,
-                           firmware: runningDFU.firmware)
-            }
-        }
+        print("JDJ checkForStuckDFU \(advertisingName)")
+
+//        if let runningDFU = runningDFUs[advertisingName] {
+//            // If more than 10 seconds have elapsed, then restart the DFU
+//            let differenceInSeconds = Int(Date().timeIntervalSince(runningDFU.startedAt))
+//            if(differenceInSeconds > Constants.RETRY_TIME_DELAY) {
+//                _ = runDfu(peripheral: peripheral,
+//                           device: device,
+//                           advertisingName: advertisingName,
+//                           firmware: runningDFU.firmware)
+//            }
+//        }
     }
     
     /// Restart DFU for "unknown" bootloader. This means a device is advertising from its bootloader
@@ -138,24 +159,25 @@ class DFUManager {
     ///   - peripheral: CBPeripheral
     ///   - device: BootloaderDevice
     func restartDfuOnUnknownBootloader(peripheral: CBPeripheral, device: BootloaderDevice) {
-        guard let firstDetected = unknownBootloaderDetected[peripheral.identifier.uuidString] else {
-            // Store that bootloader was first detected
-            unknownBootloaderDetected[peripheral.identifier.uuidString] = Date()
-            return
-        }
-        
-        // Delay before restarting DFU for unknown bootloader
-        let secondsSinceFirstDetected = Int(Date().timeIntervalSince(firstDetected))
-        guard secondsSinceFirstDetected > Constants.UNKNOWN_BOOTLOADER_DELAY else { return }
-        
-        // Use advertising name to determine if device is Display or Thermometer
-        // and restart DFU with the default file for each device type
-        if let firmware = defaultFirmware[device.type] {
-            _ = runDfu(peripheral: peripheral,
-                       device: device,
-                       advertisingName: device.advertisingName,
-                       firmware: firmware)
-        }
+        print("JDJ restartDfuOnUnknownBootloader ")
+//        guard let firstDetected = unknownBootloaderDetected[peripheral.identifier.uuidString] else {
+//            // Store that bootloader was first detected
+//            unknownBootloaderDetected[peripheral.identifier.uuidString] = Date()
+//            return
+//        }
+//        
+//        // Delay before restarting DFU for unknown bootloader
+//        let secondsSinceFirstDetected = Int(Date().timeIntervalSince(firstDetected))
+//        guard secondsSinceFirstDetected > Constants.UNKNOWN_BOOTLOADER_DELAY else { return }
+//        
+//        // Use advertising name to determine if device is Display or Thermometer
+//        // and restart DFU with the default file for each device type
+//        if let firmware = defaultFirmware[device.type] {
+//            _ = runDfu(peripheral: peripheral,
+//                       device: device,
+//                       advertisingName: device.advertisingName,
+//                       firmware: firmware)
+//        }
     }
     
     func clearCompletedDFU(device: Device) {
@@ -171,6 +193,21 @@ class DFUManager {
         
         // Update DFU in progress flag
         dfuIsInProgress = !runningDFUs.isEmpty
+    }
+    
+    func handleDFUDataFor(_ device: Device, data: Data) {
+        guard let bleIdentifier = device.bleIdentifier else { return }
+        print("JDJ handleDFUDataFor : count \(data.count)")
+
+        if dfuState[bleIdentifier] == .requestName {
+            // TODO JDJ check the response data
+            
+            dfuState[bleIdentifier] = .requestBootloader
+            let bootloaderRequest = DFURequest.enterBootloader
+            BleManager.shared.sendDFURequest(identifier: device.bleIdentifier,
+                                             request: bootloaderRequest)
+        }
+
     }
     
     private func dfuAdvertisingName(for device: Device) -> String {
@@ -202,6 +239,39 @@ class DFUManager {
                         advertisingName: String,
                         firmware: NordicDFU.DFUFirmware) -> DFUServiceController?  {
         
+        print("JDJ DFUManager runDFU - \(advertisingName)")
+
+        NEW_runDFU(device: device,
+                   advertisingName: advertisingName)
+        
+        return nil
+        
+//        return OLD_runDfu(peripheral: peripheral,
+//                          device: device,
+//                          advertisingName: advertisingName,
+//                          firmware: firmware)
+    }
+    
+    private func NEW_runDFU(device: Device,
+                            advertisingName: String) {
+        guard let bleIdentifier = device.bleIdentifier else { return }
+        
+        // Save advertising name
+        device.dfuAdvertisingName = advertisingName
+        
+        dfuState[bleIdentifier] = .requestName
+        let nameRequest = DFURequest.set(name: advertisingName)
+        BleManager.shared.sendDFURequest(identifier: device.bleIdentifier,
+                                         request: nameRequest)
+    }
+    
+    private func OLD_runDfu(peripheral: CBPeripheral,
+                        device: Device,
+                        advertisingName: String,
+                        firmware: DFUFirmware) -> DFUServiceController?  {
+        
+        print("JDJ DFUManager OLD_runDfu - \(advertisingName)")
+        
         let initiator = DFUServiceInitiator().with(firmware: firmware)
         
         initiator.delegate = device
@@ -223,4 +293,35 @@ class DFUManager {
         return initiator.start(target: peripheral)
     }
     
+}
+
+// TODO JDJ move this somewhere
+enum DFURequest {
+    case enterBootloader
+    case set(name: String)
+    
+    var data: Data {
+        switch self {
+        case .enterBootloader:
+            return Data([ButtonlessDFUOpCode.enterBootloader.code])
+        case .set(let name):
+            var data = Data([ButtonlessDFUOpCode.setName.code])
+            data += UInt8(name.lengthOfBytes(using: String.Encoding.utf8))
+            data += name.utf8
+            return data
+        }
+    }
+}
+
+enum ButtonlessDFUOpCode : UInt8 {
+    /// Jump from the main application to Secure DFU bootloader (DFU mode).
+    case enterBootloader = 0x01
+    /// Set a new advertisement name when jumping to Secure DFU bootloader (DFU mode).
+    case setName         = 0x02
+    /// The response code.
+    case responseCode    = 0x20
+    
+    var code: UInt8 {
+        return rawValue
+    }
 }

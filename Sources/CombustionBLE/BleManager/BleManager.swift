@@ -37,6 +37,7 @@ protocol BleManagerDelegate: AnyObject {
     func didCompleteDiscovery(identifier: UUID)
     func didEnableNotificationsFor(identifier: UUID, characteristic: BleCharacteristic)
     func handleBootloaderAdvertising(advertisingName: String, rssi: NSNumber, peripheral: CBPeripheral)
+    func handleDFUData(identifier: UUID, data: Data)
     func handleUARTData(identifier: UUID, data: Data)
     func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID)
     func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus)
@@ -149,6 +150,17 @@ class BleManager : NSObject {
               let char = getCharacteristicFor(identifier, type: type) else { return }
         
         combustionPeripheral.peripheral.setNotifyValue(true, for: char)
+    }
+    
+    func sendDFURequest(identifier: String?, request: DFURequest) {
+        guard let identifier = identifier else { return }
+        
+        if let connectedPeripheral = getConnectedPeripheral(identifier: identifier),
+           let dfuChar = getCharacteristicFor(identifier, type: .dfu) {
+            connectedPeripheral.writeValue(request.data,
+                                           for: dfuChar,
+                                           type: .withResponse)
+        }
     }
     
     private func getConnectedPeripheral(identifier: String) -> CBPeripheral? {
@@ -272,7 +284,11 @@ extension BleManager: CBPeripheralDelegate {
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         guard let services = peripheral.services else { return }
         
+        print("JDJ didDiscoverServices : \(services.count)")
+        
         for service in services {
+            print("JDJ service \(service.uuid.uuidString)")
+            
             // Save discovered service
             combustionPeripheralFor(peripheral)?.discoveredService(service)
             
@@ -284,6 +300,8 @@ extension BleManager: CBPeripheralDelegate {
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         guard let characteristics = service.characteristics,
             let combustionPeripheral = combustionPeripheralFor(peripheral) else { return }
+        
+        print("JDJ didDiscoverCharacteristicsFor : \(peripheral.identifier.uuidString)")
         
         // Save that characteristics were discovered for the service
         combustionPeripheral.discoveredCharacteristicsFor(service)
@@ -349,7 +367,7 @@ extension BleManager: CBPeripheralDelegate {
             delegate?.updateDeviceModelInfo(identifier: peripheral.identifier, modelInfo: modelInfo)
          
         case BleCharacteristic.dfu.uuid:
-            break
+            delegate?.handleDFUData(identifier: peripheral.identifier, data: data)
             
         default:
             break

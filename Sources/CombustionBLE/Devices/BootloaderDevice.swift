@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  BootloaderDevice.swift
 //  
 //
 //  Created by Jesse Johnston on 12/19/22.
@@ -10,17 +10,16 @@ import Foundation
 
 public class BootloaderDevice : Device {
     public let type: DeviceType
-    
-    private(set) var advertisingName: String
  
     init(advertisingName: String, RSSI: NSNumber, identifier: UUID) {
-        self.advertisingName = advertisingName
-        
         type = DFUManager.bootloaderTypeFrom(advertisingName: advertisingName)
         
         super.init(uniqueIdentifier: identifier.uuidString, bleIdentifier: identifier, RSSI: RSSI)
+        
+        self.dfuAdvertisingName = advertisingName
     }
     
+    // TODO JDJ delete me
     override func dfuComplete() {
         super.dfuComplete()
         

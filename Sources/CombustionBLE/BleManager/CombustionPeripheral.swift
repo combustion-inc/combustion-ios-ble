@@ -55,6 +55,7 @@ class CombustionPeripheral {
     /// - Parameter characteristic: discovered characteristic
     func discoveredCharacteristic(characteristic: CBCharacteristic) {
         guard let type = BleCharacteristic.from(characteristic) else { return }
+
         characteristics[type] = characteristic
     }
     

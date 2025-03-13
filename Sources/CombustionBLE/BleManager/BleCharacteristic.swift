@@ -28,6 +28,8 @@ import CoreBluetooth
 enum BleCharacteristic: String {
     case deviceStatus = "00000101-CAAB-3792-3D44-97AE51C1407A"
     case dfu = "8EC90003-F315-4F60-9FB8-838830DAEA50"
+    case bootloaderDFU = "8EC90001-F315-4F60-9FB8-838830DAEA50"
+    case bootloaderDFU2 = "8EC90002-F315-4F60-9FB8-838830DAEA50"
     case firmwareVersion = "2A26"
     case hardwareRevision = "2A27"
     case modelNumber = "2A24"

@@ -82,22 +82,6 @@ class BleManager : NSObject {
         }
     }
     
-    func sendDFURequest(identifier: String?, request: DFURequest) {
-        guard let identifier = identifier else { return }
-        
-        print("JDJ sendDFURequest")
-        
-        if let connectedPeripheral = getConnectedPeripheral(identifier: identifier),
-           let dfuChar = getCharacteristicFor(identifier, type: .dfu) {
-            
-            print("JDJ sendDFURequest - found peripheral")
-            
-            connectedPeripheral.writeValue(request.data,
-                                            for: dfuChar,
-                                            type: .withResponse)
-        }
-    }
-    
     func sendRequestToNodes(_ nodes: [MeatNetNode], request: NodeRequest) {
         for node in nodes {
             if let identifier = node.bleIdentifier,
@@ -163,8 +147,6 @@ class BleManager : NSObject {
     func enableNotificationsFor(_ identifier: String, type: BleCharacteristic) {
         guard let combustionPeripheral = peripherals[identifier],
               let char = getCharacteristicFor(identifier, type: type) else { return }
-        
-        print("JDJ enableNotificationsFor \(type)")
         
         combustionPeripheral.peripheral.setNotifyValue(true, for: char)
     }
@@ -367,7 +349,7 @@ extension BleManager: CBPeripheralDelegate {
             delegate?.updateDeviceModelInfo(identifier: peripheral.identifier, modelInfo: modelInfo)
          
         case BleCharacteristic.dfu.uuid:
-            print("JDJ didUpdateValueFor DFU_CHAR")
+            break
             
         default:
             break

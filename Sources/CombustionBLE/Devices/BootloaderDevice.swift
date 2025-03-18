@@ -19,11 +19,6 @@ public class BootloaderDevice : Device {
         self.dfuAdvertisingName = advertisingName
     }
     
-    // TODO JDJ delete me
-    override func dfuComplete() {
-        super.dfuComplete()
-        
-        // When DFU is complete, remove this device from Device Manager
-        DeviceManager.shared.clearDevice(device: self)
-    }
+    // TODO JDJ // When DFU is complete, remove this device from Device Manager
+
 }

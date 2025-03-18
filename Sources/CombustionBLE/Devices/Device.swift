@@ -26,7 +26,6 @@ SOFTWARE.
 --*/
 
 import Foundation
-import NordicDFU
 
 /// Struct containing info about a thermometer device.
 open class Device : ObservableObject {
@@ -89,18 +88,8 @@ open class Device : ObservableObject {
     
     /// Tracks whether the data has gone stale (no new data in some time)
     @Published public private(set) var stale = false
-    
-    /// DFU state
-    @Published public private(set) var dfuState: NordicDFU.DFUState?
-    
-    public struct DFUErrorMessage {
-        public let error: NordicDFU.DFUError
-        public let message: String
-    }
-    
-    /// DFU error message
-    @Published public private(set) var dfuError: DFUErrorMessage?
 
+    // TODO JDJ
     public struct DFUUploadProgress {
         public let part: Int
         public let totalParts: Int
@@ -112,8 +101,6 @@ open class Device : ObservableObject {
     
     /// Last time device received an advertising packet or status notification
     @Published public var lastUpdateTime = Date()
-    
-    private var dfuServiceController: DFUServiceController? = nil
     
     public var rssiEWMA = EWMA(span: 6)
     
@@ -160,22 +147,7 @@ open class Device : ObservableObject {
     }
     
     public func isDFURunning() -> Bool {
-        guard let dfuState = dfuState else { return false }
-        
-        if(dfuState == .completed) {
-            return false
-        }
-        
-        return true
-    }
-    
-    /// Called when DFU has completed
-    func dfuComplete() {
-        // Clear service controller
-        dfuServiceController = nil
-        
-        // Clear DFU on the DFU manager
-        DFUManager.shared.clearCompletedDFU(device: self)
+        return false // TODO JDJ
     }
     
     /// Updates SKU and Lot number based on Model Info string.
@@ -224,8 +196,8 @@ extension Device {
     
     public func runSoftwareUpgrade(dfuFile: URL) -> Bool {
         do {
-            let dfu = try NordicDFU.DFUFirmware(urlToZipFile: dfuFile)
-            dfuServiceController = BleManager.shared.startFirmwareUpdate(device: self, dfu: dfu)
+            let dfu = try DFUFirmware(urlToZipFile: dfuFile)
+            BleManager.shared.startFirmwareUpdate(device: self, dfu: dfu)
             return true
         }
         catch {
@@ -270,34 +242,3 @@ extension Device: Hashable {
     }
 }
 
-extension Device: NordicDFU.DFUServiceDelegate {
-    public func dfuStateDidChange(to state: NordicDFU.DFUState) {
-        dfuState = state
-        
-        if(dfuState == .completed) {
-            dfuComplete()
-        }
-    }
-    
-    public func dfuError(_ error: NordicDFU.DFUError, didOccurWithMessage message: String) {
-        dfuError = DFUErrorMessage(error: error, message: message)
-        
-        dfuServiceController?.restart()
-    }
-}
-
-extension Device: NordicDFU.DFUProgressDelegate {
-    public func dfuProgressDidChange(for part: Int,
-                                     outOf totalParts: Int,
-                                     to progress: Int,
-                                     currentSpeedBytesPerSecond: Double,
-                                     avgSpeedBytesPerSecond: Double) {
-        dfuUploadProgress = DFUUploadProgress(part: part, totalParts: totalParts, progress: progress)
-    }
-}
-
-extension Device: NordicDFU.LoggerDelegate {
-    public func logWith(_ level: NordicDFU.LogLevel, message: String) {
-        NSLog("LoggerDelegate : \(message)")
-    }
-}

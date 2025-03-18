@@ -26,7 +26,6 @@ SOFTWARE.
 
 import Foundation
 import SwiftUI
-import NordicDFU
 import CoreBluetooth
 import Combine
 

@@ -26,7 +26,6 @@ SOFTWARE.
 
 import CoreBluetooth
 import Foundation
-import NordicDFU
 
 @available(*, unavailable, renamed: "DeviceType")
 public enum DFUDeviceType {}
@@ -47,14 +46,14 @@ class DFUManager {
     /// Flag that tracks if any DFUs are currently in progress
     @Published var dfuIsInProgress = false
     
-    private struct DFU {
-        let uniqueIdentifier: String
-        let firmware: NordicDFU.DFUFirmware
-        let startedAt: Date
-    }
-    
-    // Dictionary of currently active DFUs. Key = DFU advertising name
-    private var runningDFUs = [String: DFU]()
+//    private struct DFU {
+//        let uniqueIdentifier: String
+//        let firmware: DFUFirmware
+//        let startedAt: Date
+//    }
+//    
+//    // Dictionary of currently active DFUs. Key = DFU advertising name
+//    private var runningDFUs = [String: DFU]()
     
     // Dictionary of when unknown bootloader were first detected
     // Key = CBPeripheral UUID
@@ -93,10 +92,10 @@ class DFUManager {
         }
         catch { }
     }
-    
-    func uniqueIdentifierFrom(advertisingName: String) -> String? {
-        return runningDFUs[advertisingName]?.uniqueIdentifier
-    }
+//    
+//    func uniqueIdentifierFrom(advertisingName: String) -> String? {
+//        return runningDFUs[advertisingName]?.uniqueIdentifier
+//    }
     
     static func bootloaderTypeFrom(advertisingName: String) -> DeviceType {
         if advertisingName == Constants.THERMOMETER_DEFAULT_BOOTLOADER {
@@ -118,7 +117,7 @@ class DFUManager {
         return .unknown
     }
     
-    func startDFU(peripheral: CBPeripheral, device: Device, firmware: NordicDFU.DFUFirmware) -> DFUServiceController? {
+    func startDFU(peripheral: CBPeripheral, device: Device, firmware: DFUFirmware) {
         // Generate advertising name to use for bootloader during DFU
         let advertisingName = dfuAdvertisingName(for: device)
         
@@ -181,18 +180,19 @@ class DFUManager {
     }
     
     func clearCompletedDFU(device: Device) {
-        // Find the running DFU for specified device
-        let dfuTuple = runningDFUs.first { (_, value) in
-            value.uniqueIdentifier == device.uniqueIdentifier
-        }
-
-        // Remove from runningDFUs dictionary if found
-        if let key = dfuTuple?.key {
-            runningDFUs.removeValue(forKey: key)
-        }
-        
-        // Update DFU in progress flag
-        dfuIsInProgress = !runningDFUs.isEmpty
+        // TODO JDJ
+//        // Find the running DFU for specified device
+//        let dfuTuple = runningDFUs.first { (_, value) in
+//            value.uniqueIdentifier == device.uniqueIdentifier
+//        }
+//
+//        // Remove from runningDFUs dictionary if found
+//        if let key = dfuTuple?.key {
+//            runningDFUs.removeValue(forKey: key)
+//        }
+//        
+//        // Update DFU in progress flag
+//        dfuIsInProgress = !runningDFUs.isEmpty
     }
     
     func handleDFUDataFor(_ device: Device, data: Data) {
@@ -203,7 +203,7 @@ class DFUManager {
             // TODO JDJ check the response data
             
             dfuState[bleIdentifier] = .requestBootloader
-            let bootloaderRequest = DFURequest.enterBootloader
+            let bootloaderRequest = ButtonlessDFURequest.enterBootloader
             BleManager.shared.sendDFURequest(identifier: device.bleIdentifier,
                                              request: bootloaderRequest)
         }
@@ -237,19 +237,12 @@ class DFUManager {
     private func runDfu(peripheral: CBPeripheral,
                         device: Device,
                         advertisingName: String,
-                        firmware: NordicDFU.DFUFirmware) -> DFUServiceController?  {
+                        firmware: DFUFirmware)  {
         
         print("JDJ DFUManager runDFU - \(advertisingName)")
 
         NEW_runDFU(device: device,
                    advertisingName: advertisingName)
-        
-        return nil
-        
-//        return OLD_runDfu(peripheral: peripheral,
-//                          device: device,
-//                          advertisingName: advertisingName,
-//                          firmware: firmware)
     }
     
     private func NEW_runDFU(device: Device,
@@ -260,68 +253,8 @@ class DFUManager {
         device.dfuAdvertisingName = advertisingName
         
         dfuState[bleIdentifier] = .requestName
-        let nameRequest = DFURequest.set(name: advertisingName)
+        let nameRequest = ButtonlessDFURequest.set(name: advertisingName)
         BleManager.shared.sendDFURequest(identifier: device.bleIdentifier,
                                          request: nameRequest)
-    }
-    
-    private func OLD_runDfu(peripheral: CBPeripheral,
-                        device: Device,
-                        advertisingName: String,
-                        firmware: DFUFirmware) -> DFUServiceController?  {
-        
-        print("JDJ DFUManager OLD_runDfu - \(advertisingName)")
-        
-        let initiator = DFUServiceInitiator().with(firmware: firmware)
-        
-        initiator.delegate = device
-        initiator.progressDelegate = device
-        
-        // Uncomment this to receive feedback from Nordic DFU library
-        initiator.logger = device
-        
-        // Set the DFU bootloader advertising name
-        initiator.alternativeAdvertisingName = advertisingName
-        
-        runningDFUs[advertisingName] = DFU(uniqueIdentifier: device.uniqueIdentifier,
-                                           firmware: firmware,
-                                           startedAt: Date())
-        
-        // Update DFU in progress flag
-        dfuIsInProgress = true
-        
-        return initiator.start(target: peripheral)
-    }
-    
-}
-
-// TODO JDJ move this somewhere
-enum DFURequest {
-    case enterBootloader
-    case set(name: String)
-    
-    var data: Data {
-        switch self {
-        case .enterBootloader:
-            return Data([ButtonlessDFUOpCode.enterBootloader.code])
-        case .set(let name):
-            var data = Data([ButtonlessDFUOpCode.setName.code])
-            data += UInt8(name.lengthOfBytes(using: String.Encoding.utf8))
-            data += name.utf8
-            return data
-        }
-    }
-}
-
-enum ButtonlessDFUOpCode : UInt8 {
-    /// Jump from the main application to Secure DFU bootloader (DFU mode).
-    case enterBootloader = 0x01
-    /// Set a new advertisement name when jumping to Secure DFU bootloader (DFU mode).
-    case setName         = 0x02
-    /// The response code.
-    case responseCode    = 0x20
-    
-    var code: UInt8 {
-        return rawValue
     }
 }

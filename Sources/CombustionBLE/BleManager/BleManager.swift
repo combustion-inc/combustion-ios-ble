@@ -27,7 +27,6 @@ SOFTWARE.
 
 import Foundation
 import CoreBluetooth
-import NordicDFU
 
 protocol BleManagerDelegate: AnyObject {
     func updateBluetoothState(state: CBManagerState)
@@ -131,11 +130,11 @@ class BleManager : NSObject {
         }
     }
     
-    func startFirmwareUpdate(device: Device, dfu: NordicDFU.DFUFirmware) -> DFUServiceController? {
-        guard let bleIdentifier = device.bleIdentifier, 
-                let connectedPeripheral = getConnectedPeripheral(identifier: bleIdentifier) else { return nil }
+    func startFirmwareUpdate(device: Device, dfu: DFUFirmware) {
+        guard let bleIdentifier = device.bleIdentifier,
+                let connectedPeripheral = getConnectedPeripheral(identifier: bleIdentifier) else { return }
         
-        return DFUManager.shared.startDFU(peripheral: connectedPeripheral, device: device, firmware: dfu)
+        DFUManager.shared.startDFU(peripheral: connectedPeripheral, device: device, firmware: dfu)
     }
     
     func retryFirmwareUpdate(device: BootloaderDevice) {
@@ -152,7 +151,7 @@ class BleManager : NSObject {
         combustionPeripheral.peripheral.setNotifyValue(true, for: char)
     }
     
-    func sendDFURequest(identifier: String?, request: DFURequest) {
+    func sendDFURequest(identifier: String?, request: ButtonlessDFURequest) {
         guard let identifier = identifier else { return }
         
         if let connectedPeripheral = getConnectedPeripheral(identifier: identifier),

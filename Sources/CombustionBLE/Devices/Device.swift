@@ -53,8 +53,6 @@ open class Device : ObservableObject {
     /// String representation of BLE device identifier (UUID), for this device's bootloader
     var bootloaderIdentifier: String?
     
-    var dfuAdvertisingName: String?
-    
     /// Device firmware version
     @Published public internal(set) var firmareVersion: String?
     
@@ -88,21 +86,23 @@ open class Device : ObservableObject {
     
     /// Tracks whether the data has gone stale (no new data in some time)
     @Published public private(set) var stale = false
-
-    // TODO JDJ
-    public struct DFUUploadProgress {
-        public let part: Int
-        public let totalParts: Int
-        public let progress: Int
-    }
     
-    /// DFU Upload progress
-    @Published public private(set) var dfuUploadProgress: DFUUploadProgress?
+    private(set) var dfuAdvertisingName: String?
+    
+    private(set) var dfuFirmware: DFUFirmware?
+    
+    @Published public private(set) var dfuStatus: DFUStatus = .idle
+    
+    var dfuMaxSize: UInt32 = 0
+    
+    var dfuBytesTransferred: UInt32 = 0
+    
+    private(set) var dfuMaxPacketSize: UInt32 = 20
     
     /// Last time device received an advertising packet or status notification
     @Published public var lastUpdateTime = Date()
     
-    public var rssiEWMA = EWMA(span: 6)
+    public private(set) var rssiEWMA = EWMA(span: 6)
     
     public init(uniqueIdentifier: String, bleIdentifier: UUID?, RSSI: NSNumber?) {
         self.uniqueIdentifier = uniqueIdentifier
@@ -116,6 +116,20 @@ open class Device : ObservableObject {
         } else {
             self.rssi = Constants.MIN_RSSI
         }
+    }
+    
+    func setMaximumWriteValueLength(_ value: Int) {
+        // Make the packet size the first word-aligned value that's less than the maximum
+        dfuMaxPacketSize = UInt32(value) & 0xFFFFFFFC
+    }
+    
+    func setDFUFirmware(_ dfuFirmware: DFUFirmware, dfuAdvertisingName: String) {
+        self.dfuAdvertisingName = dfuAdvertisingName
+        self.dfuFirmware = dfuFirmware
+    }
+    
+    func updateDFUStatus(_ status: DFUStatus) {
+        dfuStatus = status
     }
     
     func updateConnectionState(_ state: ConnectionState) {

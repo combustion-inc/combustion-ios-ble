@@ -648,10 +648,13 @@ extension DeviceManager : BleManagerDelegate {
         messageHandlers.clearHandlersForDevice(identifier)
     }
     
-    func didCompleteDiscovery(identifier: UUID) {
-        if isIdentifierForBootloader(identifier) {
+    func didCompleteDiscovery(identifier: UUID, maximumWriteValueLength: Int) {
+        if let device = findDeviceWithBootloaderIdentifier(identifier) {
+            // Save max write length value
+            device.setMaximumWriteValueLength(maximumWriteValueLength)
+            
             // Enable notifications on Bootloader DFU characteristic
-            BleManager.shared.enableNotificationsFor(identifier.uuidString, type: .bootloaderDFU)
+            BleManager.shared.enableNotificationsFor(identifier.uuidString, type: .dfuControlPoint)
         }
         else {
             // Enable notifications on DFU characteristic
@@ -660,10 +663,9 @@ extension DeviceManager : BleManagerDelegate {
     }
     
     func didEnableNotificationsFor(identifier: UUID, characteristic: BleCharacteristic) {
-        if isIdentifierForBootloader(identifier) {
-            if(characteristic == BleCharacteristic.bootloaderDFU) {
-                // TODO call back
-                print("JDJ bootloader is good to go")
+        if let device = findDeviceWithBootloaderIdentifier(identifier) {
+            if(characteristic == BleCharacteristic.dfuControlPoint) {
+                dfuManager.bootloaderDiscoveryComplete(device)
             }
         }
         else if let device = findDeviceByBleIdentifier(bleIdentifier: identifier) {
@@ -710,45 +712,28 @@ extension DeviceManager : BleManagerDelegate {
         connectionManager.receivedStatusFor(device, node: node)
     }
     
-    func handleDFUData(identifier: UUID, data: Data) {
-        guard let device = findDeviceByBleIdentifier(bleIdentifier: identifier) else { return }
-        
-        dfuManager.handleDFUDataFor(device, data: data)
+    func handleDFUData(identifier: UUID, characteristic: BleCharacteristic, data: Data) {
+        if characteristic == .dfu, let device = findDeviceByBleIdentifier(bleIdentifier: identifier) {
+            dfuManager.handleDataFromAppFor(device, data: data)
+        }
+        else if characteristic == .dfuControlPoint, let device = findDeviceWithBootloaderIdentifier(identifier) {
+            dfuManager.handleDataFromBootloaderFor(device, data: data)
+        }
     }
 
-    
-    func handleBootloaderAdvertising(advertisingName: String, rssi: NSNumber, peripheral: CBPeripheral) {
+    func handleBootloaderAdvertising(identifier: UUID, advertisingName: String, rssi: NSNumber) {
         let foundDevice = devices.values.first { $0.dfuAdvertisingName == advertisingName}
         
         if let foundDevice {
-            print("JDJ handleBootloaderAdvertising foundDevice")
             dfuManager.handleAdvertisingBootloader(device: foundDevice,
-                                                   bootloaderIdentifier: peripheral.identifier.uuidString)
+                                                   bootloaderIdentifier: identifier.uuidString)
         }
         else {
-            print("JDJ handleBootloaderAdvertising unknown device")
             let bootloaderDevice = BootloaderDevice(advertisingName: advertisingName,
-                                         RSSI: rssi,
-                                         identifier: peripheral.identifier)
+                                                    RSSI: rssi,
+                                                    identifier: identifier)
             addDevice(device: bootloaderDevice)
-            
-            // TODO JDJ send to DFU manager
         }
-        
-//        // If Bootloader is associated with currently running DFU,
-//        // then check if DFU needs to be restarted
-//        if let uniqueIdentifier = dfuManager.uniqueIdentifierFrom(advertisingName: advertisingName) {
-//            if let device = devices[uniqueIdentifier] {
-//                dfuManager.checkForStuckDFU(peripheral: peripheral, advertisingName: advertisingName, device: device)
-//            }
-//        }
-//        else {
-//            // If Bootloader is NOT associated with a currently running DFU,
-//            // then send data to Device manager to save device and start DFU
-//            let device = BootloaderDevice(advertisingName: advertisingName,  RSSI: rssi, identifier: peripheral.identifier)
-//            addDevice(device: device)
-//            BleManager.shared.retryFirmwareUpdate(device: device)
-//        }
     }
     
     /// Searches for or creates a Device record for the Probe represented by specified AdvertisingData.
@@ -874,14 +859,14 @@ extension DeviceManager : BleManagerDelegate {
         return foundDevice
     }
     
-    private func isIdentifierForBootloader(_ bleIdentifier: UUID) -> Bool {
+    private func findDeviceWithBootloaderIdentifier(_ bleIdentifier: UUID) -> Device? {
         for device in devices.values {
             if device.bootloaderIdentifier == bleIdentifier.uuidString {
-                return true
+                return device
             }
         }
         
-        return false
+        return nil
     }
     
     /// Finds Device by serial number string

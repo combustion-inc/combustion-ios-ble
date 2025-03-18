@@ -14,9 +14,12 @@ public class BootloaderDevice : Device {
     init(advertisingName: String, RSSI: NSNumber, identifier: UUID) {
         type = DFUManager.bootloaderTypeFrom(advertisingName: advertisingName)
         
-        super.init(uniqueIdentifier: identifier.uuidString, bleIdentifier: identifier, RSSI: RSSI)
+        super.init(uniqueIdentifier: identifier.uuidString, bleIdentifier: nil, RSSI: RSSI)
         
-        self.dfuAdvertisingName = advertisingName
+        // TODO JDJ this need more work
+//        let firmware = DFUManager.defaultFirmware[type]
+//        self.setDFUFirmware(<#T##dfuFirmware: DFUFirmware##DFUFirmware#>, dfuAdvertisingName: <#T##String#>)
+//        self.dfuAdvertisingName = advertisingName
     }
     
     // TODO JDJ // When DFU is complete, remove this device from Device Manager

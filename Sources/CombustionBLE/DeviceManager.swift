@@ -62,7 +62,9 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     
     /// Dictionary of discovered devices.
     /// key = string representation of device identifier (UUID)
-    @Published public private(set) var devices : [String: Device] = [String: Device]()
+    @Published public private(set) var devices : [String: Device] = [:]
+    
+    @Published public private(set) var accessories: [String: any Accessory] = [:]
     
     // Bluetooth manager state
     @Published public private(set) var bluetoothState: CBManagerState = .unknown
@@ -154,6 +156,21 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// Removes device from the list.
     func clearDevice(device: Device) {
         devices.removeValue(forKey: device.uniqueIdentifier)
+        
+        if let device = device as? MeatNetNode, let accessory = device.accessory {
+            clearAccessory(accessory: accessory)
+        }
+    }
+    
+    /// Adds a accessory to the local list.
+    /// - parameter accessory: Add accessory to list of known accessory.
+    private func addAccessory(accessory: any Accessory) {
+        accessories[accessory.serialNumberString] = accessory
+    }
+    
+    /// Removes accessory from the list.
+    func clearAccessory(accessory: any Accessory) {
+        devices.removeValue(forKey: accessory.serialNumberString)
     }
     
     /// Returns list of probes
@@ -781,7 +798,10 @@ extension DeviceManager : BleManagerDelegate {
                 existingGauge.updateWithAdvertising(advertising)
             }
             else {
-                meatNetNode.accessory = GrillGauge(parent: meatNetNode, advertising: advertising)
+                let gauge = GrillGauge(parent: meatNetNode, advertising: advertising)
+                meatNetNode.accessory = gauge
+                
+                addAccessory(accessory: gauge)
             }
         case .unknown:
             print("Found device with unknown type")

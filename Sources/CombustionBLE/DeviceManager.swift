@@ -273,7 +273,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         else {
             // Send message to all nodes that have a route to the device
             let nodesConnectedToDevice = getNodesConnectedToDevice(identifier: accessory.serialNumberString)
-            let request = NodeGaugeReadLogsRequest(serialNumber: accessory.serialNumber,
+            let request = NodeGaugeReadLogsRequest(serialNumber: accessory.serialNumberString,
                                               minSequence: minSequence,
                                               maxSequence: maxSequence)
             BleManager.shared.sendRequestToNodes(nodesConnectedToDevice, request: request)
@@ -663,8 +663,8 @@ extension DeviceManager : BleManagerDelegate {
         connectionManager.receivedStatusFor(probe, node: node)
     }
     
-    private func updateDeviceWithNodeStatus(serialNumber: UInt32, status: DeviceStatus, hopCount: HopCount, node: MeatNetNode) {
-        guard let device = findDeviceBySerialNumber(serialNumber: serialNumber) else { return }
+    private func updateDeviceWithNodeStatus(serialNumber: String, status: DeviceStatus, hopCount: HopCount, node: MeatNetNode) {
+        guard let device = findAccesoryBySerialNumber(serialNumber: serialNumber) else { return }
         
         device.updateDeviceStatus(deviceStatus: status, hopCount: hopCount)
         
@@ -721,7 +721,7 @@ extension DeviceManager : BleManagerDelegate {
     /// - param isConnectable - Whether the advertising device is currently connectable
     /// - param rssi - Signal strength to advertising device
     /// - param identifier - BLE identifier of advertising device
-    func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID) {
+    func updateDeviceWithAdvertising(advertising: any AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID) {
         switch(advertising.type) {
         case .probe:
             guard let advertising = advertising as? ProbeAdvertisingData else {
@@ -846,10 +846,10 @@ extension DeviceManager : BleManagerDelegate {
         return foundProbe
     }
     
-    private func findDeviceBySerialNumber(serialNumber: UInt32) -> MeatNetNode? {
+    private func findAccesoryBySerialNumber(serialNumber: String) -> MeatNetNode? {
         var foundDevice : MeatNetNode? = nil
         
-        if let device = devices.first(where: { ($0.value as? MeatNetNode)?.accessory?.serialNumber == serialNumber })?.value as? MeatNetNode {
+        if let device = devices.first(where: { ($0.value as? MeatNetNode)?.accessory?.serialNumberString == serialNumber })?.value as? MeatNetNode {
             foundDevice = device
         }
         
@@ -1003,7 +1003,7 @@ extension DeviceManager : BleManagerDelegate {
                     probe.processLogResponse(logResponse: readLogsResponse)
                 }
         case .gaugeLog:
-            if let readGaugeLogsResponse = response as? NodeGaugeReadLogsResponse, let gauge = findDeviceBySerialNumber(serialNumber: readGaugeLogsResponse.gaugeSerialNumber)?.accessory as? GrillGauge {
+            if let readGaugeLogsResponse = response as? NodeGaugeReadLogsResponse, let gauge = findAccesoryBySerialNumber(serialNumber: readGaugeLogsResponse.gaugeSerialNumber)?.accessory as? GrillGauge {
                 gauge.processLogResponse(logResponse: readGaugeLogsResponse)
             }
         case .getFeatureFlags:

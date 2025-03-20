@@ -27,12 +27,15 @@ import Foundation
 
 /// Representation of a meat net nodes native abilites, such as Grill Gauge
 public protocol Accessory {
+    
+    associatedtype SerialNumberType
         
     var parent: Device { get }
     
     var type: DeviceType { get }
      
-    var serialNumber: UInt32 { get }
+    var serialNumber: SerialNumberType { get }
+    
     var serialNumberString: String { get }
     
     /// Tracks whether status notification data has become stale.
@@ -42,7 +45,7 @@ public protocol Accessory {
         
     func updateDeviceStatus(deviceStatus: DeviceStatus, hopCount: HopCount?)
     
-    func updateWithAdvertising(_ advertising: AdvertisingData)
+    func updateWithAdvertising(_ advertising: any AdvertisingData)
 }
 
 public extension Accessory {

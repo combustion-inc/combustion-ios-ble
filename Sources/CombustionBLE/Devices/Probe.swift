@@ -589,6 +589,8 @@ extension Probe {
 
 extension Probe: Accessory {
     
+    public typealias SerialNumberType = UInt32
+    
     public var type: DeviceType {
         return .thermometer
     }

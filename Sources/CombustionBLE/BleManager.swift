@@ -35,7 +35,7 @@ protocol BleManagerDelegate: AnyObject {
     func didFailToConnectTo(identifier: UUID)
     func didDisconnectFrom(identifier: UUID)
     func handleBootloaderAdvertising(advertisingName: String, rssi: NSNumber, peripheral: CBPeripheral)
-    func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID)
+    func updateDeviceWithAdvertising(advertising: any AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID)
     func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus)
     func handleUARTData(identifier: UUID, data: Data)
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String)

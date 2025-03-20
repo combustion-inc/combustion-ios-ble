@@ -29,7 +29,7 @@ import Foundation
 public class SimulatedGauge: MeatNetNode {
     
     public init() {
-        let advertising = GaugeAdvertisingData(fakeSerial: UINT32_MAX - 1,
+        let advertising = GaugeAdvertisingData(fakeSerial: "FAKEGAUGE01",
                                                fakeTemperatures: GaugeTemperature.withRandomData())
         super.init(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())
         
@@ -67,7 +67,7 @@ public class SimulatedGauge: MeatNetNode {
     }
     
     private func updateFakeAdvertising() {
-        let advertising = GaugeAdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
+        let advertising = GaugeAdvertisingData(fakeSerial: "FAKEGAUGE01",
                                           fakeTemperatures: GaugeTemperature.withRandomData())
 
         updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI())

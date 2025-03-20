@@ -27,7 +27,7 @@ import Foundation
 
 class NodeGaugeStatusRequest: NodeRequest {
     
-    let serialNumber: UInt32
+    let serialNumber: String
     var gaugeStatus: GaugeStatus? = nil
     var hopCount: HopCount? = nil
     
@@ -39,10 +39,9 @@ class NodeGaugeStatusRequest: NodeRequest {
     init?(data: Data, requestId: UInt32, payloadLength: Int) {
         let sequenceByteIndex = NodeRequest.HEADER_LENGTH
         
-        let serialNumberRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 4))
-        self.serialNumber = serialNumberRaw.withUnsafeBytes {
-            $0.load(as: UInt32.self)
-        }
+        let serialNumberRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 10))
+        self.serialNumber = String(decoding: serialNumberRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))
+        
         
         let probeStatusRaw: Data
         let hopCountRaw: Data

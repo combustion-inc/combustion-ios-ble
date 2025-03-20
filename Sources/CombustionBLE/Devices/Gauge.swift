@@ -27,6 +27,8 @@ import Foundation
 
 public class GrillGauge: Accessory {
     
+    public typealias SerialNumberType = String
+    
     public var type: DeviceType {
         return .gauge
     }
@@ -34,11 +36,10 @@ public class GrillGauge: Accessory {
     public internal(set) var parent: Device
     
     // device serial number
-    @Published public private(set) var serialNumber: UInt32
+    @Published public private(set) var serialNumber: String
     
-    /// Returns serial number formatted as a string
-    public var serialNumberString : String {
-        return String(format: "%08X", serialNumber)
+    public var serialNumberString: String {
+        return serialNumber
     }
     
     @Published public internal(set) var currentTemperature: GaugeTemperature?
@@ -81,9 +82,9 @@ public class GrillGauge: Accessory {
         return parent.connectionState
     }
     
-    init(parent: MeatNetNode, advertising: AdvertisingData) {
+    init(parent: MeatNetNode, advertising: any AdvertisingData) {
         self.parent = parent
-        self.serialNumber = advertising.serialNumber
+        self.serialNumber = advertising.serialNumberString
         
         updateWithAdvertising(advertising)
     }
@@ -97,7 +98,7 @@ public class GrillGauge: Accessory {
         }
     }
     
-    public func updateWithAdvertising(_ advertising: AdvertisingData) {
+    public func updateWithAdvertising(_ advertising: any AdvertisingData) {
         guard let advertisingData = advertising as? GaugeAdvertisingData else { return }
         
         (parent as? MeatNetNode)?.updateLastUpdateTime()

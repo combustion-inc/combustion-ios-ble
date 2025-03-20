@@ -30,20 +30,18 @@ class NodeGaugeReadLogsResponse: NodeResponse {
     enum Constants {
         static let MINIMUM_PAYLOAD_LENGTH = 28
         
-        static let SERIAL_RANGE = NodeResponse.HEADER_LENGTH..<(NodeResponse.HEADER_LENGTH + 4)
+        static let SERIAL_RANGE = NodeResponse.HEADER_LENGTH..<(NodeResponse.HEADER_LENGTH + 10)
         static let SEQUENCE_RANGE = (NodeResponse.HEADER_LENGTH + 4)..<(NodeResponse.HEADER_LENGTH + 8)
         static let TEMPERATURE_RANGE = (NodeResponse.HEADER_LENGTH + 8)..<(NodeResponse.HEADER_LENGTH + 21)
     }
     
-    let gaugeSerialNumber: UInt32
+    let gaugeSerialNumber: String
     let sequenceNumber: UInt32
     let temperatures: GaugeTemperature
     
     init(data: Data, success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
         let serialRaw = data.subdata(in: Constants.SERIAL_RANGE)
-        gaugeSerialNumber = serialRaw.withUnsafeBytes {
-            $0.load(as: UInt32.self)
-        }
+        gaugeSerialNumber = String(decoding: serialRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))
         
         let sequenceRaw = data.subdata(in: Constants.SEQUENCE_RANGE)
         sequenceNumber = sequenceRaw.withUnsafeBytes {

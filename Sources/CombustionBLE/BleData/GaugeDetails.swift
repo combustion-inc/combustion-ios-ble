@@ -1,4 +1,4 @@
-//  NodeGaugeReadLogsRequest.swift
+//  GaugeDetails.swift
 /*--
 MIT License
 
@@ -23,21 +23,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
-import Foundation
-
-class NodeGaugeReadLogsRequest: NodeRequest {
+public struct GaugeDetails {
+    public let sensorPresent: Bool
+    public let sensoryOverheating: Bool
+    public let lowBattery: Bool
     
-    init(serialNumber: String, minSequence: UInt32, maxSequence: UInt32) {
-        var payload = Data()
-        var serialNumberBytes = serialNumber
-        payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
+    public init(sensorPresent: Bool, sensoryOverheating: Bool, lowBattery: Bool) {
+        self.sensorPresent = sensorPresent
+        self.sensoryOverheating = sensoryOverheating
+        self.lowBattery = lowBattery
+    }
+}
+
+extension GaugeDetails {
+    
+    static func fromByte(_ byte: UInt8) -> GaugeDetails {
+        let sensorPresent = ((byte >> 0) & 1) != 0
+        let sensorOverheating = ((byte >> 1) & 1) != 0
+        let lowBattery = ((byte >> 2) & 1) != 0
         
-        var min = minSequence
-        payload.append(Data(bytes: &min, count: MemoryLayout.size(ofValue: min)))
-        
-        var max = maxSequence
-        payload.append(Data(bytes: &max, count: MemoryLayout.size(ofValue: max)))
-        
-        super.init(outgoingPayload: payload, type: .gaugeLog)
+        return .init(sensorPresent: sensorPresent,
+                     sensoryOverheating: sensorOverheating,
+                     lowBattery: lowBattery)
+    }
+    
+    static func defaultValues() -> GaugeDetails {
+        return .init(sensorPresent: false, sensoryOverheating: false, lowBattery: false)
     }
 }

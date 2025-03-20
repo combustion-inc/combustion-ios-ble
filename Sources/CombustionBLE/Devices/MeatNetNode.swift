@@ -47,7 +47,7 @@ public class MeatNetNode: Device {
     @Published public internal(set) var featureFlags: [FeatureFlag]?
     
     /// Accessory
-    @Published public internal(set) var accessory: Accessory?
+    @Published public internal(set) var accessory: (any Accessory)?
     
     /// Meatnet node name
     public var name: String {
@@ -97,12 +97,12 @@ public class MeatNetNode: Device {
         updateLastUpdateTime()
     }
     
-    init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
+    init(_ advertising: any AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
         super.init(uniqueIdentifier: identifier.uuidString, bleIdentifier: identifier, RSSI: RSSI)
         updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI)
     }
     
-    func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber) {
+    func updateWithAdvertising(_ advertising: any AdvertisingData, isConnectable: Bool, RSSI: NSNumber) {
         // Always update device RSSI and isConnectable flag
         
         self.rssi = RSSI.intValue

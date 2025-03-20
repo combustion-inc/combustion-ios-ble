@@ -31,24 +31,32 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         // Locations of data in advertising packets
         static let VENDOR_ID_RANGE = 0..<2
         static let PRODUCT_TYPE_RANGE = 2..<3
-        static let SERIAL_RANGE = 3..<7
-        static let TEMPERATURE_RANGE = 7..<20
-        static let DEVICE_STATUS_RANGE = 21..<22
-        static let NETWORK_INFO_RANGE = 22..<23
+        static let SERIAL_RANGE = 3..<13
+        static let TEMPERATURE_RANGE = 13..<15
+        static let DEVICE_STATUS_RANGE = 15..<16
+        static let BATTERY_PERCENTAGE_RANGE = 16..<17
+        static let HI_LO_STATUS_ALARM_RANGE = 17..<21
         
         static let COMBUSTION_VENDOR_ID = 0x09C7
     }
     
     var temperatures: GaugeTemperature
+    var status: GaugeDetails
+    var batteryPercentage: UInt8
+    var highLowAlarmStatus: HighLowAlarmStatus
     
-    init(type: CombustionProductType, serialNumber: UInt32, hopCount: HopCount, temperature: GaugeTemperature) {
+    
+    init(type: CombustionProductType, serialNumber: String, temperature: GaugeTemperature, status: GaugeDetails, batteryPercentage: UInt8, highLowAlarmStatus: HighLowAlarmStatus) {
         self.temperatures = temperature
-        super.init(type: type, serialNumber: serialNumber, hopCount: hopCount)
+        self.status = status
+        self.batteryPercentage = batteryPercentage
+        self.highLowAlarmStatus = highLowAlarmStatus
+        super.init(type: type, serialNumber: serialNumber)
     }
     
-    static func populate(fromData data: Data?) -> AdvertisingData? {
+    static func populate(fromData data: Data?) -> (any AdvertisingData)? {
         guard let data = data else { return nil }
-        guard data.count >= 20 else { return nil }
+        guard data.count >= 14 else { return nil }
         
         // Vendor ID
         let rawVendorId = data.subdata(in: Constants.VENDOR_ID_RANGE)
@@ -61,56 +69,49 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         // Product type (1 byte)
         let rawType = data.subdata(in: Constants.PRODUCT_TYPE_RANGE)
         let typeByte = [UInt8](rawType)
-        let type = CombustionProductType(rawValue: typeByte[0]) ?? .unknown
+        let type = CombustionProductType.gauge
         
-        // Device Serial number (4 bytes)
-        // Reverse the byte order (this is a little-endian packed bitfield)
-        let rawSerial = data.subdata(in: Constants.SERIAL_RANGE)
-        var revSerial : [UInt8] = []
-        for byte in rawSerial {
-            revSerial.insert(byte as UInt8, at: 0)
-        }
-        
-        let serialArray = [UInt8](revSerial)
-        var value: UInt32 = 0
-        for byte in serialArray {
-            value = value << 8
-            value = value | UInt32(byte)
-        }
-        
-        let serialNumber = value
-        
-        // Temperatures (8 13-bit) values
+        let serialRaw = data.subdata(in: Constants.SERIAL_RANGE)
+        let serialNumberString = String(decoding: serialRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))
+                
+        // Temperature (2 bytes) value
         let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
         let temperatures = GaugeTemperature.fromRawData(data: tempData)
         
-        // Decode network information
-        var hopCount: HopCount
-        if(data.count >= 23) {
-            let byte = data.subdata(in: Constants.NETWORK_INFO_RANGE)[0]
-            hopCount = HopCount.from(networkInfoByte: byte)
-        } else {
-            hopCount = HopCount.defaultValues()
-        }
+        let status = GaugeDetails.fromByte(data.subdata(in: Constants.DEVICE_STATUS_RANGE)[0])
         
-        return GaugeAdvertisingData(type: .gauge, serialNumber: serialNumber, hopCount: hopCount, temperature: temperatures)
+        let batteryPercentage = data.subdata(in: Constants.BATTERY_PERCENTAGE_RANGE)[0]
+        
+        let hiLoAlarmData = data.subdata(in: Constants.HI_LO_STATUS_ALARM_RANGE)
+        let hiLoAlarmStatus = HighLowAlarmStatus.fromData(hiLoAlarmData)
+        
+        return GaugeAdvertisingData(type: .gauge,
+                                    serialNumber: serialNumberString,
+                                    temperature: temperatures,
+                                    status: status,
+                                    batteryPercentage: batteryPercentage,
+                                    highLowAlarmStatus: hiLoAlarmStatus)
     }
 }
 
 extension GaugeAdvertisingData {
     // Fake data initializer for previews
-    public convenience init(fakeSerial: UInt32) {
+    public convenience init(fakeSerial: String) {
         self.init(type: .gauge,
                   serialNumber: fakeSerial,
-                  hopCount: HopCount.defaultValues(),
-                  temperature: GaugeTemperature.withFakeData())
+                  temperature: GaugeTemperature.withFakeData(),
+                  status: GaugeDetails.defaultValues(),
+                  batteryPercentage: 100,
+                  highLowAlarmStatus: HighLowAlarmStatus.defaultValues())
     }
     
     // Fake data initializer for Simulated Gauge
-    public convenience init(fakeSerial: UInt32, fakeTemperatures: GaugeTemperature) {
+    public convenience init(fakeSerial: String, fakeTemperatures: GaugeTemperature) {
         self.init(type: .gauge,
                   serialNumber: fakeSerial,
-                  hopCount: HopCount.defaultValues(),
-                  temperature: fakeTemperatures)
+                  temperature: fakeTemperatures,
+                  status: GaugeDetails.defaultValues(),
+                  batteryPercentage: 100,
+                  highLowAlarmStatus: HighLowAlarmStatus.defaultValues())
     }
 }

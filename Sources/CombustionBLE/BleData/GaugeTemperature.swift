@@ -38,29 +38,16 @@ public struct GaugeTemperature: Equatable {
 
 extension GaugeTemperature {
 
-    /// Parses temperature data from reversed set of bytes
-    static func fromReversed(bytes: [UInt8]) -> GaugeTemperature {
-        var rawTemps: [UInt16] = []
-        
-        // Add the temperatures in reverse order (reversed as it's a little-endian packed bitfield)
-        rawTemps.insert(UInt16(bytes[0]  & 0xFF) <<  5 | UInt16(bytes[1]  & 0xF8) >> 3, at: 0 )
-
-        let temperatures = rawTemps.map { Double($0) * 0.05 - 20.0 }
-        
-        return GaugeTemperature(value: temperatures.first ?? 0)
-    }
-
-
     /// Parses temperature data from raw data buffer
     static func fromRawData(data: Data) -> GaugeTemperature {
-
-        // Reverse the byte order (this is a little-endian packed bitfield)
-        var bytes : [UInt8] = []
-        for byte in data {
-            bytes.insert(byte as UInt8, at: 0)
-        }
+        guard data.count >= 2 else { return .init(value: nil) } // Ensure at least 2 bytes are available
+            
+        let rawValue = data.withUnsafeBytes { $0.load(as: UInt16.self) }
+        let temperature = rawValue & 0x1FFF // Extract the lower 13 bits
         
-        return fromReversed(bytes: bytes)
+        let realisedTemperature = Double(temperature) * 0.05 - 20.0
+        
+        return .init(value: realisedTemperature)
     }
 }
 

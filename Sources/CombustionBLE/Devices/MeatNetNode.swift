@@ -136,7 +136,7 @@ public class MeatNetNode: Device {
     
     /// Returns true if node has connection to device.
     func hasConnectionToDevice(_ identifier: String) -> Bool {
-        return devices[identifier] != nil
+        return devices[identifier] != nil || self.bleIdentifier == identifier
     }
     
     /// Updates whether the device is stale. Called on a timer interval by DeviceManager.

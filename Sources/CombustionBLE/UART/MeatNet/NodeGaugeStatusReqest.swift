@@ -51,7 +51,7 @@ class NodeGaugeStatusRequest: NodeRequest {
         
         // Note - GaugeStatus can parse the entire payload intelligently. Pass it the entire remainder of
         // the message.
-        let gaugeStatusRaw = data.subdata(in: (sequenceByteIndex + 4)..<data.count)
+        let gaugeStatusRaw = data.subdata(in: (sequenceByteIndex + 10)..<data.count)
         
         hopCountRaw = data.subdata(in: (sequenceByteIndex + 34)..<(sequenceByteIndex + 35))
         

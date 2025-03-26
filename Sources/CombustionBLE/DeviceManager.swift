@@ -466,6 +466,9 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
     }
     
+    /// Reads the feature flags from a meat net node device
+    ///
+    /// - parameter device: meat net node device to read flags from
     public func readFeatureFlags(device: MeatNetNode) {
         if let serialNumber = device.serialNumberString {
             let request = NodeReadFeatureFlagsRequest(serialNumber: serialNumber)
@@ -588,6 +591,23 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
     }
     
+    /// Sends a request to set high low alarms for a device
+    ///
+    /// - parameter device: the device to update with high low alarms
+    public func setHighLowAlarms(_ device: MeatNetNode,
+                                 status: HighLowAlarmStatus,
+                                 completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        // cannot send request if no serial number present
+        guard let serialNumberString = device.accessory?.serialNumberString else {
+            completionHandler(false)
+            return
+        }
+        
+        let request = SetNodeHighLowAlarmRequest(serialNumber: serialNumberString,
+                                                 status: status)
+        sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
+    }
+    
     /// Set the DFU file to be used on devices with failed software upgrade.
     /// A failed upgrade will occur if the user kills the application in the middle of
     /// the software upgrade process.  After this method is called, DFU will be initiated
@@ -626,6 +646,19 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     public func sendNodeRequest(node: MeatNetNode,
                                            request: NodeRequest) {
         BleManager.shared.sendRequestToNodes([node], request: request)
+    }
+    
+    private func sendNodeRequestWithSuccessHandler(_ device: MeatNetNode,
+                                   request: NodeRequest,
+                                   completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        // Send message to all nodes that have a route to the device
+        let nodesConnectedToDevice = getNodesConnectedToDevice(identifier: device.uniqueIdentifier)
+        
+        // Store completion handler
+        messageHandlers.addNodeSuccessCompletionHandler(request: request, completionHandler: completionHandler)
+        
+        // Send request to device
+        BleManager.shared.sendRequestToNodes(nodesConnectedToDevice, request: request)
     }
 }
 

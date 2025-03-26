@@ -45,7 +45,6 @@ class GaugeAdvertisingData: NodeAdvertisingData {
     var batteryPercentage: UInt8
     var highLowAlarmStatus: HighLowAlarmStatus
     
-    
     init(type: CombustionProductType, serialNumber: String, temperature: GaugeTemperature, status: GaugeDetails, batteryPercentage: UInt8, highLowAlarmStatus: HighLowAlarmStatus) {
         self.temperatures = temperature
         self.status = status

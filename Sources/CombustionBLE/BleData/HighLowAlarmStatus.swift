@@ -25,9 +25,14 @@ SOFTWARE.
 
 import Foundation
 
-public struct HighLowAlarmStatus {
+public struct HighLowAlarmStatus: Equatable {
     public let highAlarmStatus: AlarmStatus
     public let lowAlarmStatus: AlarmStatus
+    
+    public init(highAlarmStatus: AlarmStatus, lowAlarmStatus: AlarmStatus) {
+        self.highAlarmStatus = highAlarmStatus
+        self.lowAlarmStatus = lowAlarmStatus
+    }
 }
 
 extension HighLowAlarmStatus {
@@ -51,11 +56,19 @@ extension HighLowAlarmStatus {
     }
 }
 
-public struct AlarmStatus {
+public struct AlarmStatus: Equatable, Hashable {
+    
     public let set: Bool
     public let tripped: Bool
     public let alarming: Bool
     public let alarmTemperature: Double?
+    
+    public init(set: Bool, tripped: Bool, alarming: Bool, alarmTemperature: Double?) {
+        self.set = set
+        self.tripped = tripped
+        self.alarming = alarming
+        self.alarmTemperature = alarmTemperature
+    }
     
     static func fromByte(_ rawValue: UInt16) -> AlarmStatus {
         let set = (rawValue & (1 << 0)) != 0

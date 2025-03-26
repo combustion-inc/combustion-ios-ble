@@ -36,17 +36,22 @@ public struct GaugeStatus: DeviceStatus {
     /// Current temperature sent by Gauge.
     public let temperature: GaugeTemperature
     
-    /// Overheating sensors
-    public let overheatingSensors: OverheatingSensors
+    /// high low alarm status for ambient temperature
+    public let highLowAlarmStatus: HighLowAlarmStatus
+    
+    /// gauge details, sensorPresent, sensoryOverheating, lowBattery
+    public let status: GaugeDetails
     
     public init(minSequenceNumber: UInt32,
                 maxSequenceNumber: UInt32,
                 temperature: GaugeTemperature,
-                overheatingSensors: OverheatingSensors) {
+                alarmStatus: HighLowAlarmStatus,
+                status: GaugeDetails) {
         self.minSequenceNumber = minSequenceNumber
         self.maxSequenceNumber = maxSequenceNumber
         self.temperature = temperature
-        self.overheatingSensors = overheatingSensors
+        self.highLowAlarmStatus = alarmStatus
+        self.status = status
     }
 }
 
@@ -58,11 +63,10 @@ extension GaugeStatus {
         static let TEMPERATURE_RANGE = 8..<21
         static let MODE_COLOR_ID_RANGE = 21..<22
         static let DEVICE_STATUS_RANGE = 22..<23
-        static let OVERHEAT_BYTE_RANGE = 48..<49
     }
     
     init?(fromData data: Data) {
-        guard data.count >= Constants.OVERHEAT_BYTE_RANGE.endIndex else { return nil }
+        guard data.count >= Constants.DEVICE_STATUS_RANGE.endIndex else { return nil }
         
         let minRaw = data.subdata(in: Constants.MIN_SEQ_RANGE)
         minSequenceNumber = minRaw.withUnsafeBytes {
@@ -78,8 +82,10 @@ extension GaugeStatus {
         let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
         temperature = GaugeTemperature.fromRawData(data: tempData)
         
-        // Decode Over heating flags
-        let overheatingByte = data.subdata(in: Constants.OVERHEAT_BYTE_RANGE)[0]
-        overheatingSensors = OverheatingSensors.fromByte(overheatingByte)
+        let highLowData = data.subdata(in: Constants.TEMPERATURE_RANGE)
+        highLowAlarmStatus = HighLowAlarmStatus.fromData(highLowData)
+        
+        let status = GaugeDetails.fromByte(data.subdata(in: Constants.DEVICE_STATUS_RANGE)[0])
+        self.status = status
     }
 }

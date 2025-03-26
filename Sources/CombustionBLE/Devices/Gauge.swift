@@ -52,9 +52,6 @@ public class GrillGauge: Accessory {
     /// Whether or not gauge is overheating
     @Published public internal(set) var overheating: Bool = false
     
-    /// Array of sensor indexes that are overheating
-    @Published public internal(set) var overheatingSensors: [Int] = []
-    
     /// Sequence number range of records on the gauge
     @Published public internal(set) var sequenceNumberRange: ClosedRange<UInt32>?
     
@@ -124,9 +121,8 @@ public class GrillGauge: Accessory {
             
             updateTemperatures(temperature: deviceStatus.temperature)
             
-            // Overheating sensors
-            overheatingSensors = deviceStatus.overheatingSensors.sensorIndexes
-            overheating = !overheatingSensors.isEmpty
+            // Overheating
+            overheating = deviceStatus.status.sensoryOverheating
             
             // Log the temperature data point for "Normal" status updates
             addDataToLog(LoggedGaugeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus),

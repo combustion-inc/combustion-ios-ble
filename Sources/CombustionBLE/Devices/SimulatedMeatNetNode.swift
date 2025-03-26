@@ -92,7 +92,8 @@ public class SimulatedGauge: MeatNetNode {
         let gaugeStatus = GaugeStatus(minSequenceNumber: firstSeq,
                                       maxSequenceNumber: lastSequence,
                                       temperature: GaugeTemperature.withRandomData(),
-                                      overheatingSensors: OverheatingSensors(sensorIndexes: []))
+                                      alarmStatus: .defaultValues(),
+                                      status: .defaultValues())
         
         accessory.updateDeviceStatus(deviceStatus: gaugeStatus)
     }

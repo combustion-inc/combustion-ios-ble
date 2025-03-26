@@ -89,11 +89,16 @@ public class SimulatedGauge: MeatNetNode {
             lastSequence = 0
         }
         
-        let gaugeStatus = GaugeStatus(minSequenceNumber: firstSeq,
-                                      maxSequenceNumber: lastSequence,
-                                      temperature: GaugeTemperature.withRandomData(),
-                                      alarmStatus: .defaultValues(),
-                                      status: .defaultValues())
+        let gaugeStatus = GaugeStatus( serialNumber: accessory.serialNumber,
+                                       sessionID: 1,
+                                       minSequenceNumber: firstSeq,
+                                       maxSequenceNumber: lastSequence,
+                                       temperature: GaugeTemperature.withRandomData(),
+                                       alarmStatus: .defaultValues(),
+                                       status: .defaultValues(),
+                                       batteryPercentage: 98,
+                                       samplePeriod: 5000,
+                                       newRecordFlag: false)
         
         accessory.updateDeviceStatus(deviceStatus: gaugeStatus)
     }

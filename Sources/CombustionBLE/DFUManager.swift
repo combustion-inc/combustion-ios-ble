@@ -49,7 +49,7 @@ class DFUManager {
     
     private struct DFU {
         let uniqueIdentifier: String
-        let firmware: DFUFirmware
+        let firmware: NordicDFU.DFUFirmware
         let startedAt: Date
     }
     
@@ -61,7 +61,7 @@ class DFUManager {
     // Value = Time when first detected
     private var unknownBootloaderDetected = [String: Date]()
     
-    private var defaultFirmware: [DeviceType: DFUFirmware] = [:]
+    private var defaultFirmware: [DeviceType: NordicDFU.DFUFirmware] = [:]
     
     private enum Constants {
         static let THERMOMETER_DFU_NAME = "Thermom_DFU_"
@@ -79,7 +79,7 @@ class DFUManager {
         guard let dfuFile = dfuFile else { return }
         
         do {
-            defaultFirmware[dfuType] = try DFUFirmware(urlToZipFile: dfuFile)
+            defaultFirmware[dfuType] = try NordicDFU.DFUFirmware(urlToZipFile: dfuFile)
         }
         catch { }
     }
@@ -108,7 +108,7 @@ class DFUManager {
         return .unknown
     }
     
-    func startDFU(peripheral: CBPeripheral, device: Device, firmware: DFUFirmware) -> DFUServiceController? {
+    func startDFU(peripheral: CBPeripheral, device: Device, firmware: NordicDFU.DFUFirmware) -> DFUServiceController? {
         // Generate advertising name to use for bootloader during DFU
         let advertisingName = dfuAdvertisingName(for: device)
         
@@ -200,7 +200,7 @@ class DFUManager {
     private func runDfu(peripheral: CBPeripheral,
                         device: Device,
                         advertisingName: String,
-                        firmware: DFUFirmware) -> DFUServiceController?  {
+                        firmware: NordicDFU.DFUFirmware) -> DFUServiceController?  {
         
         let initiator = DFUServiceInitiator().with(firmware: firmware)
         

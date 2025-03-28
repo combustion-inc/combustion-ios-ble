@@ -25,6 +25,8 @@ SOFTWARE.
 
 import CoreBluetooth
 
+/// Class to store the discovered BLE services and characteristics
+/// for a peripheral device
 class CombustionPeripheral {
     private(set) var peripheral: CBPeripheral
     private(set) var discoveredServices: Set<BleService> = []
@@ -35,22 +37,30 @@ class CombustionPeripheral {
         self.peripheral = peripheral
     }
     
+    /// Discovered service for this peripheral
+    /// - Parameter service: discovered service
     func discoveredService(_ service: CBService) {
         guard let serviceType = BleService.from(service) else { return }
         discoveredServices.insert(serviceType)
     }
     
+    /// Characteristics have been discovered for the given service
+    /// - Parameter service: service
     func discoveredCharacteristicsFor(_ service: CBService) {
         guard let serviceType = BleService.from(service) else { return }
         discoveredCharacteristicForService.insert(serviceType)
     }
     
+    /// Discovered characteristic for this peripheral
+    /// - Parameter characteristic: discovered characteristic
     func discoveredCharacteristic(characteristic: CBCharacteristic) {
         guard let type = BleCharacteristic.from(characteristic) else { return }
         characteristics[type] = characteristic
     }
     
-    func discoveredCharacteristicForAllServices() -> Bool {
+    /// Checks if characteristics have been discovered for all discovered services
+    /// - Returns: true if characteristics have been discovered for all discovered services
+    func haveDiscoveredCharacteristicForAllServices() -> Bool {
         return discoveredServices.count == discoveredCharacteristicForService.count
     }
 }

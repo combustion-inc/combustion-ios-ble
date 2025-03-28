@@ -24,6 +24,7 @@ SOFTWARE.
 
 import CoreBluetooth
 
+/// Enum representing each BLE service used by framework
 enum BleService: String {
     case deviceInfo  = "180a"
     case dfu = "FE59"

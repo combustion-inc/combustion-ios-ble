@@ -305,7 +305,7 @@ extension BleManager: CBPeripheralDelegate {
             peripheral.discoverDescriptors(for: characteristic)
         }
         
-        if combustionPeripheral.discoveredCharacteristicForAllServices() {
+        if combustionPeripheral.haveDiscoveredCharacteristicForAllServices() {
             delegate?.didCompleteDiscovery(identifier: peripheral.identifier)
         }
     }

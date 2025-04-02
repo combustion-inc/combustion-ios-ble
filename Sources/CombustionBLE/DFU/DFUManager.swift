@@ -129,6 +129,8 @@ class DFUManager {
     func bootloaderDiscoveryComplete(_ device: Device) {
         device.updateDFUStatus(.selectCommandObject)
         
+        device.updateDFUBytesTransferred(0)
+        
         bleManager.sendRequestToBootloader(device, request: .selectCommandObject)
     }
     
@@ -214,8 +216,8 @@ class DFUManager {
                          range: 0..<Int(offset),
                          matches: crc) {
                 
-                // Update DFU offset
-                device.dfuBytesTransferred = offset
+                // Update bytes transferred
+                device.updateDFUBytesTransferred(offset)
                 
                 // Send command to execute
                 sendExecuteCommand(device)
@@ -287,8 +289,9 @@ class DFUManager {
     }
     
     private func handleExecuteCommandResponseFor(_ device: Device, response: SecureDFUResponse) {
-        print("JDJ handleExecuteCommandResponseFor()")
         guard let firmware = device.dfuFirmware else { return }
+        
+        print("JDJ handleExecuteCommandResponseFor()")
         
         if response.error == .fwVersionFailure {
             // If the target device has rejected the first part, try sending the second part.
@@ -316,7 +319,13 @@ class DFUManager {
                 device.updateDFUStatus(.selectDataObject)
                 bleManager.sendRequestToBootloader(device, request: .selectDataObject)
             }
+            else if firmware.hasNextPart() {
+                // Nothing else to do, wait for device to disconnect and then reconnect
+                // to handle firmware next part
+                print("JDJ wait for device to disconnect")
+            }
             else {
+                print("JDJ handleExecuteCommandResponseFor() : complete")
                 device.updateDFUStatus(.complete)
             }
         }
@@ -344,7 +353,7 @@ class DFUManager {
                         advertisingName: String,
                         firmware: DFUFirmware)  {
         
-        print("JDJ DFUManager runDFU - \(advertisingName)")
+        print("JDJ DFUManager runDFU - \(advertisingName) - parts \(firmware.parts)")
 
         // Save advertising name
         device.setDFUFirmware(firmware, dfuAdvertisingName: advertisingName)

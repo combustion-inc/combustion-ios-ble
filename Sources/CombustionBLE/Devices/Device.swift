@@ -87,15 +87,17 @@ open class Device : ObservableObject {
     /// Tracks whether the data has gone stale (no new data in some time)
     @Published public private(set) var stale = false
     
+    @Published public private(set) var dfuStatus: DFUStatus = .idle
+    
+    @Published public private(set) var dfuUploadPercentage: Double = 0
+    
     private(set) var dfuAdvertisingName: String?
     
     private(set) var dfuFirmware: DFUFirmware?
     
-    @Published public private(set) var dfuStatus: DFUStatus = .idle
-    
     var dfuMaxSize: UInt32 = 0
     
-    var dfuBytesTransferred: UInt32 = 0
+    private(set) var dfuBytesTransferred: UInt32 = 0
     
     private(set) var dfuMaxPacketSize: UInt32 = 20
     
@@ -126,6 +128,24 @@ open class Device : ObservableObject {
     func setDFUFirmware(_ dfuFirmware: DFUFirmware, dfuAdvertisingName: String) {
         self.dfuAdvertisingName = dfuAdvertisingName
         self.dfuFirmware = dfuFirmware
+    }
+    
+    func updateDFUBytesTransferred(_ dfuBytesTransferred: UInt32) {
+        guard let dfuFirmware else { return }
+        
+        self.dfuBytesTransferred = dfuBytesTransferred
+        
+        // Percentage already complete
+        let completePercentage = Double(dfuFirmware.currentPart - 1) / Double(dfuFirmware.parts) * 100
+        
+        // Progress of current part
+        let progress = Double(dfuBytesTransferred) / Double(dfuFirmware.data.count)
+        
+        // Percentage for this step
+        let currentStepPercentage = progress / Double(dfuFirmware.parts) * 100
+        
+        // Total percentage
+        self.dfuUploadPercentage = (completePercentage + currentStepPercentage)
     }
     
     func updateDFUStatus(_ status: DFUStatus) {

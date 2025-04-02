@@ -45,14 +45,14 @@ public class SimulatedGauge: MeatNetNode {
         }
         
         // Create timer to update probe with fake status notifications
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
             self?.updateFakeStatus()
         }
         
         self.connectionState = .connected
         
         // Set fake session information
-        let fakeSessionInfo = SessionInformation(sessionID: UInt32.random(in: 0..<UInt32.max), samplePeriod: 1000)
+        let fakeSessionInfo = SessionInformation(sessionID: UInt32.random(in: 0..<UInt32.max), samplePeriod: 5000)
         (accessory as? GrillGauge)?.updateWithSessionInformation(fakeSessionInfo)
     }
     

@@ -86,10 +86,10 @@ open class Device : ObservableObject {
     @Published public private(set) var stale = false
     
     /// DFU state
-    @Published public private(set) var dfuState: DFUState?
+    @Published public private(set) var dfuState: NordicDFU.DFUState?
     
     public struct DFUErrorMessage {
-        public let error: DFUError
+        public let error: NordicDFU.DFUError
         public let message: String
     }
     
@@ -219,7 +219,7 @@ extension Device {
     
     public func runSoftwareUpgrade(dfuFile: URL) -> Bool {
         do {
-            let dfu = try DFUFirmware(urlToZipFile: dfuFile)
+            let dfu = try NordicDFU.DFUFirmware(urlToZipFile: dfuFile)
             dfuServiceController = BleManager.shared.startFirmwareUpdate(device: self, dfu: dfu)
             return true
         }
@@ -265,8 +265,8 @@ extension Device: Hashable {
     }
 }
 
-extension Device: DFUServiceDelegate {
-    public func dfuStateDidChange(to state: DFUState) {
+extension Device: NordicDFU.DFUServiceDelegate {
+    public func dfuStateDidChange(to state: NordicDFU.DFUState) {
         dfuState = state
         
         if(dfuState == .completed) {
@@ -274,14 +274,14 @@ extension Device: DFUServiceDelegate {
         }
     }
     
-    public func dfuError(_ error: DFUError, didOccurWithMessage message: String) {
+    public func dfuError(_ error: NordicDFU.DFUError, didOccurWithMessage message: String) {
         dfuError = DFUErrorMessage(error: error, message: message)
         
         dfuServiceController?.restart()
     }
 }
 
-extension Device: DFUProgressDelegate {
+extension Device: NordicDFU.DFUProgressDelegate {
     public func dfuProgressDidChange(for part: Int,
                                      outOf totalParts: Int,
                                      to progress: Int,
@@ -291,7 +291,7 @@ extension Device: DFUProgressDelegate {
     }
 }
 
-extension Device: LoggerDelegate {
+extension Device: NordicDFU.LoggerDelegate {
     public func logWith(_ level: NordicDFU.LogLevel, message: String) {
         NSLog("LoggerDelegate : \(message)")
     }

@@ -117,7 +117,7 @@ extension NodeMessageType {
         case .associateNode: 0x4A
         case .syncThermometerList: 0x4B
         case .resetSession: 0x0A
-        case .gaugeStatus: 0x0B
+        case .gaugeStatus: 0x60
         case .setHighLowAlarm: 0x61
         case .custom(let value):
             value

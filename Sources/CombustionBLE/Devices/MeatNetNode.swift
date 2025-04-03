@@ -182,8 +182,9 @@ public class MeatNetNode: Device {
     
     /// Special handling for MeatNetNode model info.  Need to decode model info string
     /// to determine DFU type
-    override func updateWithModelInfo(_ modelInfo: String) {
-        super.updateWithModelInfo(modelInfo)
+    override func updateWithModelInfo(_ modelInfo: String, seperator: String = ":") {
+        super.updateWithModelInfo(modelInfo.components(separatedBy: " ").dropFirst().joined(),
+                                  seperator: "-")
         
         if modelInfo.contains("Timer") {
             dfuType = .display

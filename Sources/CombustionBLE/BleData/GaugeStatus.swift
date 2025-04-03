@@ -84,19 +84,21 @@ public struct GaugeStatus: DeviceStatus {
 extension GaugeStatus {
     private enum Constants {
         // Locations of data in status packet
-        static let SERIAL_NUMBER_RANGE = 0..<10
-        static let SESSION_ID_RANGE = 10..<14
-        static let SAMPLE_PERIOD_RANGE = 14..<16
-        static let TEMPERATURE_RANGE = 16..<18
-        static let GAUGE_STATUS_RANGE = 18..<19
-        static let LOG_RANGE = 19..<27
-        static let BATTERY_PERCENTAGE_RANGE = 27..<28
-        static let HIGH_LOW_ALARM_RANGE = 28..<32
-        static let NEW_RECORD_FLAG_RANGE = 32..<33
+        static let SERIAL_NUMBER_RANGE = 10..<20
+        static let SESSION_ID_RANGE = 20..<24
+        static let SAMPLE_PERIOD_RANGE = 24..<26
+        static let TEMPERATURE_RANGE = 26..<28
+        static let GAUGE_STATUS_RANGE = 28..<29
+        static let LOG_RANGE = 29..<37
+        static let BATTERY_PERCENTAGE_RANGE = 37..<38
+        static let HIGH_LOW_ALARM_RANGE = 38..<42
+        static let NEW_RECORD_FLAG_RANGE = 42..<43
     }
     
     init?(fromData data: Data) {
         guard data.count >= Constants.NEW_RECORD_FLAG_RANGE.endIndex else { return nil }
+        
+        let sequenceByteIndex = NodeRequest.HEADER_LENGTH
         
         // Serial Number
         
@@ -106,9 +108,13 @@ extension GaugeStatus {
         
         // Session ID
         let sessionIDData = data.subdata(in: Constants.SESSION_ID_RANGE)
-        self.sessionID = data.withUnsafeBytes { pointer in
+        self.sessionID = sessionIDData.withUnsafeBytes { pointer in
             pointer.load(as: UInt32.self)
         }
+        
+        // Sample Period
+        let samplePeriodData = data.subdata(in: Constants.SAMPLE_PERIOD_RANGE)
+        self.samplePeriod = samplePeriodData.withUnsafeBytes { $0.load(as: UInt16.self) }
         
         // Log Sequence
         let logRangeData = data.subdata(in: Constants.LOG_RANGE)
@@ -130,10 +136,6 @@ extension GaugeStatus {
         
         // Battery Percentage
         self.batteryPercentage = data.subdata(in: Constants.BATTERY_PERCENTAGE_RANGE)[0]
-        
-        // Sample Period
-        let samplePeriodData = data.subdata(in: Constants.SAMPLE_PERIOD_RANGE)
-        self.samplePeriod = samplePeriodData.withUnsafeBytes { $0.load(as: UInt16.self) }
         
         // New Record Flag
         let newRecordFlagData = data.subdata(in: Constants.NEW_RECORD_FLAG_RANGE)

@@ -40,7 +40,7 @@ class DFUManager {
 //    private var runningDFUs = [String: DFU]()
     
     // Dictionary of when unknown bootloader were first detected
-    // Key = CBPeripheral UUID
+    // Key = Advertising name
     // Value = Time when first detected
     private var unknownBootloaderDetected = [String: Date]()
     
@@ -57,7 +57,7 @@ class DFUManager {
         static let THERMOMETER_DEFAULT_BOOTLOADER = "CI Probe BL"
         
         static let RETRY_TIME_DELAY = 20 // seconds
-        static let UNKNOWN_BOOTLOADER_DELAY = 10
+        static let UNKNOWN_BOOTLOADER_DELAY = 20 // seconds
     }
     
     func setDefaultDFUForType(dfuFile: URL?, dfuType: DeviceType) {
@@ -99,12 +99,27 @@ class DFUManager {
                       firmware: firmware)
     }
     
-    func handleAdvertisingBootloader(device: Device, bootloaderIdentifier: String) {
+    func handleAdvertisingBootloader(device: Device, bootloaderIdentifier: String, advertisingName: String) {
         // Save bootloader identifier
         device.bootloaderIdentifier = bootloaderIdentifier
         
-        // TODO JDJ delay connecting to BootloaderDevice (unknown bootloader)
-//        print("JDJ connecting to bootloader for \(device)")
+        print("JDJ handleAdvertisingBootloader \(advertisingName)")
+        
+        if let unknownBootloader = device as? BootloaderDevice {
+            // Save time that device was first detected
+            guard let firstDetected = unknownBootloaderDetected[advertisingName] else {
+                unknownBootloaderDetected[advertisingName] = Date()
+                return
+            }
+            
+            // Delay before restarting DFU for unknown bootloader
+            let secondsSinceFirstDetected = Int(Date().timeIntervalSince(firstDetected))
+            guard secondsSinceFirstDetected > Constants.UNKNOWN_BOOTLOADER_DELAY else { return }
+            
+            // Set the firmware on the bootloader device
+            guard let firmware = defaultFirmware[unknownBootloader.type] else { return }
+            device.setDFUFirmware(firmware)
+        }
         
         // Connect to bootloader
         bleManager.connect(identifier: bootloaderIdentifier)
@@ -355,8 +370,9 @@ class DFUManager {
         
         print("JDJ DFUManager runDFU - \(advertisingName) - parts \(firmware.parts)")
 
-        // Save advertising name
-        device.setDFUFirmware(firmware, dfuAdvertisingName: advertisingName)
+        // Save advertising name and firmware
+        device.setDFUFirmware(firmware)
+        device.setDFUAdvertisingName(advertisingName)
         
         // Set DFU state
         device.updateDFUStatus(.requestName)

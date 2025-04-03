@@ -722,11 +722,14 @@ extension DeviceManager : BleManagerDelegate {
     }
 
     func handleBootloaderAdvertising(identifier: UUID, advertisingName: String, rssi: NSNumber) {
+        print("JDJ DeviceManager.handleBootloaderAdvertising() \(advertisingName) ")
+        
         let foundDevice = devices.values.first { $0.dfuAdvertisingName == advertisingName}
         
         if let foundDevice {
             dfuManager.handleAdvertisingBootloader(device: foundDevice,
-                                                   bootloaderIdentifier: identifier.uuidString)
+                                                   bootloaderIdentifier: identifier.uuidString,
+                                                   advertisingName: advertisingName)
         }
         else {
             let bootloaderDevice = BootloaderDevice(advertisingName: advertisingName,

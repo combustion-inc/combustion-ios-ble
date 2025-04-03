@@ -125,9 +125,12 @@ open class Device : ObservableObject {
         dfuMaxPacketSize = UInt32(value) & 0xFFFFFFFC
     }
     
-    func setDFUFirmware(_ dfuFirmware: DFUFirmware, dfuAdvertisingName: String) {
-        self.dfuAdvertisingName = dfuAdvertisingName
+    func setDFUFirmware(_ dfuFirmware: DFUFirmware) {
         self.dfuFirmware = dfuFirmware
+    }
+    
+    func setDFUAdvertisingName(_ dfuAdvertisingName: String) {
+        self.dfuAdvertisingName = dfuAdvertisingName
     }
     
     func updateDFUBytesTransferred(_ dfuBytesTransferred: UInt32) {
@@ -178,10 +181,6 @@ open class Device : ObservableObject {
             isConnectable = false
             rssi = Constants.MIN_RSSI
         }
-    }
-    
-    public func isDFURunning() -> Bool {
-        return false // TODO JDJ
     }
     
     /// Updates SKU and Lot number based on Model Info string.

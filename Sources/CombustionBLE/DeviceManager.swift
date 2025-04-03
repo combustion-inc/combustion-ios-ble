@@ -647,6 +647,24 @@ extension DeviceManager : BleManagerDelegate {
         messageHandlers.clearHandlersForDevice(identifier)
     }
     
+    func didCompleteDiscovery(identifier: UUID) {
+        // Enable Notifications for UART TX
+        BleManager.shared.enableNotificationsFor(identifier.uuidString, type: .uartTx)
+    }
+    
+    func didEnableNotificationsFor(identifier: UUID, characteristic: BleCharacteristic) {
+        if(characteristic == BleCharacteristic.uartTx) {
+            // After enabling UART notification
+            // Enable notifications for Device status characteristic
+            BleManager.shared.enableNotificationsFor(identifier.uuidString, type: .deviceStatus)
+        }
+        else if(characteristic == BleCharacteristic.deviceStatus)  {
+            // After enabling STATUS notification
+            // Send request the session ID from device
+            BleManager.shared.sendRequest(identifier: identifier.uuidString, request: SessionInfoRequest())
+        }
+    }
+    
     func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus) {
         // Update Probe Device from direct status notification
         guard let probe = findDeviceByBleIdentifier(bleIdentifier: identifier) as? Probe else { return }

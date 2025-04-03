@@ -18,6 +18,4 @@ public class BootloaderDevice : Device {
         
         setDFUAdvertisingName(advertisingName)
     }
-    
-    // TODO JDJ // When DFU is complete, remove this device from Device Manager
 }

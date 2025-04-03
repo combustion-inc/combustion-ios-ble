@@ -727,8 +727,10 @@ extension DeviceManager : BleManagerDelegate {
         let foundDevice = devices.values.first { $0.dfuAdvertisingName == advertisingName}
         
         if let foundDevice {
+            // Save bootloader identifier for device
+            foundDevice.bootloaderIdentifier = identifier.uuidString
+            
             dfuManager.handleAdvertisingBootloader(device: foundDevice,
-                                                   bootloaderIdentifier: identifier.uuidString,
                                                    advertisingName: advertisingName)
         }
         else {

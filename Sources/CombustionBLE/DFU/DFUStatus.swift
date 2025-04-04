@@ -25,7 +25,7 @@ SOFTWARE.
 --*/
 
 
-public enum DFUStatus {
+public enum DFUStatus: Equatable {
     case idle
     case requestName
     case requestBootloader
@@ -38,10 +38,24 @@ public enum DFUStatus {
     case createDataObject
     case sendBlock
     case complete
+    case failure(DFUFailure)
+}
+
+public enum DFUFailure {
+    case commandFailed
+    case commandTimeout
+    case crcIncorrect
+    case invalidDFU
+    case invalidResponse
 }
 
 extension DFUStatus {
     public func isActive() -> Bool {
-        return self != .idle && self != .complete
+        switch (self) {
+        case .idle, .complete, .failure:
+            return false
+        default:
+            return true
+        }
     }
 }

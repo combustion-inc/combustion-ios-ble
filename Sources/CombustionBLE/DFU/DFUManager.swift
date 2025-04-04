@@ -51,6 +51,8 @@ class DFUManager {
     
     private var bleManager = BleManager.shared
     
+    private var responseTimer: Timer?
+    
     private enum Constants {
         static let THERMOMETER_DFU_NAME = "Thermom_DFU_"
         static let DISPLAY_DFU_NAME = "Display_DFU_"
@@ -59,8 +61,8 @@ class DFUManager {
         
         static let THERMOMETER_DEFAULT_BOOTLOADER = "CI Probe BL"
         
-        static let RETRY_TIME_DELAY = 20 // seconds
-        static let UNKNOWN_BOOTLOADER_DELAY = 20 // seconds
+        static let RESPONSE_TIMEOUT = 10.0 // seconds
+        static let UNKNOWN_BOOTLOADER_DELAY = 10 // seconds
     }
     
     func setDefaultDFUForType(dfuFile: URL?, dfuType: DeviceType) {
@@ -100,18 +102,17 @@ class DFUManager {
         let advertisingName = generateDfuAdvertisingNameFor(device)
         
         // Save advertising name and firmware
-        device.setDFUFirmware(firmware)
+        device.initializeDFU(firmware)
         device.setDFUAdvertisingName(advertisingName)
         
         // Set device as having active DFU
         activeDfuUniqueIdentifier = device.uniqueIdentifier
         
         // Set DFU state
-        device.updateDFUStatus(.requestName)
+        updateDeviceDFUStatusFor(device, status: .requestName)
         
         // Send advertising name to device
-        bleManager.sendDFURequest(identifier: device.bleIdentifier,
-                                  request: .set(name: advertisingName))
+        sendDFURequestTo(device, request: .set(name: advertisingName))
     }
     
     func handleAdvertisingBootloader(device: Device, advertisingName: String) {
@@ -145,38 +146,14 @@ class DFUManager {
         
         // Set the firmware on the bootloader device
         guard let firmware = defaultFirmware[unknownBootloader.type] else { return }
-        unknownBootloader.setDFUFirmware(firmware)
+        unknownBootloader.initializeDFU(firmware)
         
         // Set as active DFU
         activeDfuUniqueIdentifier = unknownBootloader.uniqueIdentifier
     }
     
-    func dfuCompleteFor(_ device: Device) {
-        print("JDJ handleExecuteCommandResponseFor() : complete")
-        device.updateDFUStatus(.complete)
-        
-        // Clear active DFU
-        activeDfuUniqueIdentifier = nil
-        
-        // TODO JDJ // When DFU is complete, remove bootloader from Device Manager
-        
-        // TODO JDJ
-//        // Find the running DFU for specified device
-//        let dfuTuple = runningDFUs.first { (_, value) in
-//            value.uniqueIdentifier == device.uniqueIdentifier
-//        }
-//
-//        // Remove from runningDFUs dictionary if found
-//        if let key = dfuTuple?.key {
-//            runningDFUs.removeValue(forKey: key)
-//        }
-//        
-//        // Update DFU in progress flag
-//        dfuIsInProgress = !runningDFUs.isEmpty
-    }
-    
     func bootloaderDiscoveryComplete(_ device: Device) {
-        device.updateDFUStatus(.selectCommandObject)
+        updateDeviceDFUStatusFor(device, status: .selectCommandObject)
         
         device.updateDFUBytesTransferred(0)
         
@@ -184,102 +161,105 @@ class DFUManager {
     }
     
     func handleDataFromAppFor(_ device: Device, data: Data) {
+        // Check that device is expecting response
+        guard device.dfuStatus == .requestName || device.dfuStatus == .requestBootloader else { return }
         
-        // TODO JDJ check the response data
+        // Stop the response timer
+        responseTimer?.invalidate()
         
-        if let response = ButtonlessDFUResponse(data) {
-            print("JDJ handleDataFromAppFor : response \(response)")
+        // Check that response is valid
+        guard let response = ButtonlessDFUResponse(data) else {
+            updateDeviceDFUStatusFor(device, status: .failure(.invalidResponse))
+            return
+        }
+        
+        // Check that response was successful
+        guard response.status == .success else {
+            updateDeviceDFUStatusFor(device, status: .failure(.commandFailed))
+            return
         }
         
         if device.dfuStatus == .requestName {
-            device.updateDFUStatus(.requestBootloader)
-            bleManager.sendDFURequest(identifier: device.bleIdentifier,
-                                             request: .enterBootloader)
+            // Update status
+            updateDeviceDFUStatusFor(device, status: .requestBootloader)
+            
+            // Send the next command
+            sendDFURequestTo(device, request: .enterBootloader)
+        }
+        else if device.dfuStatus == .requestBootloader {
+            // Nothing else to do, wait for device to reboot into bootloader
         }
     }
     
     func handleDataFromBootloaderFor(_ device: Device, data: Data) {
-        guard let response = SecureDFUResponse(data) else { return }
+        // Check that response is valid
+        guard let response = SecureDFUResponse(data) else {
+            updateDeviceDFUStatusFor(device, status: .failure(.invalidResponse))
+            return
+        }
         
-        print("JDJ handleDataFromBootloaderFor : response \(response)")
+        // Check that response was successful, expect for execute command
+        if response.status != .success && response.requestOpCode != .execute {
+            updateDeviceDFUStatusFor(device, status: .failure(.commandFailed))
+            return
+        }
         
         switch device.dfuStatus {
         case .selectCommandObject:
+            guard response.requestOpCode == .selectObject else { return }
             createInitPacketFor(device)
             
         case .createInitPacket:
-            device.updateDFUStatus(.setPacketReceiptNotification)
+            guard response.requestOpCode == .createObject else { return }
+            updateDeviceDFUStatusFor(device, status: .setPacketReceiptNotification)
             bleManager.sendRequestToBootloader(device, request: .setPacketReceiptNotification(value: 0))
             
         case .setPacketReceiptNotification:
-            device.updateDFUStatus(.sendInitPacket)
-            
-            // Send Init packet
-            if let initPacket = device.dfuFirmware?.initPacket {
-                let initPacketLength = UInt32(initPacket.count)
-                let data = initPacket.subdata(in: 0 ..< Int(initPacketLength))
-                
-                bleManager.sendPacketToBootloader(device, data: data)
-            }
-            
-            // Send command to calculate checksum
-            bleManager.sendRequestToBootloader(device, request: .calculateChecksumCommand)
+            guard response.requestOpCode == .setPRNValue else { return }
+            sendInitPacketFor(device)
             
         case .sendInitPacket:
-            if let initPacket = device.dfuFirmware?.initPacket,
-               let offset = response.offset,
-               let crc = response.crc,
-               verifyCRC(for: initPacket, range: 0..<Int(offset), matches: crc) {
-                
-                // Send command to execute
-                device.updateDFUStatus(.executeCommand)
-                bleManager.sendRequestToBootloader(device, request: .executeCommand)
-            }
-            else {
-                print("TODO JDJ CRC failed")
-            }
-
+            guard response.requestOpCode == .calculateChecksum else { return }
+            executeInitPacketFor(device, response: response)
+            
         case .executeCommand:
+            guard response.requestOpCode == .execute else { return }
             handleExecuteCommandResponseFor(device, response: response)
             
         case .selectDataObject:
             if let maxSize = response.maxSize {
-                // Save max size
-                device.dfuMaxSize = maxSize
+                // Save max block size
+                device.dfuMaxBlockSize = maxSize
                 
                 // Send create data object
                 sendCreateDataObject(device)
             }
             
         case .createDataObject:
-            device.updateDFUStatus(.sendBlock)
+            updateDeviceDFUStatusFor(device, status: .sendBlock)
             sendNextBlockTo(device)
             
         case .sendBlock:
-            if let fimrwareData = device.dfuFirmware?.data,
-               let offset = response.offset,
-               let crc = response.crc,
-               verifyCRC(for: fimrwareData,
-                         range: 0..<Int(offset),
-                         matches: crc) {
-                
-                // Update bytes transferred
-                device.updateDFUBytesTransferred(offset)
-                
-                // Send command to execute
-                sendExecuteCommand(device)
-            }
-            else {
-                print("TODO JDJ CRC failed")
-            }
+            executeBlockFor(device, response: response)
             
-        case .idle, .requestName, .requestBootloader, .complete:
+        case .idle, .requestName, .requestBootloader, .complete, .failure:
             break
         }
     }
     
+    private func sendDFURequestTo(_ device: Device, request: ButtonlessDFURequest) {
+        responseTimer?.invalidate()
+        
+        responseTimer = Timer.scheduledTimer(withTimeInterval: Constants.RESPONSE_TIMEOUT, repeats: false) { [weak self] _ in
+            self?.updateDeviceDFUStatusFor(device, status: .failure(.commandTimeout))
+        }
+        
+        bleManager.sendDFURequest(identifier: device.bleIdentifier,
+                                  request: request)
+    }
+    
     private func createInitPacketFor(_ device: Device) {
-        device.updateDFUStatus(.createInitPacket)
+        updateDeviceDFUStatusFor(device, status: .createInitPacket)
         
         if let firmware = device.dfuFirmware, let initPacket = firmware.initPacket {
             let initPacketLength = UInt32(initPacket.count)
@@ -287,34 +267,78 @@ class DFUManager {
         }
     }
     
+    private func sendInitPacketFor(_ device: Device) {
+        updateDeviceDFUStatusFor(device, status: .sendInitPacket)
+        
+        // Send Init packet
+        if let initPacket = device.dfuFirmware?.initPacket {
+            let initPacketLength = UInt32(initPacket.count)
+            let data = initPacket.subdata(in: 0 ..< Int(initPacketLength))
+            
+            bleManager.sendPacketToBootloader(device, data: data)
+        }
+        
+        // Send command to calculate checksum
+        bleManager.sendRequestToBootloader(device, request: .calculateChecksumCommand)
+    }
+    
+    private func executeInitPacketFor(_ device: Device, response: SecureDFUResponse) {
+        if let initPacket = device.dfuFirmware?.initPacket,
+           let offset = response.offset,
+           let crc = response.crc,
+           verifyCRC(for: initPacket, range: 0..<Int(offset), matches: crc) {
+            
+            sendExecuteCommand(device)
+        }
+        else {
+            // CRC check failed
+            updateDeviceDFUStatusFor(device, status: .failure(.crcIncorrect))
+        }
+    }
+    
+    private func executeBlockFor(_ device: Device, response: SecureDFUResponse) {
+        if let fimrwareData = device.dfuFirmware?.data,
+           let offset = response.offset,
+           let crc = response.crc,
+           verifyCRC(for: fimrwareData,
+                     range: 0..<Int(offset),
+                     matches: crc) {
+            
+            // Update bytes transferred
+            device.updateDFUBytesTransferred(offset)
+            
+            // Send command to execute
+            sendExecuteCommand(device)
+        }
+        else {
+            // CRC check failed
+            updateDeviceDFUStatusFor(device, status: .failure(.crcIncorrect))
+        }
+    }
+    
     private func sendCreateDataObject(_ device: Device) {
         guard let firmware = device.dfuFirmware else { return }
         
-        device.updateDFUStatus(.createDataObject)
+        updateDeviceDFUStatusFor(device, status: .createDataObject)
         
         let bytesLeft = UInt32(firmware.data.count) - device.dfuBytesTransferred
-        let nextBlockSize = min(device.dfuMaxSize, bytesLeft)
+        let nextBlockSize = min(device.dfuMaxBlockSize, bytesLeft)
         bleManager.sendRequestToBootloader(device, request: .createDataObject(withSize: nextBlockSize))
     }
     
     private func sendExecuteCommand(_ device: Device) {
-        device.updateDFUStatus(.executeCommand)
+        updateDeviceDFUStatusFor(device, status: .executeCommand)
         bleManager.sendRequestToBootloader(device, request: .executeCommand)
     }
     
     private func sendNextBlockTo(_ device: Device) {
-        print("JDJ sendNextBlockTo() : dfuBytesTransferred \(device.dfuBytesTransferred) : maxSize \(device.dfuMaxSize) : packetSize \(device.dfuMaxPacketSize)")
-        
         guard let firmware = device.dfuFirmware else { return }
         
-        
         let totalBytesLeft = UInt32(firmware.data.count) - device.dfuBytesTransferred
-        let bytesToSend = min(device.dfuMaxSize, totalBytesLeft)
+        let bytesToSend = min(device.dfuMaxBlockSize, totalBytesLeft)
         let range = Int(device.dfuBytesTransferred)..<Int(device.dfuBytesTransferred + bytesToSend)
         let packetSize = device.dfuMaxPacketSize
         let objectData = firmware.data.subdata(in: range)
-
-        print("JDJ sendNextBlockTo() : range \(range) : data size = \(objectData.count)")
         
         var bytesSent: UInt32 = 0
         
@@ -338,8 +362,6 @@ class DFUManager {
     private func handleExecuteCommandResponseFor(_ device: Device, response: SecureDFUResponse) {
         guard let firmware = device.dfuFirmware else { return }
         
-        print("JDJ handleExecuteCommandResponseFor()")
-        
         if response.error == .fwVersionFailure {
             // If the target device has rejected the first part, try sending the second part.
             // If may be that the SD+BL were flashed before and can't be updated again due to
@@ -347,15 +369,13 @@ class DFUManager {
             // In that case app update should be possible.
             if firmware.hasNextPart() {
                 firmware.switchToNextPart()
-
-                print("JDJ : Invalid system components. Trying to send application")
-
+                
                 // Verify the new part, which should also have the Init packet.
                 guard firmware.initPacket != nil else {
-                    print("JDJ : The init packet is required by the target device")
+                    updateDeviceDFUStatusFor(device, status: .failure(.invalidDFU))
                     return
                 }
-
+                
                 // Create init packet
                 createInitPacketFor(device)
             }
@@ -363,13 +383,12 @@ class DFUManager {
         else {
             // More data to send
             if device.dfuBytesTransferred < device.dfuFirmware?.data.count ?? 0 {
-                device.updateDFUStatus(.selectDataObject)
+                updateDeviceDFUStatusFor(device, status: .selectDataObject)
                 bleManager.sendRequestToBootloader(device, request: .selectDataObject)
             }
             else if firmware.hasNextPart() {
                 // Nothing else to do, wait for device to disconnect and then reconnect
                 // to handle firmware next part
-                print("JDJ wait for device to disconnect")
             }
             else {
                 dfuCompleteFor(device)
@@ -377,8 +396,17 @@ class DFUManager {
         }
     }
     
+    private func dfuCompleteFor(_ device: Device) {
+        updateDeviceDFUStatusFor(device, status: .complete)
+        
+        // Remove Bootloader devices when complete
+        if let bootloader = device as? BootloaderDevice {
+            DeviceManager.shared.clearDevice(device: bootloader)
+        }
+    }
+    
     private func deviceTypeAdvertisingName(for device: Device) -> String {
-
+        
         if let node = device as? MeatNetNode {
             if node.dfuType == .charger {
                 return Constants.CHARGER_DFU_NAME
@@ -390,8 +418,17 @@ class DFUManager {
                 return Constants.GAUGE_DFU_NAME
             }
         }
-
+        
         return Constants.THERMOMETER_DFU_NAME
+    }
+    
+    private func updateDeviceDFUStatusFor(_ device: Device, status: DFUStatus) {
+        device.updateDFUStatus(status)
+        
+        // Clear DFU if status is no longer active
+        if !status.isActive() {
+            activeDfuUniqueIdentifier = nil
+        }
     }
     
     /**
@@ -404,8 +441,6 @@ class DFUManager {
      - returns: `True` if CRCs are identical, `false` otherwise.
      */
     private func verifyCRC(for data: Data, range: Range<Int>, matches crc: UInt32) -> Bool {
-        print("JDJ verifyCRC range : \(range)")
-        
         // Edge case where a different object might be flashed with a bigger init file.
         guard range.lowerBound >= 0 && range.upperBound <= data.count else {
             return false

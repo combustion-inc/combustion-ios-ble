@@ -161,8 +161,6 @@ class BleManager : NSObject {
         if let connectedPeripheral = getConnectedPeripheral(identifier: identifier),
            let bootloaderDFUChar = getCharacteristicFor(identifier, type: .dfuControlPoint) {
             
-            print("JDJ sendRequestToBootloader : \(request)")
-            
             connectedPeripheral.writeValue(request.data,
                                            for: bootloaderDFUChar,
                                            type: .withResponse)
@@ -174,8 +172,6 @@ class BleManager : NSObject {
         
         if let connectedPeripheral = getConnectedPeripheral(identifier: identifier),
            let dfuPacketChar = getCharacteristicFor(identifier, type: .dfuPacket) {
-            
-            print("JDJ sendPacketToBootloader : data count \(data.count)")
             
             connectedPeripheral.writeValue(data,
                                            for: dfuPacketChar,

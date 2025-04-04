@@ -95,7 +95,7 @@ open class Device : ObservableObject {
     
     private(set) var dfuFirmware: DFUFirmware?
     
-    var dfuMaxSize: UInt32 = 0
+    var dfuMaxBlockSize: UInt32 = 0
     
     private(set) var dfuBytesTransferred: UInt32 = 0
     
@@ -125,7 +125,10 @@ open class Device : ObservableObject {
         dfuMaxPacketSize = UInt32(value) & 0xFFFFFFFC
     }
     
-    func setDFUFirmware(_ dfuFirmware: DFUFirmware) {
+    func initializeDFU(_ dfuFirmware: DFUFirmware) {
+        // Reset progress
+        dfuUploadPercentage = 0
+        
         self.dfuFirmware = dfuFirmware
     }
     

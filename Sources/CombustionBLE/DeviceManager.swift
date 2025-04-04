@@ -835,6 +835,8 @@ extension DeviceManager : BleManagerDelegate {
                 meatNetNode.accessory = gauge
                 
                 addAccessory(accessory: gauge)
+                
+                connectionManager.receivedDeviceAdvertising(meatNetNode, from: meatNetNode)
             }
         case .unknown:
             print("Found device with unknown type")

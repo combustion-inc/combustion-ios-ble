@@ -113,7 +113,7 @@ class ConnectionManager {
     
     func receivedStatusFor(_ device: Device, node: MeatNetNode?) {
         guard let identifier = device.uniqueIdentifier as? String else { return }
-        let directConnection = node == nil
+        let directConnection = node == nil || node == device // meat net node might report its own status
         
         lastStatusUpdate[identifier] = Date()
         

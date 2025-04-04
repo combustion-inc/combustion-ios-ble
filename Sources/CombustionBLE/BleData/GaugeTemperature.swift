@@ -45,7 +45,7 @@ extension GaugeTemperature {
         let rawValue = data.withUnsafeBytes { $0.load(as: UInt16.self) }
         let temperature = rawValue & 0x1FFF // Extract the lower 13 bits
         
-        let realisedTemperature = Double(temperature) * 0.05 - 20.0
+        let realisedTemperature = Double(temperature) * 0.1 - 20.0
         
         return .init(value: realisedTemperature)
     }

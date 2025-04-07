@@ -144,7 +144,7 @@ extension ProbeStatus {
         else {
             foodSafeStatus = nil
         }
-        
+
         // Decode Over heating flags
         if data.count >= overheatRange.endIndex {
             

@@ -32,10 +32,12 @@ class GaugeLogResponse: Response {
         
         static let SEQUENCE_RANGE = Response.HEADER_LENGTH..<(Response.HEADER_LENGTH + 4)
         static let TEMPERATURE_RANGE = (Response.HEADER_LENGTH + 4)..<(Response.HEADER_LENGTH + 17)
+        static let SENSOR_PRESENT_RANGE = (Response.HEADER_LENGTH + 17)..<(Response.HEADER_LENGTH + 18)
     }
     
     let sequenceNumber: UInt32
     let temperatures: GaugeTemperature
+    let sensorPresent: Bool
     
     init(data: Data, success: Bool, payloadLength: Int) {
         let sequenceRaw = data.subdata(in: Constants.SEQUENCE_RANGE)
@@ -46,6 +48,11 @@ class GaugeLogResponse: Response {
         // Temperatures (8 13-bit) values
         let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
         temperatures = GaugeTemperature.fromRawData(data: tempData)
+        
+        let sensorPresentData = data.subdata(in: Constants.SENSOR_PRESENT_RANGE)
+        sensorPresent = sequenceRaw.withUnsafeBytes {
+            $0.load(as: Bool.self)
+        }
 
         super.init(success: success, payloadLength: payloadLength, messageType: .gaugeLog)
     }

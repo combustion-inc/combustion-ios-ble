@@ -33,11 +33,13 @@ class NodeGaugeReadLogsResponse: NodeResponse {
         static let SERIAL_RANGE = NodeResponse.HEADER_LENGTH..<(NodeResponse.HEADER_LENGTH + 10)
         static let SEQUENCE_RANGE = (NodeResponse.HEADER_LENGTH + 4)..<(NodeResponse.HEADER_LENGTH + 8)
         static let TEMPERATURE_RANGE = (NodeResponse.HEADER_LENGTH + 8)..<(NodeResponse.HEADER_LENGTH + 21)
+        static let SENSOR_PRESENT_RANGE = (NodeResponse.HEADER_LENGTH + 21)..<(NodeResponse.HEADER_LENGTH + 22)
     }
     
     let gaugeSerialNumber: String
     let sequenceNumber: UInt32
     let temperatures: GaugeTemperature
+    let sensorPresent: Bool
     
     init(data: Data, success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
         let serialRaw = data.subdata(in: Constants.SERIAL_RANGE)
@@ -51,6 +53,11 @@ class NodeGaugeReadLogsResponse: NodeResponse {
         // Temperatures (8 13-bit) values
         let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
         temperatures = GaugeTemperature.fromRawData(data: tempData)
+        
+        let sensorPresentData = data.subdata(in: Constants.SENSOR_PRESENT_RANGE)
+        sensorPresent = sequenceRaw.withUnsafeBytes {
+            $0.load(as: Bool.self)
+        }
 
         super.init(success: success,
                    requestId: requestId,

@@ -598,8 +598,8 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
                                  status: HighLowAlarmStatus,
                                  completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
         // cannot send request if no serial number present
-        guard let serialNumberString = device.accessory?.serialNumberString, let request = SetNodeHighLowAlarmRequest(serialNumber: serialNumberString,
-                                                                                                                       status: status) else {
+        guard let serialNumberString = device.accessory?.serialNumberString,
+              let request = SetNodeHighLowAlarmRequest(serialNumber: serialNumberString, status: status) else {
             completionHandler(false)
             return
         }

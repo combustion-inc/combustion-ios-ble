@@ -598,13 +598,13 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
                                  status: HighLowAlarmStatus,
                                  completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
         // cannot send request if no serial number present
-        guard let serialNumberString = device.accessory?.serialNumberString else {
+        guard let serialNumberString = device.accessory?.serialNumberString, let request = SetNodeHighLowAlarmRequest(serialNumber: serialNumberString,
+                                                                                                                       status: status) else {
             completionHandler(false)
             return
         }
         
-        let request = SetNodeHighLowAlarmRequest(serialNumber: serialNumberString,
-                                                 status: status)
+       
         sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
     }
     
@@ -1066,7 +1066,7 @@ extension DeviceManager : BleManagerDelegate {
                let device = findDeviceBySerialNumber(serialNumber: featureFlagsResponse.nodeSerialNumber) as? MeatNetNode {
                 device.updateFeatureFlags(featureFlagsResponse.flags)
             }
-        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession:
+        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm:
             messageHandlers.callNodeSuccessCompletionHandler(response: response)
         case .custom(_):
             deviceResponseHandler?.handleResponse(identifier: identifier, response: response)

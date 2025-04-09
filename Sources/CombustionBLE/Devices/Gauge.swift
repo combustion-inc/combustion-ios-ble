@@ -49,6 +49,12 @@ public class GrillGauge: Accessory {
     
     @Published public internal(set) var mostRecentStatus: GaugeStatus?
     
+    @Published public internal(set) var batteryPercentage: Int?
+    
+    @Published public internal(set) var mostRecentHighLowAlarm: HighLowAlarmStatus?
+    
+    @Published public internal(set) var isSensorAttached: Bool?
+    
     /// Whether or not gauge is overheating
     @Published public internal(set) var overheating: Bool = false
     
@@ -102,6 +108,9 @@ public class GrillGauge: Accessory {
         
         if(parent.connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(parent)) {
             updateTemperatures(temperature: advertisingData.temperatures)
+            updateBatteryPercentage(Int(advertisingData.batteryPercentage))
+            updateHighLowAlarms(advertisingData.highLowAlarmStatus)
+            updateIsSensorAttached(advertisingData.status.sensorPresent)
         }
     }
     
@@ -120,6 +129,12 @@ public class GrillGauge: Accessory {
             sequenceNumberRange = deviceStatus.minSequenceNumber...deviceStatus.maxSequenceNumber
             
             updateTemperatures(temperature: deviceStatus.temperature)
+            
+            updateBatteryPercentage(Int(deviceStatus.batteryPercentage))
+            
+            updateHighLowAlarms(deviceStatus.highLowAlarmStatus)
+            
+            updateIsSensorAttached(deviceStatus.status.sensorPresent)
             
             // Overheating
             overheating = deviceStatus.status.sensoryOverheating
@@ -257,6 +272,18 @@ extension GrillGauge {
     
     private func updateTemperatures(temperature: GaugeTemperature) {
         self.currentTemperature = temperature
+    }
+    
+    private func updateBatteryPercentage(_ percentage: Int) {
+        self.batteryPercentage = percentage
+    }
+    
+    private func updateHighLowAlarms(_ highLowAlarmStatus: HighLowAlarmStatus) {
+        self.mostRecentHighLowAlarm = highLowAlarmStatus
+    }
+    
+    private func updateIsSensorAttached(_ isSensorAttached: Bool) {
+        self.isSensorAttached = isSensorAttached
     }
     
     private func updateLogPercent() {

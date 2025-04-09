@@ -25,27 +25,22 @@ SOFTWARE.
 import Foundation
 
 class SetNodeHighLowAlarmRequest: NodeRequest {
-    init(serialNumber: String, status: HighLowAlarmStatus) {
+    
+    init?(serialNumber: String, status: HighLowAlarmStatus) {
         var serialNumberBytes = serialNumber
         
         var payload = Data()
         
-        payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
-        
-        func packAlarmStatus(_ alarm: AlarmStatus) -> UInt16 {
-            var value: UInt16 = 0
-            if alarm.set { value |= 1 << 0 }
-            if alarm.tripped { value |= 1 << 1 }
-            if alarm.alarming { value |= 1 << 2 }
-            value |= UInt16(alarm.alarmTemperature ?? 0) << 3
-            return value
+        guard let serialNumberData = serialNumber.data(using: .utf8) else {
+            return nil
         }
         
-        var highStatus = packAlarmStatus(status.highAlarmStatus)
-        var lowStatus = packAlarmStatus(status.lowAlarmStatus)
+        payload.append(serialNumberData)
         
-        payload.append(Data(bytes: &highStatus, count: MemoryLayout.size(ofValue: highStatus)))
-        payload.append(Data(bytes: &lowStatus, count: MemoryLayout.size(ofValue: lowStatus)))
+        let highLowData = status.toRawData()
+        var rawHighLowData = highLowData
+        
+        payload.append(Data(bytes: &rawHighLowData, count: MemoryLayout.size(ofValue: rawHighLowData)))
         
         super.init(outgoingPayload: payload, type: .setHighLowAlarm)
     }
@@ -60,4 +55,5 @@ class SetNodeHighLowAlarmResponse : NodeResponse {
                    messageType: .setHighLowAlarm)
     }
 }
+
 

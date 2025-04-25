@@ -584,6 +584,12 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
     }
     
+    /// Set the analtics logger
+    ///  - Parameter logger: Analtyics logger to be used
+    public func setAnalyticsLogger(_ logger: AnalyticsLogger) {
+        dfuManager.setAnalyticsLogger(logger)
+    }
+    
     private func sendDirectRequestWithSuccessHandler(_ probe: Probe,
                                    request: Request,
                                    completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {

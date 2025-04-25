@@ -53,6 +53,8 @@ class DFUManager {
     
     private var responseTimer: Timer?
     
+    private var analyticsLogger: AnalyticsLogger?
+    
     private enum Constants {
         static let THERMOMETER_DFU_NAME = "Thermom_DFU_"
         static let DISPLAY_DFU_NAME = "Display_DFU_"
@@ -72,6 +74,10 @@ class DFUManager {
             defaultFirmware[dfuType] = try DFUFirmware(urlToZipFile: dfuFile)
         }
         catch { }
+    }
+    
+    func setAnalyticsLogger(_ logger: AnalyticsLogger) {
+        analyticsLogger = logger
     }
     
     static func bootloaderTypeFrom(advertisingName: String) -> DeviceType {
@@ -97,6 +103,9 @@ class DFUManager {
     func startDFU(peripheral: CBPeripheral, device: Device, firmware: DFUFirmware) {
         // Do not start a DFU if one is already in progress
         guard !dfuIsInProgress else { return }
+        
+        // Log DFU start
+        analyticsLogger?.logStartDFU()
         
         // Generate advertising name to use for bootloader during DFU
         let advertisingName = generateDfuAdvertisingNameFor(device)
@@ -147,6 +156,9 @@ class DFUManager {
         // Set the firmware on the bootloader device
         guard let firmware = defaultFirmware[unknownBootloader.type] else { return }
         unknownBootloader.initializeDFU(firmware)
+        
+        // Log the DFU restart
+        analyticsLogger?.logRestartDFU()
         
         // Set as active DFU
         activeDfuUniqueIdentifier = unknownBootloader.uniqueIdentifier
@@ -424,6 +436,14 @@ class DFUManager {
     
     private func updateDeviceDFUStatusFor(_ device: Device, status: DFUStatus) {
         device.updateDFUStatus(status)
+        
+        // Log DFU failure and completion
+        if case let .failure(reason) = status {
+            analyticsLogger?.logDFUFailure(reason: reason)
+        }
+        else if status == .complete {
+            analyticsLogger?.logCompletedDFU()
+        }
         
         // Clear DFU if status is no longer active
         if !status.isActive() {

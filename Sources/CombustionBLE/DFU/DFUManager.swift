@@ -249,7 +249,11 @@ class DFUManager {
             
         case .createDataObject:
             updateDeviceDFUStatusFor(device, status: .sendBlock)
-            sendNextBlockTo(device)
+            
+            // Send next data block on background thread
+            DispatchQueue.global(qos: .background).async { [weak self] in
+                self?.sendNextBlockTo(device)
+            }
             
         case .sendBlock:
             executeBlockFor(device, response: response)
@@ -363,8 +367,8 @@ class DFUManager {
             
             bytesSent += packetLength
             
-            // 25ms delay
-            usleep(25000)
+            // Add a small delay (5ms) between each block
+            usleep(5000)
         }
         
         // After sending all data in block, send request to calculate checksum

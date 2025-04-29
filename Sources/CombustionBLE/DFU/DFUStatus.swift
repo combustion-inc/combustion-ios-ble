@@ -1,3 +1,5 @@
+//  DFUStatus.swift
+
 /*--
 MIT License
 
@@ -22,28 +24,38 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
-import CoreBluetooth
 
-/// Enum representing each BLE characteristic used by framework
-enum BleCharacteristic: String {
-    case deviceStatus = "00000101-CAAB-3792-3D44-97AE51C1407A"
-    case dfu = "8EC90003-F315-4F60-9FB8-838830DAEA50"
-    case dfuControlPoint = "8EC90001-F315-4F60-9FB8-838830DAEA50"
-    case dfuPacket = "8EC90002-F315-4F60-9FB8-838830DAEA50"
-    case firmwareVersion = "2A26"
-    case hardwareRevision = "2A27"
-    case modelNumber = "2A24"
-    case serialNumber = "2A25"
-    case uartRx = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
-    case uartTx = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+public enum DFUStatus: Equatable {
+    case idle
+    case requestName
+    case requestBootloader
+    case selectCommandObject
+    case createInitPacket
+    case setPacketReceiptNotification
+    case sendInitPacket
+    case executeCommand
+    case selectDataObject
+    case createDataObject
+    case sendBlock
+    case complete
+    case failure(DFUFailure)
 }
 
-extension BleCharacteristic {
-    var uuid: CBUUID {
-        return CBUUID(string: rawValue)
-    }
+public enum DFUFailure {
+    case commandFailed
+    case commandTimeout
+    case crcIncorrect
+    case invalidDFU
+    case invalidResponse
+}
 
-    static func from(_ char: CBCharacteristic) -> BleCharacteristic? {
-        return BleCharacteristic(rawValue: char.uuid.uuidString)
+extension DFUStatus {
+    public func isActive() -> Bool {
+        switch (self) {
+        case .idle, .complete, .failure:
+            return false
+        default:
+            return true
+        }
     }
 }

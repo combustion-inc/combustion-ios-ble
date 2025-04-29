@@ -268,6 +268,12 @@ class DFUManager {
         
         responseTimer = Timer.scheduledTimer(withTimeInterval: Constants.RESPONSE_TIMEOUT, repeats: false) { [weak self] _ in
             self?.updateDeviceDFUStatusFor(device, status: .failure(.commandTimeout))
+            
+            // There is a DFU bug in some versions of device firmware that will ignore DFU commands
+            // from the iOS app if it was not the last connection made to device.  To work around this
+            // issue, manually disconnect from device so that iOS app can reconnect and will be the
+            // most recent BLE connection to device.
+            device.disconnect()
         }
         
         bleManager.sendDFURequest(identifier: device.bleIdentifier,

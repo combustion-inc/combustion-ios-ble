@@ -67,6 +67,12 @@ class DFUManager {
         static let UNKNOWN_BOOTLOADER_DELAY = 10 // seconds
     }
     
+    /// Set the defualt DFU file for each device type.  These DFU files
+    /// will be used when trying to recover a device that is stuck in
+    /// the bootloader.
+    /// - Parameters:
+    ///   - dfuFile: DFU file
+    ///   - dfuType: Device type
     func setDefaultDFUForType(dfuFile: URL?, dfuType: DeviceType) {
         guard let dfuFile = dfuFile else { return }
         
@@ -76,10 +82,15 @@ class DFUManager {
         catch { }
     }
     
+    /// Set the analytics logger
+    /// - Parameter logger: Analytics logger
     func setAnalyticsLogger(_ logger: AnalyticsLogger) {
         analyticsLogger = logger
     }
     
+    /// Determine device type from bootloader advertising name
+    /// - Parameter advertisingName: Bootloader advertising name
+    /// - Returns: Device type
     static func bootloaderTypeFrom(advertisingName: String) -> DeviceType {
         if advertisingName == Constants.THERMOMETER_DEFAULT_BOOTLOADER {
             return .thermometer
@@ -100,6 +111,12 @@ class DFUManager {
         return .unknown
     }
     
+    
+    /// Start the DFU process
+    /// - Parameters:
+    ///   - peripheral: BLE peripheral associated with device
+    ///   - device: Device to run DFU on
+    ///   - firmware: DFU firmware to apply to device
     func startDFU(peripheral: CBPeripheral, device: Device, firmware: DFUFirmware) {
         // Do not start a DFU if one is already in progress
         guard !dfuIsInProgress else { return }
@@ -124,6 +141,12 @@ class DFUManager {
         sendDFURequestTo(device, request: .set(name: advertisingName))
     }
     
+    /// Handle the advertising packet from a device bootloader.  This will get called
+    /// as part of the normal DFU process flow.  It will also get called if an
+    /// unknown device bootloader is detected.
+    /// - Parameters:
+    ///   - device: Device that advertising as bootloader
+    ///   - advertisingName: BLE advertising name
     func handleAdvertisingBootloader(device: Device, advertisingName: String) {
         // A device that is advertising from bootloader, but DFU was not initiated
         // from this app will instantiated as a BootloaderDevice
@@ -139,6 +162,10 @@ class DFUManager {
         bleManager.connect(identifier: bootloaderIdentifier)
     }
     
+    /// Handle the advertising packet from and unknown bootloader device.
+    /// - Parameters:
+    ///   - unknownBootloader: Device
+    ///   - advertisingName: BLE advertising name
     private func handleUnkownBootloader(_ unknownBootloader: BootloaderDevice, advertisingName: String) {
         // Save time that this unknown bootloader was first detected
         guard let firstDetected = unknownBootloaderDetected[advertisingName] else {
@@ -164,14 +191,22 @@ class DFUManager {
         activeDfuUniqueIdentifier = unknownBootloader.uniqueIdentifier
     }
     
+    /// BLE discovery is complete on device booloader
+    /// - Parameter device: Device that discovery is complete on
     func bootloaderDiscoveryComplete(_ device: Device) {
         updateDeviceDFUStatusFor(device, status: .selectCommandObject)
         
+        // Reset the bytes transferred
         device.updateDFUBytesTransferred(0)
         
         bleManager.sendRequestToBootloader(device, request: .selectCommandObject)
     }
     
+    
+    /// Handle the response data from application DFU service
+    /// - Parameters:
+    ///   - device: device that sent data
+    ///   - data: DFU response data
     func handleDataFromAppFor(_ device: Device, data: Data) {
         // Check that device is expecting response
         guard device.dfuStatus == .requestName || device.dfuStatus == .requestBootloader else { return }
@@ -203,6 +238,10 @@ class DFUManager {
         }
     }
     
+    /// Handle the response data from bootloader DFU service
+    /// - Parameters:
+    ///   - device: device that sent data
+    ///   - data: DFU response data
     func handleDataFromBootloaderFor(_ device: Device, data: Data) {
         // Check that response is valid
         guard let response = SecureDFUResponse(data) else {

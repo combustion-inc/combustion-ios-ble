@@ -29,10 +29,81 @@ import Foundation
 
 public struct CSV {
     
+    private static func gaugeDataToCsv(serialNumber: String,
+                                       temperatureLogs: [DeviceTemperatureLog],
+                                       firmwareVersion: String?,
+                                       hardwareRevision: String?,
+                                       appVersion: String,
+                                       date: Date) -> String {
+        var output = [String]()
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        let dateString = dateFormatter.string(from: date)
+        
+        output.append("Combustion Inc. Gauge Data")
+        output.append("App: iOS \(appVersion)")
+        output.append("CSV version: 4")
+        output.append("Gauge S/N: \(serialNumber)")
+        output.append("Gauge FW version: \(firmwareVersion ?? "??")")
+        output.append("Gauge HW revision: \(hardwareRevision ?? "??")")
+        output.append("Framework: iOS")
+        output.append("Sample Period: \(temperatureLogs.first?.sessionInformation.samplePeriod ?? 0)")
+        output.append("Created: \(dateString)")
+        output.append("")
+        
+        // Header
+        output.append("Timestamp,SessionID,SequenceNumber,Temperature")
+        
+        // Add temperature data points
+        if let firstSessionStart = temperatureLogs.first?.startTime?.timeIntervalSince1970 {
+            for session in temperatureLogs {
+                for dataPoint in session.dataPoints {
+                    
+                    // Calculate timestamp for current data point
+                    var timeStamp: TimeInterval = 0
+                    if let currentSessionStart = session.startTime?.timeIntervalSince1970 {
+                        // Number of seconds between first session start time and current start time
+                        let sessionStartTimeDiff = currentSessionStart - firstSessionStart
+                        
+                        // Number of seconds beteen current data point and session start time
+                        let dataPointSeconds = Double(dataPoint.sequenceNum) * Double(session.sessionInformation.samplePeriod) / 1000.0
+                        
+                        // Number of seconds between current data point and first session start
+                        timeStamp = dataPointSeconds + sessionStartTimeDiff
+                    }
+                    
+                    if let temp = dataPoint.temperatureForChannelIndex(0) {
+                        var values = String(format: "%.3f,%u,%d,%.2f",
+                                          timeStamp,
+                                          session.id,
+                                          dataPoint.sequenceNum,
+                                            temp)
+                        output.append(values)
+                    }
+                    else {
+                        var values = String(format: "%.3f,%u,%d,",
+                                          timeStamp,
+                                          session.id,
+                                          dataPoint.sequenceNum)
+                        
+                        values += "-"
+                        output.append(values)
+                    }
+                }
+            }
+        }
+
+        
+        
+        return output.joined(separator: "\n")
+    }
+    
+    
     /// Helper function that generates a CSV representation of probe data.
     private static func probeDataToCsv(serialNumber: String,
                                        temperatureLogs: [ProbeTemperatureLog],
-                                       firmareVersion: String?,
+                                       firmwareVersion: String?,
                                        hardwareRevision: String?,
                                        appVersion: String,
                                        date: Date) -> String {
@@ -46,7 +117,7 @@ public struct CSV {
         output.append("App: iOS \(appVersion)")
         output.append("CSV version: 4")
         output.append("Probe S/N: \(serialNumber)")
-        output.append("Probe FW version: \(firmareVersion ?? "??")")
+        output.append("Probe FW version: \(firmwareVersion ?? "??")")
         output.append("Probe HW revision: \(hardwareRevision ?? "??")")
         output.append("Framework: iOS")
         output.append("Sample Period: \(temperatureLogs.first?.sessionInformation.samplePeriod ?? 0)")
@@ -107,11 +178,49 @@ public struct CSV {
     }
     
     /// Creates a CSV file for export.
+    /// - param gauge: Gauge for which to create the file
+    /// - returns: URL of file
+    public static func createCSVFile(serialNumber: String,
+                                     gaugeLogs: [DeviceTemperatureLog],
+                                     firmwareVersion: String?,
+                                     hardwareRevision: String?,
+                                     appVersion: String) -> URL? {
+        let date = Date()
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH_mm_ss"
+        let dateString = dateFormatter.string(from: date)
+        
+        let filename = "GaugeData_\(serialNumber)_\(dateString).csv"
+        
+        // Generate the CSV
+        let csv = gaugeDataToCsv(serialNumber: serialNumber,
+                                 temperatureLogs: gaugeLogs,
+                                 firmwareVersion: firmwareVersion,
+                                 hardwareRevision: hardwareRevision,
+                                 appVersion: appVersion,
+                                 date: date)
+        
+        // Create the temporary file
+        let filePath = NSTemporaryDirectory() + "/" + filename;
+        
+        let csvURL = URL(fileURLWithPath: filePath)
+        
+        do {
+            try csv.write(to: csvURL, atomically: true, encoding: String.Encoding.utf8)
+        } catch {
+            // Failed to write file, return nothing
+            return nil
+        }
+        
+        return csvURL
+    }
+    
+    /// Creates a CSV file for export.
     /// - param probe: Probe for which to create the file
     /// - returns: URL of file
     public static func createCsvFile(serialNumber: String, 
                                      temperatureLogs: [ProbeTemperatureLog],
-                                     firmareVersion: String?,
+                                     firmwareVersion: String?,
                                      hardwareRevision: String?,
                                      appVersion: String) -> URL? {
         let date = Date()
@@ -124,7 +233,7 @@ public struct CSV {
         // Generate the CSV
         let csv = probeDataToCsv(serialNumber: serialNumber,
                                  temperatureLogs: temperatureLogs,
-                                 firmareVersion: firmareVersion,
+                                 firmwareVersion: firmwareVersion,
                                  hardwareRevision: hardwareRevision,
                                  appVersion: appVersion,
                                  date: date)

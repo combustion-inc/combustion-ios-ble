@@ -26,7 +26,6 @@ SOFTWARE.
 --*/
 
 import Foundation
-import NordicDFU
 
 /// Struct containing info about a thermometer device.
 open class Device : ObservableObject {
@@ -50,6 +49,9 @@ open class Device : ObservableObject {
     /// Unique identifier for this device, which is Serial Number for Probes, or BLE device
     /// identifier for Nodes.
     public var uniqueIdentifier: String
+    
+    /// String representation of BLE device identifier (UUID), for this device's bootloader
+    var bootloaderIdentifier: String?
     
     /// Device firmware version
     @Published public internal(set) var firmareVersion: String?
@@ -85,32 +87,24 @@ open class Device : ObservableObject {
     /// Tracks whether the data has gone stale (no new data in some time)
     @Published public private(set) var stale = false
     
-    /// DFU state
-    @Published public private(set) var dfuState: DFUState?
+    @Published public private(set) var dfuStatus: DFUStatus = .idle
     
-    public struct DFUErrorMessage {
-        public let error: DFUError
-        public let message: String
-    }
+    @Published public private(set) var dfuUploadPercentage: Double = 0
     
-    /// DFU error message
-    @Published public private(set) var dfuError: DFUErrorMessage?
-
-    public struct DFUUploadProgress {
-        public let part: Int
-        public let totalParts: Int
-        public let progress: Int
-    }
+    private(set) var dfuAdvertisingName: String?
     
-    /// DFU Upload progress
-    @Published public private(set) var dfuUploadProgress: DFUUploadProgress?
+    private(set) var dfuFirmware: DFUFirmware?
+    
+    var dfuMaxBlockSize: UInt32 = 0
+    
+    private(set) var dfuBytesTransferred: UInt32 = 0
+    
+    private(set) var dfuMaxPacketSize: UInt32 = 20
     
     /// Last time device received an advertising packet or status notification
     @Published public var lastUpdateTime = Date()
     
-    private var dfuServiceController: DFUServiceController? = nil
-    
-    public var rssiEWMA = EWMA(span: 6)
+    public private(set) var rssiEWMA = EWMA(span: 6)
     
     public init(uniqueIdentifier: String, bleIdentifier: UUID?, RSSI: NSNumber?) {
         self.uniqueIdentifier = uniqueIdentifier
@@ -124,6 +118,44 @@ open class Device : ObservableObject {
         } else {
             self.rssi = Constants.MIN_RSSI
         }
+    }
+    
+    func setMaximumWriteValueLength(_ value: Int) {
+        // Make the packet size the first word-aligned value that's less than the maximum
+        dfuMaxPacketSize = UInt32(value) & 0xFFFFFFFC
+    }
+    
+    func initializeDFU(_ dfuFirmware: DFUFirmware) {
+        // Reset progress
+        dfuUploadPercentage = 0
+        
+        self.dfuFirmware = dfuFirmware
+    }
+    
+    func setDFUAdvertisingName(_ dfuAdvertisingName: String) {
+        self.dfuAdvertisingName = dfuAdvertisingName
+    }
+    
+    func updateDFUBytesTransferred(_ dfuBytesTransferred: UInt32) {
+        guard let dfuFirmware else { return }
+        
+        self.dfuBytesTransferred = dfuBytesTransferred
+        
+        // Percentage already complete
+        let completePercentage = Double(dfuFirmware.currentPart - 1) / Double(dfuFirmware.parts) * 100
+        
+        // Progress of current part
+        let progress = Double(dfuBytesTransferred) / Double(dfuFirmware.data.count)
+        
+        // Percentage for this step
+        let currentStepPercentage = progress / Double(dfuFirmware.parts) * 100
+        
+        // Total percentage
+        self.dfuUploadPercentage = (completePercentage + currentStepPercentage)
+    }
+    
+    func updateDFUStatus(_ status: DFUStatus) {
+        dfuStatus = status
     }
     
     func updateConnectionState(_ state: ConnectionState) {
@@ -152,25 +184,6 @@ open class Device : ObservableObject {
             isConnectable = false
             rssi = Constants.MIN_RSSI
         }
-    }
-    
-    public func isDFURunning() -> Bool {
-        guard let dfuState = dfuState else { return false }
-        
-        if(dfuState == .completed) {
-            return false
-        }
-        
-        return true
-    }
-    
-    /// Called when DFU has completed
-    func dfuComplete() {
-        // Clear service controller
-        dfuServiceController = nil
-        
-        // Clear DFU on the DFU manager
-        DFUManager.shared.clearCompletedDFU(device: self)
     }
     
     /// Updates SKU and Lot number based on Model Info string.
@@ -220,7 +233,7 @@ extension Device {
     public func runSoftwareUpgrade(dfuFile: URL) -> Bool {
         do {
             let dfu = try DFUFirmware(urlToZipFile: dfuFile)
-            dfuServiceController = BleManager.shared.startFirmwareUpdate(device: self, dfu: dfu)
+            BleManager.shared.startFirmwareUpdate(device: self, dfu: dfu)
             return true
         }
         catch {
@@ -265,34 +278,3 @@ extension Device: Hashable {
     }
 }
 
-extension Device: DFUServiceDelegate {
-    public func dfuStateDidChange(to state: DFUState) {
-        dfuState = state
-        
-        if(dfuState == .completed) {
-            dfuComplete()
-        }
-    }
-    
-    public func dfuError(_ error: DFUError, didOccurWithMessage message: String) {
-        dfuError = DFUErrorMessage(error: error, message: message)
-        
-        dfuServiceController?.restart()
-    }
-}
-
-extension Device: DFUProgressDelegate {
-    public func dfuProgressDidChange(for part: Int,
-                                     outOf totalParts: Int,
-                                     to progress: Int,
-                                     currentSpeedBytesPerSecond: Double,
-                                     avgSpeedBytesPerSecond: Double) {
-        dfuUploadProgress = DFUUploadProgress(part: part, totalParts: totalParts, progress: progress)
-    }
-}
-
-extension Device: LoggerDelegate {
-    public func logWith(_ level: NordicDFU.LogLevel, message: String) {
-        NSLog("LoggerDelegate : \(message)")
-    }
-}

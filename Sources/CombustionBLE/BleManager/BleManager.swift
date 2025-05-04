@@ -27,17 +27,19 @@ SOFTWARE.
 
 import Foundation
 import CoreBluetooth
-import NordicDFU
 
 protocol BleManagerDelegate: AnyObject {
     func updateBluetoothState(state: CBManagerState)
     func didConnectTo(identifier: UUID)
     func didFailToConnectTo(identifier: UUID)
     func didDisconnectFrom(identifier: UUID)
-    func handleBootloaderAdvertising(advertisingName: String, rssi: NSNumber, peripheral: CBPeripheral)
+    func didCompleteDiscovery(identifier: UUID, maximumWriteValueLength: Int)
+    func didEnableNotificationsFor(identifier: UUID, characteristic: BleCharacteristic)
+    func handleBootloaderAdvertising(identifier: UUID, advertisingName: String, rssi: NSNumber)
+    func handleDFUData(identifier: UUID, characteristic: BleCharacteristic, data: Data)
+    func handleUARTData(identifier: UUID, data: Data)
     func updateDeviceWithAdvertising(advertising: any AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID)
     func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus)
-    func handleUARTData(identifier: UUID, data: Data)
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String)
     func updateDeviceHwRevision(identifier: UUID, hwRevision: String)
     func updateDeviceSerialNumber(identifier: UUID, serialNumber: String)
@@ -51,31 +53,9 @@ class BleManager : NSObject {
     
     weak var delegate: BleManagerDelegate?
     
-    private(set) var peripherals = Set<CBPeripheral>()
-    
-    private var uartCharacteristics: [String: CBCharacteristic] = [:]
-    private var deviceStatusCharacteristics: [String: CBCharacteristic] = [:]
-    private var fwRevisionCharacteristics: [String: CBCharacteristic] = [:]
-    private var hwRevisionCharacteristics: [String: CBCharacteristic] = [:]
-    private var modelNumberCharacteristics: [String: CBCharacteristic] = [:]
-    private var serialNumberCharacteristics: [String: CBCharacteristic] = [:]
+    private var peripherals = [String: CombustionPeripheral]()
     
     private var manager: CBCentralManager?
-    
-    private enum Constants {
-        static let DEVICE_INFO_SERVICE  = CBUUID(string: "180a")
-        static let DFU_SERVICE          = CBUUID(string: "FE59")
-        static let NEEDLE_SERVICE       = CBUUID(string: "00000100-CAAB-3792-3D44-97AE51C1407A")
-        static let UART_SERVICE         = CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
-        
-        static let SERIAL_NUMBER_CHAR   = CBUUID(string: "2a25")
-        static let FW_VERSION_CHAR      = CBUUID(string: "2a26")
-        static let HW_REVISION_CHAR     = CBUUID(string: "2a27")
-        static let MODEL_NUMBER_CHAR    = CBUUID(string: "2a24")
-        static let DEVICE_STATUS_CHAR   = CBUUID(string: "00000101-CAAB-3792-3D44-97AE51C1407A")
-        static let UART_RX_CHAR         = CBUUID(string: "6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
-        static let UART_TX_CHAR         = CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
-    }
     
     /// Private initializer to enforce singleton
     private override init() {
@@ -89,7 +69,7 @@ class BleManager : NSObject {
     }
     
     private func startScanning() {
-        manager?.scanForPeripherals(withServices: [Constants.DFU_SERVICE],
+        manager?.scanForPeripherals(withServices: [BleService.dfu.uuid],
                                    options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
     }
     
@@ -97,7 +77,7 @@ class BleManager : NSObject {
         guard let identifier = identifier else { return }
         
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
-            let uartChar = uartCharacteristics[identifier] {
+           let uartChar = getCharacteristicFor(identifier, type: .uartRx) {
             connectionPeripheral.writeValue(request.data, for: uartChar, type: .withoutResponse)
         }
     }
@@ -106,7 +86,7 @@ class BleManager : NSObject {
         for node in nodes {
             if let identifier = node.bleIdentifier,
                let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
-               let uartChar = uartCharacteristics[identifier] {
+               let uartChar = getCharacteristicFor(identifier, type: .uartRx) {
                 connectionPeripheral.writeValue(request.data, for: uartChar, type: .withoutResponse)
             }
         }
@@ -116,7 +96,7 @@ class BleManager : NSObject {
         guard let identifier = identifier else { return }
         
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
-           let characteristic = fwRevisionCharacteristics[identifier] {
+           let characteristic = getCharacteristicFor(identifier, type: .firmwareVersion) {
             // Initiate read of firmware revision
             connectionPeripheral.readValue(for: characteristic)
         }
@@ -126,7 +106,7 @@ class BleManager : NSObject {
         guard let identifier = identifier else { return }
         
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
-           let characteristic = hwRevisionCharacteristics[identifier] {
+           let characteristic = getCharacteristicFor(identifier, type: .hardwareRevision) {
             // Initiate read of hardware revision
             connectionPeripheral.readValue(for: characteristic)
         }
@@ -134,7 +114,7 @@ class BleManager : NSObject {
     
     func readSerialNumber(identifier: String) {
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
-           let characteristic = serialNumberCharacteristics[identifier] {
+           let characteristic = getCharacteristicFor(identifier, type: .serialNumber) {
             // Initiate read of serial number
             connectionPeripheral.readValue(for: characteristic)
         }
@@ -144,47 +124,83 @@ class BleManager : NSObject {
         guard let identifier = identifier else { return }
         
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
-           let characteristic = modelNumberCharacteristics[identifier] {
+           let characteristic = getCharacteristicFor(identifier, type: .modelNumber) {
             // Initiate read of hardware revision
             connectionPeripheral.readValue(for: characteristic)
         }
     }
     
-    func startFirmwareUpdate(device: Device, dfu: DFUFirmware) -> DFUServiceController? {
-        guard let bleIdentifier = device.bleIdentifier, 
-                let connectedPeripheral = getConnectedPeripheral(identifier: bleIdentifier) else { return nil }
+    func startFirmwareUpdate(device: Device, dfu: DFUFirmware) {
+        guard let bleIdentifier = device.bleIdentifier,
+                let connectedPeripheral = getConnectedPeripheral(identifier: bleIdentifier) else { return }
         
-        return DFUManager.shared.startDFU(peripheral: connectedPeripheral, device: device, firmware: dfu)
+        DFUManager.shared.startDFU(peripheral: connectedPeripheral, device: device, firmware: dfu)
     }
     
-    func retryFirmwareUpdate(device: BootloaderDevice) {
-        guard let bleIdentifier = device.bleIdentifier else { return }
+    func enableNotificationsFor(_ identifier: String, type: BleCharacteristic) {
+        guard let combustionPeripheral = peripherals[identifier],
+              let char = getCharacteristicFor(identifier, type: type) else { return }
         
-        // Find booloader ble peripheral
-        let uuid = UUID(uuidString: bleIdentifier )
-        let devicePeripherals = peripherals.filter { $0.identifier == uuid }
-        guard let peripheral = devicePeripherals.first else {
-            // print("Failed to find peripherals")
-            return
+        combustionPeripheral.peripheral.setNotifyValue(true, for: char)
+    }
+    
+    func sendDFURequest(identifier: String?, request: ButtonlessDFURequest) {
+        guard let identifier = identifier else { return }
+        
+        if let connectedPeripheral = getConnectedPeripheral(identifier: identifier),
+           let dfuChar = getCharacteristicFor(identifier, type: .dfu) {
+            connectedPeripheral.writeValue(request.data,
+                                           for: dfuChar,
+                                           type: .withResponse)
         }
+    }
+    
+    func sendRequestToBootloader(_ device: Device, request: SecureDFURequest) {
+        guard let identifier = device.bootloaderIdentifier else { return }
 
-        DFUManager.shared.restartDfuOnUnknownBootloader(peripheral: peripheral, device: device)
+        if let connectedPeripheral = getConnectedPeripheral(identifier: identifier),
+           let bootloaderDFUChar = getCharacteristicFor(identifier, type: .dfuControlPoint) {
+            
+            connectedPeripheral.writeValue(request.data,
+                                           for: bootloaderDFUChar,
+                                           type: .withResponse)
+        }
+    }
+    
+    func sendPacketToBootloader(_ device: Device, data: Data) {
+        guard let identifier = device.bootloaderIdentifier else { return }
+        
+        if let connectedPeripheral = getConnectedPeripheral(identifier: identifier),
+           let dfuPacketChar = getCharacteristicFor(identifier, type: .dfuPacket) {
+            
+            connectedPeripheral.writeValue(data,
+                                           for: dfuPacketChar,
+                                           type: .withoutResponse)
+        }
     }
     
     private func getConnectedPeripheral(identifier: String) -> CBPeripheral? {
-        let uuid = UUID(uuidString: identifier)
-        let devicePeripherals = peripherals.filter { $0.identifier == uuid }
-        guard !devicePeripherals.isEmpty else {
-            // print("Failed to find peripherals")
-            return nil
-        }
+        guard let combustionPeripheral = peripherals[identifier] else { return nil }
         
-        if let connectedPeripheral = devicePeripherals.first(where: { $0.state == .connected }) {
-            return connectedPeripheral
-        }
+        // Check that device is connected
+        guard combustionPeripheral.peripheral.state == .connected else { return nil }
         
-        // print("Failed to find connection")
-        return nil
+        return combustionPeripheral.peripheral
+    }
+    
+    private func storePeripheral(_ peripheral: CBPeripheral) {
+        guard peripherals[peripheral.identifier.uuidString] == nil else { return }
+        
+        peripherals[peripheral.identifier.uuidString] = CombustionPeripheral(peripheral: peripheral)
+    }
+    
+    private func combustionPeripheralFor(_ peripheral: CBPeripheral) -> CombustionPeripheral? {
+        return peripherals[peripheral.identifier.uuidString]
+    }
+    
+    private func getCharacteristicFor(_ peripheralIdentifier: String, type: BleCharacteristic) -> CBCharacteristic? {
+        guard let peripheral = peripherals[peripheralIdentifier] else { return nil }
+        return peripheral.characteristics[type]
     }
 }
 
@@ -214,14 +230,14 @@ extension BleManager: CBCentralManagerDelegate{
         if let advName = advertisementData[CBAdvertisementDataLocalNameKey] as? String,
            DFUManager.bootloaderTypeFrom(advertisingName: advName) != .unknown {
             
-            // Store peripheral reference for later use
-            peripherals.insert(peripheral)
+            // Store peripheral reference
+            storePeripheral(peripheral)
             
-            delegate?.handleBootloaderAdvertising(advertisingName: advName, rssi: RSSI, peripheral: peripheral)
+            delegate?.handleBootloaderAdvertising(identifier: peripheral.identifier, advertisingName: advName, rssi: RSSI)
         }
         else if let advData = ProbeAdvertisingData(fromData: manufatureData)  {
-            // Store peripheral reference for later use
-            peripherals.insert(peripheral)
+            // Store peripheral reference
+            storePeripheral(peripheral)
             
             delegate?.updateDeviceWithAdvertising(advertising: advData,
                                                   isConnectable: isConnectable,
@@ -229,7 +245,8 @@ extension BleManager: CBCentralManagerDelegate{
                                                   identifier: peripheral.identifier)
         }
         else if let advData = NodeAdvertisingData.create(fromData: manufatureData) {
-            peripherals.insert(peripheral)
+            // Store peripheral reference
+            storePeripheral(peripheral)
             
             delegate?.updateDeviceWithAdvertising(advertising: advData,
                                                   isConnectable: isConnectable,
@@ -240,17 +257,8 @@ extension BleManager: CBCentralManagerDelegate{
     
     /// Connect to device with the specified name.
     public func connect(identifier: String) {
-        let uuid = UUID(uuidString: identifier)
-        let devicePeripherals = peripherals.filter { $0.identifier == uuid }
-        guard !devicePeripherals.isEmpty else {
-            print("Failed to find peripheral")
-            return
-        }
-        
-        for peripheral in devicePeripherals {
-            // print("Connecting to peripheral: \(peripheral.name) : \(peripheral.identifier)")
-            manager?.connect(peripheral, options: nil)
-        }
+        guard let combustionPeripheral = peripherals[identifier] else { return }
+        manager?.connect(combustionPeripheral.peripheral, options: nil)
     }
     
     /// Disconnect from device with the specified name.
@@ -290,44 +298,45 @@ extension BleManager: CBCentralManagerDelegate{
 extension BleManager: CBPeripheralDelegate {
     
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
-        // print("\(#function)")
         guard let services = peripheral.services else { return }
         
-        for service in services {
-            // print("discovered service : \(service.uuid)")
+        for service in services {            
+            // Save discovered service
+            combustionPeripheralFor(peripheral)?.discoveredService(service)
+            
+            // Discover characteristics for that service
             peripheral.discoverCharacteristics(nil, for: service)
         }
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
-        guard let characteristics = service.characteristics else { return }
+        guard let characteristics = service.characteristics,
+            let combustionPeripheral = combustionPeripheralFor(peripheral) else { return }
+        
+        // Save that characteristics were discovered for the service
+        combustionPeripheral.discoveredCharacteristicsFor(service)
         
         for characteristic in characteristics {
-            if(characteristic.uuid == Constants.UART_RX_CHAR) {
-                uartCharacteristics[peripheral.identifier.uuidString] = characteristic
-            } else if(characteristic.uuid == Constants.DEVICE_STATUS_CHAR) {
-                deviceStatusCharacteristics[peripheral.identifier.uuidString] = characteristic
-            } else if(characteristic.uuid == Constants.FW_VERSION_CHAR ||
-                      characteristic.uuid == Constants.HW_REVISION_CHAR ||
-                      characteristic.uuid == Constants.MODEL_NUMBER_CHAR ||
-                      characteristic.uuid == Constants.SERIAL_NUMBER_CHAR) {
-                          
-                // Save references to the characteristics for later use
-                if(characteristic.uuid == Constants.FW_VERSION_CHAR) {
-                    fwRevisionCharacteristics[peripheral.identifier.uuidString] = characteristic
-                } else if(characteristic.uuid == Constants.HW_REVISION_CHAR) {
-                    hwRevisionCharacteristics[peripheral.identifier.uuidString] = characteristic
-                } else if(characteristic.uuid == Constants.MODEL_NUMBER_CHAR) {
-                    modelNumberCharacteristics[peripheral.identifier.uuidString] = characteristic
-                } else if(characteristic.uuid == Constants.SERIAL_NUMBER_CHAR) {
-                    serialNumberCharacteristics[peripheral.identifier.uuidString] = characteristic
-                }
-                          
+            // Save discovered characteristics
+            combustionPeripheral.discoveredCharacteristic(characteristic: characteristic)
+            
+            if let type = BleCharacteristic.from(characteristic) {
                 // Read FW version, HW revision, and serial number when the characteristics are discovered
-                peripheral.readValue(for: characteristic)
+                if(type == BleCharacteristic.firmwareVersion ||
+                   type == BleCharacteristic.hardwareRevision ||
+                   type == BleCharacteristic.modelNumber ||
+                   type == BleCharacteristic.serialNumber) {
+                    peripheral.readValue(for: characteristic)
+                }
             }
             
             peripheral.discoverDescriptors(for: characteristic)
+        }
+        
+        if combustionPeripheral.haveDiscoveredCharacteristicForAllServices() {
+            delegate?.didCompleteDiscovery(
+                identifier: peripheral.identifier,
+                maximumWriteValueLength: peripheral.maximumWriteValueLength(for: .withoutResponse))
         }
     }
     
@@ -336,63 +345,50 @@ extension BleManager: CBPeripheralDelegate {
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
-        if(characteristic.uuid == Constants.UART_TX_CHAR),
-            let statusChar = deviceStatusCharacteristics[peripheral.identifier.uuidString]  {
-            // After enabling UART notification
-            // Enable notifications for Device status characteristic
-            peripheral.setNotifyValue(true, for: statusChar)
-            
-            // Send request the session ID from device
-            sendRequest(identifier: peripheral.identifier.uuidString, request: SessionInfoRequest())
-        }
+        guard let characteristicType = BleCharacteristic.from(characteristic) else { return }
+        
+        delegate?.didEnableNotificationsFor(identifier: peripheral.identifier, characteristic: characteristicType)
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        guard let data = characteristic.value else { return }
+        guard let data = characteristic.value,
+              let bleCharacteristic = BleCharacteristic.from(characteristic) else { return }
         
-        switch(characteristic.uuid) {
-        case Constants.UART_TX_CHAR:
-            handleUartData(data: data, identifier: peripheral.identifier)
+        switch(bleCharacteristic) {
+        case .uartTx:
+            delegate?.handleUARTData(identifier: peripheral.identifier, data: data)
             
-        case Constants.DEVICE_STATUS_CHAR:
+        case .deviceStatus:
             if let status = ProbeStatus(fromData: data) {
                 delegate?.updateDeviceWithStatus(identifier: peripheral.identifier, status: status)
             }
             
-        case Constants.SERIAL_NUMBER_CHAR:
+        case .serialNumber:
             let serialNumber = String(decoding: data, as: UTF8.self)
             delegate?.updateDeviceSerialNumber(identifier: peripheral.identifier, serialNumber: serialNumber)
             
-        case Constants.FW_VERSION_CHAR:
+        case .firmwareVersion:
             let fwVersion = String(decoding: data, as: UTF8.self)
             delegate?.updateDeviceFwVersion(identifier: peripheral.identifier, fwVersion: fwVersion)
             
-        case Constants.HW_REVISION_CHAR:
+        case .hardwareRevision:
             let hwRevision = String(decoding: data, as: UTF8.self)
             delegate?.updateDeviceHwRevision(identifier: peripheral.identifier, hwRevision: hwRevision)
             
-        case Constants.MODEL_NUMBER_CHAR:
+        case  .modelNumber:
             let modelInfo = String(decoding: data, as: UTF8.self)
             delegate?.updateDeviceModelInfo(identifier: peripheral.identifier, modelInfo: modelInfo)
          
+        case .dfu, .dfuControlPoint:
+            delegate?.handleDFUData(identifier: peripheral.identifier, characteristic: bleCharacteristic, data: data)
             
-        default:
+        case .dfuPacket, .uartRx:
+            // Do not receive data on these characteristics
             break
         }
     }
     
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverDescriptorsFor characteristic: CBCharacteristic, error: Error?) {
-        guard let descriptors = characteristic.descriptors, !descriptors.isEmpty else { return }
-        
-        for _ in descriptors {
-            // Always enable notifications for UART TX characteristic
-            if(characteristic.uuid == Constants.UART_TX_CHAR) {
-                peripheral.setNotifyValue(true, for: characteristic)
-            }
-        }
-    }
-    
-    private func handleUartData(data: Data, identifier: UUID) {
-        delegate?.handleUARTData(identifier: identifier, data: data)
+
     }
 }

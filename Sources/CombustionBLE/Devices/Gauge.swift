@@ -92,11 +92,9 @@ public class GrillGauge: Accessory {
         updateWithAdvertising(advertising)
     }
     
-    func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
-        if(sessionInformation?.sessionID != sessionInfo.sessionID) {
-            // Recent probe status when session ID changes
+    public func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
+        if sessionInformation?.sessionID != sessionInfo.sessionID {
             mostRecentStatus = nil
-            
             sessionInformation = sessionInfo
         }
     }
@@ -124,7 +122,7 @@ public class GrillGauge: Accessory {
                    
         var updated : Bool = false
         
-        if(shouldUpdateNormalMode(hopCount: hopCount)) {
+        if shouldUpdateNormalMode(hopCount: hopCount) {
             // Update sequence number range
             sequenceNumberRange = deviceStatus.minSequenceNumber...deviceStatus.maxSequenceNumber
             
@@ -135,6 +133,9 @@ public class GrillGauge: Accessory {
             updateHighLowAlarms(deviceStatus.highLowAlarmStatus)
             
             updateIsSensorAttached(deviceStatus.status.sensorPresent)
+            
+            updateWithSessionInformation(.init(sessionID: deviceStatus.sessionID,
+                                               samplePeriod: deviceStatus.samplePeriod))
             
             // Overheating
             overheating = deviceStatus.status.sensoryOverheating
@@ -216,11 +217,6 @@ public class GrillGauge: Accessory {
     }
     
     /// Processes an incoming log response (response to a manual request for prior messages)
-    func processLogResponse(logResponse: GaugeLogResponse) {
-        addDataToLog(LoggedGaugeDataPoint.fromLogResponse(logResponse: logResponse))
-    }
-    
-    /// Processes an incoming node log response (response to a manual request for prior messages)
     func processLogResponse(logResponse: NodeGaugeReadLogsResponse) {
         addDataToLog(LoggedGaugeDataPoint.fromLogResponse(logResponse: logResponse))
     }

@@ -102,7 +102,7 @@ extension NodeMessageType {
         case .configureFoodSafe: 0x07
         case .resetFoodSafe: 0x08
         case .setPowerMode: 0x09
-        case .gaugeLog: 0x10
+        case .gaugeLog: 0x62
         case .getFeatureFlags: 0x30
         case .connected: 0x40
         case .disconnected: 0x41

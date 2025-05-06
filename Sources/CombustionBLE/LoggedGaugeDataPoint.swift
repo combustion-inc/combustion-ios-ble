@@ -78,21 +78,15 @@ public class LoggedGaugeDataPoint: LoggedDeviceDataPoint {
     }
 }
 
-/// Record representing a logged temperature data point retrieved from a probe
+/// Record representing a logged temperature data point retrieved from a gauge
 extension LoggedGaugeDataPoint {
     
-    /// Generates a LoggedProbeDataPoint from a previously-parsed DeviceStatus record.
+    /// Generates a LoggedGaugeDataPoint from a previously-parsed DeviceStatus record.
     /// - parameter ProbeStatus: ProbeStatus instance
     public static func fromDeviceStatus(deviceStatus: GaugeStatus) -> LoggedGaugeDataPoint {
         return LoggedGaugeDataPoint(sequenceNum: deviceStatus.maxSequenceNumber,
                                     temperatures: deviceStatus.temperature,
                                     sensorPresent: deviceStatus.status.sensorPresent)
-    }
-    
-    static func fromLogResponse(logResponse: GaugeLogResponse) -> LoggedGaugeDataPoint {
-        return LoggedGaugeDataPoint(sequenceNum: logResponse.sequenceNumber,
-                                    temperatures: logResponse.temperatures,
-                                    sensorPresent: logResponse.sensorPresent)
     }
     
     static func fromLogResponse(logResponse: NodeGaugeReadLogsResponse) -> LoggedGaugeDataPoint {

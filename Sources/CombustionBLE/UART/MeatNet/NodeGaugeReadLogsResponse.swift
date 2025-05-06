@@ -31,9 +31,9 @@ class NodeGaugeReadLogsResponse: NodeResponse {
         static let MINIMUM_PAYLOAD_LENGTH = 28
         
         static let SERIAL_RANGE = NodeResponse.HEADER_LENGTH..<(NodeResponse.HEADER_LENGTH + 10)
-        static let SEQUENCE_RANGE = (NodeResponse.HEADER_LENGTH + 4)..<(NodeResponse.HEADER_LENGTH + 8)
-        static let TEMPERATURE_RANGE = (NodeResponse.HEADER_LENGTH + 8)..<(NodeResponse.HEADER_LENGTH + 21)
-        static let SENSOR_PRESENT_RANGE = (NodeResponse.HEADER_LENGTH + 21)..<(NodeResponse.HEADER_LENGTH + 22)
+        static let SEQUENCE_RANGE = (NodeResponse.HEADER_LENGTH + 10)..<(NodeResponse.HEADER_LENGTH + 14)
+        static let TEMPERATURE_RANGE = (NodeResponse.HEADER_LENGTH + 14)..<(NodeResponse.HEADER_LENGTH + 16)
+        static let SENSOR_PRESENT_RANGE = (NodeResponse.HEADER_LENGTH + 16)..<(NodeResponse.HEADER_LENGTH + 17)
     }
     
     let gaugeSerialNumber: String
@@ -50,7 +50,6 @@ class NodeGaugeReadLogsResponse: NodeResponse {
             $0.load(as: UInt32.self)
         }
         
-        // Temperatures (8 13-bit) values
         let tempData = data.subdata(in: Constants.TEMPERATURE_RANGE)
         temperatures = GaugeTemperature.fromRawData(data: tempData)
         

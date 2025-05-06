@@ -46,6 +46,8 @@ public protocol Accessory {
     func updateDeviceStatus(deviceStatus: DeviceStatus, hopCount: HopCount?)
     
     func updateWithAdvertising(_ advertising: any AdvertisingData)
+    
+    func updateWithSessionInformation(_ sessionInfo: SessionInformation)
 }
 
 public extension Accessory {

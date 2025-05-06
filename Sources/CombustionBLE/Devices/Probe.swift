@@ -395,7 +395,7 @@ extension Probe {
         mostRecentStatus = deviceStatus
     }
     
-    func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
+    public func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
         if(sessionInformation?.sessionID != sessionInfo.sessionID) {
             // Recent probe status when session ID changes
             mostRecentStatus = nil

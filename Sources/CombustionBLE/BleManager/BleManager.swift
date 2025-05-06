@@ -82,6 +82,15 @@ class BleManager : NSObject {
         }
     }
     
+    func sendRequest(identifier: String?, request: NodeRequest) {
+        guard let identifier = identifier else { return }
+        
+        if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
+           let uartChar = getCharacteristicFor(identifier, type: .uartRx) {
+            connectionPeripheral.writeValue(request.data, for: uartChar, type: .withoutResponse)
+        }
+    }
+    
     func sendRequestToNodes(_ nodes: [MeatNetNode], request: NodeRequest) {
         for node in nodes {
             if let identifier = node.bleIdentifier,

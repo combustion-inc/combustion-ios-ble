@@ -283,17 +283,20 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         
         if shouldSendMessageDirectlyTo(device: device) {
             // Request logs directly from Device.
-            let request = GaugeLogRequest(minSequence: minSequence,
-                                     maxSequence: maxSequence)
+            guard let request = NodeGaugeReadLogsRequest(serialNumber: accessory.serialNumberString,
+                                          minSequence: minSequence,
+                                                    maxSequence: maxSequence) else {
+                return
+            }
             
             BleManager.shared.sendRequest(identifier: device.bleIdentifier, request: request)
         }
         else {
             // Send message to all nodes that have a route to the device
             let nodesConnectedToDevice = getNodesConnectedToDevice(identifier: accessory.serialNumberString)
-            let request = NodeGaugeReadLogsRequest(serialNumber: accessory.serialNumberString,
+            guard let request = NodeGaugeReadLogsRequest(serialNumber: accessory.serialNumberString,
                                               minSequence: minSequence,
-                                              maxSequence: maxSequence)
+                                                         maxSequence: maxSequence) else { return }
             BleManager.shared.sendRequestToNodes(nodesConnectedToDevice, request: request)
         }
     }
@@ -1039,10 +1042,6 @@ extension DeviceManager : BleManagerDelegate {
             if let logResponse = response as? LogResponse {
                 updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
             }
-        case .gaugeLog:
-            if let logResponse = response as? GaugeLogResponse {
-                updateDeviceWithLogResponse(identifier: identifier, logResponse: logResponse)
-            }
         case .sessionInfo:
             if let sessionResponse = response as? SessionInfoResponse {
                 if(sessionResponse.success) {
@@ -1074,7 +1073,7 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
-    private func updateDeviceWithLogResponse(identifier: UUID, logResponse: GaugeLogResponse) {
+    private func updateDeviceWithLogResponse(identifier: UUID, logResponse: NodeGaugeReadLogsResponse) {
         guard logResponse.success else { return }
         
         if let gauge = findDeviceByBleIdentifier(bleIdentifier: identifier) as? GrillGauge {
@@ -1085,6 +1084,9 @@ extension DeviceManager : BleManagerDelegate {
     private func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation) {
         if let probe = findDeviceByBleIdentifier(bleIdentifier: identifier) as? Probe {
             probe.updateWithSessionInformation(sessionInformation)
+        }
+        else if let gaugeParent = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode, let accessory = gaugeParent.accessory {
+            accessory.updateWithSessionInformation(sessionInformation)
         }
     }
     

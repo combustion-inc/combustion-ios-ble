@@ -132,6 +132,8 @@ extension NodeResponse {
         switch messageType {
         case .log:
             return NodeReadLogsResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .gaugeLog:
+            return NodeGaugeReadLogsResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
 //        case .setID:
 //            return NodeSetIDResponse(success: success, payloadLength: Int(payloadLength))
 //        case .setColor:

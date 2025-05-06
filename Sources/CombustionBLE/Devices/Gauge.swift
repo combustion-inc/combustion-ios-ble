@@ -207,7 +207,7 @@ public class GrillGauge: Accessory {
     /// Determins whether the device status has sequence number less than current maximum
     /// - param deviceStatus: Device status to check
     private func isOldStatusUpdate(_ deviceStatus: GaugeStatus) -> Bool {
-        if let currentTemperatureLog = getCurrentTemperatureLog(), let max = currentTemperatureLog.dataPoints.last {
+        if let currentTemperatureLog = getCurrentTemperatureLog(), deviceStatus.sessionID == currentTemperatureLog.sessionInformation.sessionID, let max = currentTemperatureLog.dataPoints.last {
             return deviceStatus.maxSequenceNumber < max.sequenceNum
         }
         else {

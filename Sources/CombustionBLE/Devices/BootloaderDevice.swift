@@ -9,7 +9,7 @@ import Foundation
 
 
 public class BootloaderDevice : Device {
-    public let type: DeviceType
+    public let type: ProductType
  
     init(advertisingName: String, RSSI: NSNumber, identifier: UUID) {
         type = DFUManager.bootloaderTypeFrom(advertisingName: advertisingName)

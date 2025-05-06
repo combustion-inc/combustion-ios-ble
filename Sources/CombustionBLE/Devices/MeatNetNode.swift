@@ -41,7 +41,7 @@ public class MeatNetNode: Device {
     @Published public var devices: [String : Device] = [:]
     
     /// dfudevice type
-    @Published public internal(set) var dfuType: DeviceType = .unknown
+    @Published public internal(set) var dfuType: ProductType = .unknown
     
     /// Feature Flags
     @Published public internal(set) var featureFlags: [FeatureFlag]?
@@ -60,15 +60,15 @@ public class MeatNetNode: Device {
         case .charger:
             return "Booster \(serialNumber)"
             
-        case .unknown:
+        case .unknown, .meatNetNode:
             return "Repeater \(serialNumber)"
-            
-        case .thermometer:
-            // Node should not have a DFU type of thermometer
-            return "Unknown \(serialNumber)"
             
         case .gauge:
             return "Gauge \(serialNumber)"
+            
+        case .probe:
+            // Node should not have a DFU type of probe
+            return "Unknown \(serialNumber)"
         }
         
     }
@@ -218,9 +218,7 @@ public class MeatNetNode: Device {
             version >= "2.1.0"
         case .gauge:
             true
-        case .thermometer:
-            false
-        case .unknown:
+        case .probe, .unknown, .meatNetNode:
             false
         }
     }

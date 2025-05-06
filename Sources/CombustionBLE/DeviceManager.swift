@@ -618,7 +618,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// when a device with failed software upgrade is detected.
     ///
     /// - dfuFiles: DFU files for each DFU type
-    public func restartFailedUpgradesWith(dfuFiles: [DeviceType: URL]) {
+    public func restartFailedUpgradesWith(dfuFiles: [ProductType: URL]) {
         for (type, dfuFile) in dfuFiles {
             dfuManager.setDefaultDFUForType(dfuFile: dfuFile, dfuType: type)
         }
@@ -899,7 +899,7 @@ extension DeviceManager : BleManagerDelegate {
                 
                 connectionManager.receivedDeviceAdvertising(meatNetNode, from: meatNetNode)
             }
-        case .unknown:
+        case .unknown, .charger, .display:
             print("Found device with unknown type")
         }
     }

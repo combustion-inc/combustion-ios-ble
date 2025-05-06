@@ -40,7 +40,7 @@ class DFUManager {
     // Value = Time when first detected
     private var unknownBootloaderDetected = [String: Date]()
     
-    private var defaultFirmware: [DeviceType: DFUFirmware] = [:]
+    private var defaultFirmware: [ProductType: DFUFirmware] = [:]
     
     // Unique identifier for device running DFU
     private var activeDfuUniqueIdentifier: String? {
@@ -72,8 +72,8 @@ class DFUManager {
     /// the bootloader.
     /// - Parameters:
     ///   - dfuFile: DFU file
-    ///   - dfuType: Device type
-    func setDefaultDFUForType(dfuFile: URL?, dfuType: DeviceType) {
+    ///   - dfuType: Product type
+    func setDefaultDFUForType(dfuFile: URL?, dfuType: ProductType) {
         guard let dfuFile = dfuFile else { return }
         
         do {
@@ -91,12 +91,12 @@ class DFUManager {
     /// Determine device type from bootloader advertising name
     /// - Parameter advertisingName: Bootloader advertising name
     /// - Returns: Device type
-    static func bootloaderTypeFrom(advertisingName: String) -> DeviceType {
+    static func bootloaderTypeFrom(advertisingName: String) -> ProductType {
         if advertisingName == Constants.THERMOMETER_DEFAULT_BOOTLOADER {
-            return .thermometer
+            return .probe
         }
         else if(advertisingName.contains(Constants.THERMOMETER_DFU_NAME)) {
-            return .thermometer
+            return .probe
         }
         else if advertisingName.contains(Constants.DISPLAY_DFU_NAME) {
             return .display

@@ -45,7 +45,7 @@ class GaugeAdvertisingData: NodeAdvertisingData {
     var batteryPercentage: UInt8
     var highLowAlarmStatus: HighLowAlarmStatus
     
-    init(type: CombustionProductType, serialNumber: String, temperature: GaugeTemperature, status: GaugeDetails, batteryPercentage: UInt8, highLowAlarmStatus: HighLowAlarmStatus) {
+    init(type: ProductType, serialNumber: String, temperature: GaugeTemperature, status: GaugeDetails, batteryPercentage: UInt8, highLowAlarmStatus: HighLowAlarmStatus) {
         self.temperatures = temperature
         self.status = status
         self.batteryPercentage = batteryPercentage
@@ -68,7 +68,7 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         // Product type (1 byte)
         let rawType = data.subdata(in: Constants.PRODUCT_TYPE_RANGE)
         let typeByte = [UInt8](rawType)
-        let type = CombustionProductType.gauge
+        let type = ProductType.gauge
         
         let serialRaw = data.subdata(in: Constants.SERIAL_RANGE)
         let serialNumberString = String(decoding: serialRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))

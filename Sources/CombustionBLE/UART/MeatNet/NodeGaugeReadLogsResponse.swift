@@ -28,7 +28,7 @@ import Foundation
 class NodeGaugeReadLogsResponse: NodeResponse {
     
     enum Constants {
-        static let MINIMUM_PAYLOAD_LENGTH = 28
+        static let MINIMUM_PAYLOAD_LENGTH = 17
         
         static let SERIAL_RANGE = NodeResponse.HEADER_LENGTH..<(NodeResponse.HEADER_LENGTH + 10)
         static let SEQUENCE_RANGE = (NodeResponse.HEADER_LENGTH + 10)..<(NodeResponse.HEADER_LENGTH + 14)
@@ -54,7 +54,7 @@ class NodeGaugeReadLogsResponse: NodeResponse {
         temperatures = GaugeTemperature.fromRawData(data: tempData)
         
         let sensorPresentData = data.subdata(in: Constants.SENSOR_PRESENT_RANGE)
-        sensorPresent = sequenceRaw.withUnsafeBytes {
+        sensorPresent = sensorPresentData.withUnsafeBytes {
             $0.load(as: Bool.self)
         }
 

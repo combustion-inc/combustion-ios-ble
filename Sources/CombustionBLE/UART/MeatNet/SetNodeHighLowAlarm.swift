@@ -1,4 +1,3 @@
-//  Accessory.swift
 /*--
 MIT License
 
@@ -25,34 +24,36 @@ SOFTWARE.
 
 import Foundation
 
-/// Representation of a meat net nodes native abilites, such as Grill Gauge
-public protocol Accessory {
+class SetNodeHighLowAlarmRequest: NodeRequest {
     
-    associatedtype SerialNumberType
+    init?(serialNumber: String, status: HighLowAlarmStatus) {
+        var serialNumberBytes = serialNumber
         
-    var parent: Device { get }
-    
-    var type: DeviceType { get }
-     
-    var serialNumber: SerialNumberType { get }
-    
-    var serialNumberString: String { get }
-    
-    /// Tracks whether status notification data has become stale.
-    var statusNotificationsStale: Bool { get }
-    
-    var deviceTemperatureLogs: [DeviceTemperatureLog] { get }
+        var payload = Data()
         
-    func updateDeviceStatus(deviceStatus: DeviceStatus, hopCount: HopCount?)
-    
-    func updateWithAdvertising(_ advertising: any AdvertisingData)
-    
-    func updateWithSessionInformation(_ sessionInfo: SessionInformation)
-}
-
-public extension Accessory {
-    
-    func updateDeviceStatus(deviceStatus: DeviceStatus, hopCount: HopCount? = nil) {
-        self.updateDeviceStatus(deviceStatus: deviceStatus, hopCount: hopCount)
+        guard let serialNumberData = serialNumber.data(using: .utf8) else {
+            return nil
+        }
+        
+        payload.append(serialNumberData)
+        
+        let highLowData = status.toRawData()
+        var rawHighLowData = highLowData
+        
+        payload.append(Data(bytes: &rawHighLowData, count: MemoryLayout.size(ofValue: rawHighLowData)))
+        
+        super.init(outgoingPayload: payload, type: .setHighLowAlarm)
     }
 }
+
+class SetNodeHighLowAlarmResponse : NodeResponse {
+    init(success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
+        super.init(success: success,
+                   requestId: requestId,
+                   responseId: responseId,
+                   payloadLength: payloadLength,
+                   messageType: .setHighLowAlarm)
+    }
+}
+
+

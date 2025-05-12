@@ -38,7 +38,7 @@ protocol BleManagerDelegate: AnyObject {
     func handleBootloaderAdvertising(identifier: UUID, advertisingName: String, rssi: NSNumber)
     func handleDFUData(identifier: UUID, characteristic: BleCharacteristic, data: Data)
     func handleUARTData(identifier: UUID, data: Data)
-    func updateDeviceWithAdvertising(advertising: AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID)
+    func updateDeviceWithAdvertising(advertising: any AdvertisingData, isConnectable: Bool, rssi: NSNumber, identifier: UUID)
     func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus)
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String)
     func updateDeviceHwRevision(identifier: UUID, hwRevision: String)
@@ -74,6 +74,15 @@ class BleManager : NSObject {
     }
     
     func sendRequest(identifier: String?, request: Request) {
+        guard let identifier = identifier else { return }
+        
+        if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
+           let uartChar = getCharacteristicFor(identifier, type: .uartRx) {
+            connectionPeripheral.writeValue(request.data, for: uartChar, type: .withoutResponse)
+        }
+    }
+    
+    func sendRequest(identifier: String?, request: NodeRequest) {
         guard let identifier = identifier else { return }
         
         if let connectionPeripheral = getConnectedPeripheral(identifier: identifier),

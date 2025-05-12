@@ -132,6 +132,8 @@ extension NodeResponse {
         switch messageType {
         case .log:
             return NodeReadLogsResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .gaugeLog:
+            return NodeGaugeReadLogsResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
 //        case .setID:
 //            return NodeSetIDResponse(success: success, payloadLength: Int(payloadLength))
 //        case .setColor:
@@ -156,6 +158,8 @@ extension NodeResponse {
             return NodeSetPowerModeResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .resetSession:
             return NodeResetSessionResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .setHighLowAlarm:
+            return SetNodeHighLowAlarmResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .custom(let address):
             return NodeCustomResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength), messageType: messageType)
 //        case .readOverTemperature:

@@ -27,10 +27,14 @@ import Foundation
 
 class NodeGaugeReadLogsRequest: NodeRequest {
     
-    init(serialNumber: UInt32, minSequence: UInt32, maxSequence: UInt32) {
+    init?(serialNumber: String, minSequence: UInt32, maxSequence: UInt32) {
         var payload = Data()
-        var serialNumberBytes = serialNumber
-        payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
+        
+        guard let serialNumberData = serialNumber.data(using: .utf8) else {
+            return nil
+        }
+        
+        payload.append(serialNumberData)
         
         var min = minSequence
         payload.append(Data(bytes: &min, count: MemoryLayout.size(ofValue: min)))

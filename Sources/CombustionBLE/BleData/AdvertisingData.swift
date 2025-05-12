@@ -26,12 +26,19 @@ SOFTWARE.
 import Foundation
 
 public protocol AdvertisingData {
+    
+    associatedtype SerialNumberType
+    
     /// Type of Combustion product
     var type: CombustionProductType { get }
     /// Product serial number
-    var serialNumber: UInt32 { get }
-    /// Network Information
-    var hopCount: HopCount { get }
+    var serialNumber: SerialNumberType { get }
+}
+
+extension AdvertisingData {
+    var serialNumberString: String {
+        return "\(serialNumber)"
+    }
 }
 
 /// Enumeration of Combustion, Inc. product types.
@@ -44,17 +51,17 @@ public enum CombustionProductType: UInt8 {
 
 class NodeAdvertisingData: AdvertisingData {
     
-    var type: CombustionProductType
-    var serialNumber: UInt32
-    var hopCount: HopCount
+    typealias SerialNumberType = String
     
-    init(type: CombustionProductType, serialNumber: UInt32, hopCount: HopCount) {
+    var serialNumber: String
+    var type: CombustionProductType
+    
+    init(type: CombustionProductType, serialNumber: String) {
         self.type = type
         self.serialNumber = serialNumber
-        self.hopCount = hopCount
     }
     
-    static func create(fromData data: Data?) -> AdvertisingData? {
+    static func create(fromData data: Data?) -> (any AdvertisingData)? {
         if let advertising = GaugeAdvertisingData.populate(fromData: data) {
             return advertising
         }

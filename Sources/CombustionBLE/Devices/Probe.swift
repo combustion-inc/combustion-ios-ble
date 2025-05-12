@@ -395,7 +395,7 @@ extension Probe {
         mostRecentStatus = deviceStatus
     }
     
-    func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
+    public func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
         if(sessionInformation?.sessionID != sessionInfo.sessionID) {
             // Recent probe status when session ID changes
             mostRecentStatus = nil
@@ -588,6 +588,8 @@ extension Probe {
 }
 
 extension Probe: Accessory {
+    
+    public typealias SerialNumberType = UInt32
     
     public var type: DeviceType {
         return .thermometer

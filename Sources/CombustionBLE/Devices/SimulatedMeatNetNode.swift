@@ -29,7 +29,7 @@ import Foundation
 public class SimulatedGauge: MeatNetNode {
     
     public init() {
-        let advertising = GaugeAdvertisingData(fakeSerial: UINT32_MAX - 1,
+        let advertising = GaugeAdvertisingData(fakeSerial: "FAKEGAUGE01",
                                                fakeTemperatures: GaugeTemperature.withRandomData())
         super.init(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())
         
@@ -45,14 +45,14 @@ public class SimulatedGauge: MeatNetNode {
         }
         
         // Create timer to update probe with fake status notifications
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
             self?.updateFakeStatus()
         }
         
         self.connectionState = .connected
         
         // Set fake session information
-        let fakeSessionInfo = SessionInformation(sessionID: UInt32.random(in: 0..<UInt32.max), samplePeriod: 1000)
+        let fakeSessionInfo = SessionInformation(sessionID: UInt32.random(in: 0..<UInt32.max), samplePeriod: 5000)
         (accessory as? GrillGauge)?.updateWithSessionInformation(fakeSessionInfo)
     }
     
@@ -67,7 +67,7 @@ public class SimulatedGauge: MeatNetNode {
     }
     
     private func updateFakeAdvertising() {
-        let advertising = GaugeAdvertisingData(fakeSerial: UInt32.random(in: 0 ..< UINT32_MAX),
+        let advertising = GaugeAdvertisingData(fakeSerial: "FAKEGAUGE01",
                                           fakeTemperatures: GaugeTemperature.withRandomData())
 
         updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI())
@@ -89,10 +89,16 @@ public class SimulatedGauge: MeatNetNode {
             lastSequence = 0
         }
         
-        let gaugeStatus = GaugeStatus(minSequenceNumber: firstSeq,
-                                      maxSequenceNumber: lastSequence,
-                                      temperature: GaugeTemperature.withRandomData(),
-                                      overheatingSensors: OverheatingSensors(sensorIndexes: []))
+        let gaugeStatus = GaugeStatus( serialNumber: accessory.serialNumber,
+                                       sessionID: 1,
+                                       minSequenceNumber: firstSeq,
+                                       maxSequenceNumber: lastSequence,
+                                       temperature: GaugeTemperature.withRandomData(),
+                                       alarmStatus: .defaultValues(),
+                                       status: .defaultValues(),
+                                       batteryPercentage: 98,
+                                       samplePeriod: 5000,
+                                       newRecordFlag: false)
         
         accessory.updateDeviceStatus(deviceStatus: gaugeStatus)
     }

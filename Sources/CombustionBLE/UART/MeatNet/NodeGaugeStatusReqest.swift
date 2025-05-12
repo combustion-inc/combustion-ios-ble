@@ -27,39 +27,28 @@ import Foundation
 
 class NodeGaugeStatusRequest: NodeRequest {
     
-    let serialNumber: UInt32
+    let serialNumber: String
     var gaugeStatus: GaugeStatus? = nil
     var hopCount: HopCount? = nil
     
     private enum Constants {
-        static let PAYLOAD_LENGTH = 53
+        static let PAYLOAD_LENGTH = 34
+        static let SERIAL_NUMBER_LENGTH = 10
+        static let HOP_COUNT_RANGE = 43..<44
     }
 
     
     init?(data: Data, requestId: UInt32, payloadLength: Int) {
         let sequenceByteIndex = NodeRequest.HEADER_LENGTH
         
-        let serialNumberRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 4))
-        self.serialNumber = serialNumberRaw.withUnsafeBytes {
-            $0.load(as: UInt32.self)
+        let serialNumberRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + Constants.SERIAL_NUMBER_LENGTH))
+        self.serialNumber = String(decoding: serialNumberRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))
+                
+        if let gaugeStatus = GaugeStatus(fromData: data) {
+            self.gaugeStatus = gaugeStatus
         }
         
-        let probeStatusRaw: Data
-        let hopCountRaw: Data
-        
-        // Parse guage status
-        let payloadLength = data.count - NodeRequest.HEADER_LENGTH
-        
-        // Note - GaugeStatus can parse the entire payload intelligently. Pass it the entire remainder of
-        // the message.
-        let gaugeStatusRaw = data.subdata(in: (sequenceByteIndex + 4)..<data.count)
-        
-        hopCountRaw = data.subdata(in: (sequenceByteIndex + 34)..<(sequenceByteIndex + 35))
-        
-        if let ps = GaugeStatus(fromData: gaugeStatusRaw) {
-            self.gaugeStatus = ps
-        }
-        
+        let hopCountRaw = data.subdata(in: Constants.HOP_COUNT_RANGE)
         let hopCountInteger = hopCountRaw.withUnsafeBytes {
             $0.load(as: UInt8.self)
         }

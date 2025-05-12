@@ -27,6 +27,8 @@ import Foundation
 
 public class GrillGauge: Accessory {
     
+    public typealias SerialNumberType = String
+    
     public var type: DeviceType {
         return .gauge
     }
@@ -34,11 +36,10 @@ public class GrillGauge: Accessory {
     public internal(set) var parent: Device
     
     // device serial number
-    @Published public private(set) var serialNumber: UInt32
+    @Published public private(set) var serialNumber: String
     
-    /// Returns serial number formatted as a string
-    public var serialNumberString : String {
-        return String(format: "%08X", serialNumber)
+    public var serialNumberString: String {
+        return serialNumber
     }
     
     @Published public internal(set) var currentTemperature: GaugeTemperature?
@@ -48,11 +49,14 @@ public class GrillGauge: Accessory {
     
     @Published public internal(set) var mostRecentStatus: GaugeStatus?
     
+    @Published public internal(set) var batteryPercentage: Int?
+    
+    @Published public internal(set) var mostRecentHighLowAlarm: HighLowAlarmStatus?
+    
+    @Published public internal(set) var isSensorAttached: Bool?
+    
     /// Whether or not gauge is overheating
     @Published public internal(set) var overheating: Bool = false
-    
-    /// Array of sensor indexes that are overheating
-    @Published public internal(set) var overheatingSensors: [Int] = []
     
     /// Sequence number range of records on the gauge
     @Published public internal(set) var sequenceNumberRange: ClosedRange<UInt32>?
@@ -81,29 +85,30 @@ public class GrillGauge: Accessory {
         return parent.connectionState
     }
     
-    init(parent: MeatNetNode, advertising: AdvertisingData) {
+    init(parent: MeatNetNode, advertising: any AdvertisingData) {
         self.parent = parent
-        self.serialNumber = advertising.serialNumber
+        self.serialNumber = advertising.serialNumberString
         
         updateWithAdvertising(advertising)
     }
     
-    func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
-        if(sessionInformation?.sessionID != sessionInfo.sessionID) {
-            // Recent probe status when session ID changes
+    public func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
+        if sessionInformation?.sessionID != sessionInfo.sessionID {
             mostRecentStatus = nil
-            
             sessionInformation = sessionInfo
         }
     }
     
-    public func updateWithAdvertising(_ advertising: AdvertisingData) {
+    public func updateWithAdvertising(_ advertising: any AdvertisingData) {
         guard let advertisingData = advertising as? GaugeAdvertisingData else { return }
         
         (parent as? MeatNetNode)?.updateLastUpdateTime()
         
         if(parent.connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(parent)) {
             updateTemperatures(temperature: advertisingData.temperatures)
+            updateBatteryPercentage(Int(advertisingData.batteryPercentage))
+            updateHighLowAlarms(advertisingData.highLowAlarmStatus)
+            updateIsSensorAttached(advertisingData.status.sensorPresent)
         }
     }
     
@@ -117,15 +122,23 @@ public class GrillGauge: Accessory {
                    
         var updated : Bool = false
         
-        if(shouldUpdateNormalMode(hopCount: hopCount)) {
+        if shouldUpdateNormalMode(hopCount: hopCount) {
             // Update sequence number range
             sequenceNumberRange = deviceStatus.minSequenceNumber...deviceStatus.maxSequenceNumber
             
             updateTemperatures(temperature: deviceStatus.temperature)
             
-            // Overheating sensors
-            overheatingSensors = deviceStatus.overheatingSensors.sensorIndexes
-            overheating = !overheatingSensors.isEmpty
+            updateBatteryPercentage(Int(deviceStatus.batteryPercentage))
+            
+            updateHighLowAlarms(deviceStatus.highLowAlarmStatus)
+            
+            updateIsSensorAttached(deviceStatus.status.sensorPresent)
+            
+            updateWithSessionInformation(.init(sessionID: deviceStatus.sessionID,
+                                               samplePeriod: deviceStatus.samplePeriod))
+            
+            // Overheating
+            overheating = deviceStatus.status.sensoryOverheating
             
             // Log the temperature data point for "Normal" status updates
             addDataToLog(LoggedGaugeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus),
@@ -194,7 +207,7 @@ public class GrillGauge: Accessory {
     /// Determins whether the device status has sequence number less than current maximum
     /// - param deviceStatus: Device status to check
     private func isOldStatusUpdate(_ deviceStatus: GaugeStatus) -> Bool {
-        if let currentTemperatureLog = getCurrentTemperatureLog(), let max = currentTemperatureLog.dataPoints.last {
+        if let currentTemperatureLog = getCurrentTemperatureLog(), deviceStatus.sessionID == currentTemperatureLog.sessionInformation.sessionID, let max = currentTemperatureLog.dataPoints.last {
             return deviceStatus.maxSequenceNumber < max.sequenceNum
         }
         else {
@@ -204,11 +217,6 @@ public class GrillGauge: Accessory {
     }
     
     /// Processes an incoming log response (response to a manual request for prior messages)
-    func processLogResponse(logResponse: GaugeLogResponse) {
-        addDataToLog(LoggedGaugeDataPoint.fromLogResponse(logResponse: logResponse))
-    }
-    
-    /// Processes an incoming node log response (response to a manual request for prior messages)
     func processLogResponse(logResponse: NodeGaugeReadLogsResponse) {
         addDataToLog(LoggedGaugeDataPoint.fromLogResponse(logResponse: logResponse))
     }
@@ -260,6 +268,18 @@ extension GrillGauge {
     
     private func updateTemperatures(temperature: GaugeTemperature) {
         self.currentTemperature = temperature
+    }
+    
+    private func updateBatteryPercentage(_ percentage: Int) {
+        self.batteryPercentage = percentage
+    }
+    
+    private func updateHighLowAlarms(_ highLowAlarmStatus: HighLowAlarmStatus) {
+        self.mostRecentHighLowAlarm = highLowAlarmStatus
+    }
+    
+    private func updateIsSensorAttached(_ isSensorAttached: Bool) {
+        self.isSensorAttached = isSensorAttached
     }
     
     private func updateLogPercent() {

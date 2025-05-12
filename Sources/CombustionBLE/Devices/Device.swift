@@ -187,9 +187,9 @@ open class Device : ObservableObject {
     }
     
     /// Updates SKU and Lot number based on Model Info string.
-    func updateWithModelInfo(_ modelInfo: String) {
+    func updateWithModelInfo(_ modelInfo: String, seperator: String = ":") {
         // Parse the SKU and lot number, which are delimited by a ':'
-        let parts = modelInfo.components(separatedBy: ":")
+        let parts = modelInfo.components(separatedBy: seperator)
         if parts.count == 2 {
             self.sku = parts[0]
             self.manufacturingLot = parts[1]

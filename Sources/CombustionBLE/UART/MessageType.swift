@@ -37,5 +37,4 @@ enum MessageType: UInt8, CaseIterable  {
     case resetFoodSafe = 0x08
     case setPowerMode = 0x09
     case resetSession = 0x0A
-    case gaugeLog = 0x0B
 }

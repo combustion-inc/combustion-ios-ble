@@ -71,7 +71,13 @@ extension ProbeAdvertisingData {
         // Product type (1 byte)
         let rawType = data.subdata(in: Constants.PRODUCT_TYPE_RANGE)
         let typeByte = [UInt8](rawType)
-        type = CombustionProductType(rawValue: typeByte[0]) ?? .unknown
+        
+       
+        let type = CombustionProductType(rawValue: typeByte[0]) ?? .unknown
+        
+        guard type == .probe || type == .meatNetNode else { return nil }
+        
+        self.type = type
         
         // Device Serial number (4 bytes)
         // Reverse the byte order (this is a little-endian packed bitfield)

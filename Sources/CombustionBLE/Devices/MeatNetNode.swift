@@ -47,7 +47,7 @@ public class MeatNetNode: Device {
     @Published public internal(set) var featureFlags: [FeatureFlag]?
     
     /// Accessory
-    @Published public internal(set) var accessory: Accessory?
+    @Published public internal(set) var accessory: (any Accessory)?
     
     /// Meatnet node name
     public var name: String {
@@ -97,12 +97,12 @@ public class MeatNetNode: Device {
         updateLastUpdateTime()
     }
     
-    init(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
+    init(_ advertising: any AdvertisingData, isConnectable: Bool, RSSI: NSNumber, identifier: UUID) {
         super.init(uniqueIdentifier: identifier.uuidString, bleIdentifier: identifier, RSSI: RSSI)
         updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI)
     }
     
-    func updateWithAdvertising(_ advertising: AdvertisingData, isConnectable: Bool, RSSI: NSNumber) {
+    func updateWithAdvertising(_ advertising: any AdvertisingData, isConnectable: Bool, RSSI: NSNumber) {
         // Always update device RSSI and isConnectable flag
         
         self.rssi = RSSI.intValue
@@ -136,7 +136,7 @@ public class MeatNetNode: Device {
     
     /// Returns true if node has connection to device.
     func hasConnectionToDevice(_ identifier: String) -> Bool {
-        return devices[identifier] != nil
+        return devices[identifier] != nil || self.bleIdentifier == identifier
     }
     
     /// Updates whether the device is stale. Called on a timer interval by DeviceManager.
@@ -182,8 +182,9 @@ public class MeatNetNode: Device {
     
     /// Special handling for MeatNetNode model info.  Need to decode model info string
     /// to determine DFU type
-    override func updateWithModelInfo(_ modelInfo: String) {
-        super.updateWithModelInfo(modelInfo)
+    override func updateWithModelInfo(_ modelInfo: String, seperator: String = ":") {
+        super.updateWithModelInfo(modelInfo.components(separatedBy: " ").dropFirst().joined(),
+                                  seperator: "-")
         
         if modelInfo.contains("Timer") {
             dfuType = .display

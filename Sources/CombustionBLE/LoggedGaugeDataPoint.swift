@@ -41,7 +41,8 @@ extension LoggedDeviceDataPoint {
     public static func fromDeviceStatus(deviceStatus: DeviceStatus) -> LoggedDeviceDataPoint {
         if let deviceStatus = deviceStatus as? GaugeStatus {
             return LoggedGaugeDataPoint(sequenceNum: deviceStatus.maxSequenceNumber,
-                                 temperatures: deviceStatus.temperature)
+                                        temperatures: deviceStatus.temperature,
+                                        sensorPresent: deviceStatus.status.sensorPresent)
         }
         else {
             return LoggedDeviceDataPoint(sequenceNum: deviceStatus.maxSequenceNumber)
@@ -62,37 +63,36 @@ extension LoggedDeviceDataPoint: Hashable {
 public class LoggedGaugeDataPoint: LoggedDeviceDataPoint {
     
     public let temperatures: GaugeTemperature
+    public let sensorPresent: Bool
     
-    public init(sequenceNum: UInt32, temperatures: GaugeTemperature) {
+    public init(sequenceNum: UInt32, temperatures: GaugeTemperature, sensorPresent: Bool) {
         self.temperatures = temperatures
+        self.sensorPresent = sensorPresent
         super.init(sequenceNum: sequenceNum)
     }
     
     override public func temperatureForChannelIndex(_ index: Int) -> Double? {
         //gauge only has one temperature sensor, ignore other indexes
         guard index == 0 else { return nil }
-        return temperatures.value
+        return sensorPresent ? temperatures.value : nil
     }
 }
 
-/// Record representing a logged temperature data point retrieved from a probe
+/// Record representing a logged temperature data point retrieved from a gauge
 extension LoggedGaugeDataPoint {
     
-    /// Generates a LoggedProbeDataPoint from a previously-parsed DeviceStatus record.
+    /// Generates a LoggedGaugeDataPoint from a previously-parsed DeviceStatus record.
     /// - parameter ProbeStatus: ProbeStatus instance
     public static func fromDeviceStatus(deviceStatus: GaugeStatus) -> LoggedGaugeDataPoint {
         return LoggedGaugeDataPoint(sequenceNum: deviceStatus.maxSequenceNumber,
-                                    temperatures: deviceStatus.temperature)
-    }
-    
-    static func fromLogResponse(logResponse: GaugeLogResponse) -> LoggedGaugeDataPoint {
-        return LoggedGaugeDataPoint(sequenceNum: logResponse.sequenceNumber,
-                                    temperatures: logResponse.temperatures)
+                                    temperatures: deviceStatus.temperature,
+                                    sensorPresent: deviceStatus.status.sensorPresent)
     }
     
     static func fromLogResponse(logResponse: NodeGaugeReadLogsResponse) -> LoggedGaugeDataPoint {
         return LoggedGaugeDataPoint(sequenceNum: logResponse.sequenceNumber,
-                                    temperatures: logResponse.temperatures)
+                                    temperatures: logResponse.temperatures,
+                                    sensorPresent: logResponse.sensorPresent)
     }
 }
 
@@ -107,6 +107,7 @@ extension LoggedGaugeDataPoint {
         let temperatures = GaugeTemperature(value: 50.0)
         
         return LoggedGaugeDataPoint(sequenceNum: S.sequenceNum,
-                                    temperatures: temperatures)
+                                    temperatures: temperatures,
+                                    sensorPresent: true)
     }
 }

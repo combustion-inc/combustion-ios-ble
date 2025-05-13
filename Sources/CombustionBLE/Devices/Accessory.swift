@@ -32,7 +32,7 @@ public protocol Accessory {
         
     var parent: Device { get }
     
-    var type: DeviceType { get }
+    var type: ProductType { get }
      
     var serialNumber: SerialNumberType { get }
     

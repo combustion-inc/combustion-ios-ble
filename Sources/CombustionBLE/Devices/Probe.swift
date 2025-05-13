@@ -591,8 +591,8 @@ extension Probe: Accessory {
     
     public typealias SerialNumberType = UInt32
     
-    public var type: DeviceType {
-        return .thermometer
+    public var type: ProductType {
+        return .probe
     }
     
     public var deviceTemperatureLogs: [DeviceTemperatureLog] {

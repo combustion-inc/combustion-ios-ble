@@ -29,7 +29,7 @@ import Foundation
 /// Struct containing advertising data received from device.
 struct ProbeAdvertisingData: AdvertisingData {
     /// Type of Combustion product
-    let type: CombustionProductType
+    let type: ProductType
     /// Product serial number
     let serialNumber: UInt32
     /// Latest temperatures read by device
@@ -73,7 +73,7 @@ extension ProbeAdvertisingData {
         let typeByte = [UInt8](rawType)
         
        
-        let type = CombustionProductType(rawValue: typeByte[0]) ?? .unknown
+        let type = ProductType(rawValue: typeByte[0]) ?? .unknown
         
         guard type == .probe || type == .meatNetNode else { return nil }
         

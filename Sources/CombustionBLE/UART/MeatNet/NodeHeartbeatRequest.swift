@@ -28,7 +28,7 @@ import Foundation
 class NodeHeartbeatRequest: NodeRequest {
     let serialNumber: String
     let macAddress: String
-    let productType: CombustionProductType
+    let productType: ProductType
     let hopCount: HopCount
     let inbound: Bool
     let connectionDetails: [ConnectionDetail]
@@ -36,7 +36,7 @@ class NodeHeartbeatRequest: NodeRequest {
     struct ConnectionDetail {
         let present: Bool
         let serialNumber: String
-        let productType: CombustionProductType
+        let productType: ProductType
         let rssi: Int
         
         enum Constants {
@@ -73,7 +73,7 @@ class NodeHeartbeatRequest: NodeRequest {
         
         // Product type
         let typeByte = data.subdata(in: Constants.PRODUCT_TYPE_RANGE)[0]
-        productType = CombustionProductType(rawValue: typeByte) ?? .unknown
+        productType = ProductType(rawValue: typeByte) ?? .unknown
         
         // Hop Count
         let hopByte = data.subdata(in: Constants.HOP_COUNT_RANGE)[0]
@@ -123,7 +123,7 @@ extension NodeHeartbeatRequest.ConnectionDetail {
             return NodeHeartbeatRequest.ConnectionDetail.notPresent()
         }
         
-        let productType = CombustionProductType(rawValue: data[Constants.PRODUCT_TYPE_INDEX]) ?? .unknown
+        let productType = ProductType(rawValue: data[Constants.PRODUCT_TYPE_INDEX]) ?? .unknown
         
         let serialNumber: String
         switch (productType) {
@@ -148,7 +148,7 @@ extension NodeHeartbeatRequest.ConnectionDetail {
         case .gauge:
             let serialRaw = data.subdata(in: Constants.NODE_SERIAL_RANGE)
             serialNumber = String(decoding: serialRaw, as: UTF8.self)
-        case .unknown:
+        case .unknown, .display, .charger:
             serialNumber = ""
         }
         

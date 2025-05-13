@@ -29,7 +29,7 @@ public class GrillGauge: Accessory {
     
     public typealias SerialNumberType = String
     
-    public var type: DeviceType {
+    public var type: ProductType {
         return .gauge
     }
     

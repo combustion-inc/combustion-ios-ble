@@ -1,4 +1,4 @@
-//  DeviceType.swift
+//  ProductType.swift
 
 /*--
 MIT License
@@ -24,13 +24,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
-@available(*, unavailable, renamed: "DeviceType")
+@available(*, unavailable, renamed: "ProductType")
 public enum DFUDeviceType {}
 
-public enum DeviceType: String, Codable {
-    case thermometer
-    case display
-    case charger
-    case gauge
-    case unknown
+public enum ProductType: UInt8, Codable {
+    case unknown = 0x00
+    case probe = 0x01
+    case meatNetNode = 0x02
+    case gauge = 0x03
+    case display = 0x04
+    case charger = 0x05
 }

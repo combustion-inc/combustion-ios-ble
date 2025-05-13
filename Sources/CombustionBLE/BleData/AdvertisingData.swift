@@ -30,7 +30,7 @@ public protocol AdvertisingData {
     associatedtype SerialNumberType
     
     /// Type of Combustion product
-    var type: CombustionProductType { get }
+    var type: ProductType { get }
     /// Product serial number
     var serialNumber: SerialNumberType { get }
 }
@@ -41,22 +41,14 @@ extension AdvertisingData {
     }
 }
 
-/// Enumeration of Combustion, Inc. product types.
-public enum CombustionProductType: UInt8 {
-    case unknown = 0x00
-    case probe = 0x01
-    case meatNetNode = 0x02
-    case gauge = 0x03
-}
-
 class NodeAdvertisingData: AdvertisingData {
     
     typealias SerialNumberType = String
     
     var serialNumber: String
-    var type: CombustionProductType
+    var type: ProductType
     
-    init(type: CombustionProductType, serialNumber: String) {
+    init(type: ProductType, serialNumber: String) {
         self.type = type
         self.serialNumber = serialNumber
     }

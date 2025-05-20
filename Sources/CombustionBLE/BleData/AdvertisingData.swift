@@ -43,6 +43,10 @@ extension AdvertisingData {
 
 class NodeAdvertisingData: AdvertisingData {
     
+    private enum Constants {
+        static let PRODUCT_TYPE_RANGE = 2..<3
+    }
+    
     typealias SerialNumberType = String
     
     var serialNumber: String
@@ -54,11 +58,20 @@ class NodeAdvertisingData: AdvertisingData {
     }
     
     static func create(fromData data: Data?) -> (any AdvertisingData)? {
-        if let advertising = GaugeAdvertisingData.populate(fromData: data) {
-            return advertising
+        guard let data = data else { return nil }
+        
+        let rawType = data.subdata(in: Constants.PRODUCT_TYPE_RANGE)
+        
+        let typeByte = rawType.withUnsafeBytes {
+            $0.load(as: UInt8.self)
         }
-        // add new advertising types here for devices
-        else {
+        
+        let type = ProductType(rawValue: typeByte)
+        
+        switch type {
+        case .gauge:
+            return GaugeAdvertisingData.populate(fromData: data)
+        case nil, .probe, .display, .charger, .meatNetNode, .some(.unknown):
             return nil
         }
     }

@@ -65,11 +65,6 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         
         guard vendorID == Constants.COMBUSTION_VENDOR_ID else { return nil }
         
-        // Product type (1 byte)
-        let rawType = data.subdata(in: Constants.PRODUCT_TYPE_RANGE)
-        let typeByte = [UInt8](rawType)
-        let type = ProductType.gauge
-        
         let serialRaw = data.subdata(in: Constants.SERIAL_RANGE)
         let serialNumberString = String(decoding: serialRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))
                 

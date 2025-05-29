@@ -117,10 +117,10 @@ class ConnectionManager {
         
         lastStatusUpdate[identifier] = Date()
         
-        // Track that data was recieved for gauge on node
+        // Track that data was recieved for device on node
         node?.dataReceivedFromDevice(device)
         
-        // if receiving status from meatnet and DFU disabled, then disconnect from gauge
+        // if receiving status from meatnet and DFU disabled, then disconnect from device
         if !directConnection && meatNetEnabled && !dfuModeEnabled {
             
             if let device = getDeviceWithIdentifier(identifier),

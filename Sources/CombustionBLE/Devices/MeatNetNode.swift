@@ -144,7 +144,7 @@ public class MeatNetNode: Device {
         for deviceSerial in devices.keys {
             if let lastUpdateTime = lastTimeDataRecieved[deviceSerial] {
                 // If not data has been received from device for timeout length, then remove from list
-                if(Date().timeIntervalSince(lastUpdateTime) > Constants.DEVICE_REMOVE_CONNECTION_TIMEOUT) {
+                if Date().timeIntervalSince(lastUpdateTime) > Constants.DEVICE_REMOVE_CONNECTION_TIMEOUT {
                     removeConnectionToDevice(deviceSerial)
                 }
             }

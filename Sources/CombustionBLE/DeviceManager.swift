@@ -228,18 +228,18 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     }
     
     private func getNodesConnectedToDevice(identifier: String) -> [MeatNetNode] {
-        var nodesWithProbe: [MeatNetNode] = []
+        var nodesWithDevice: [MeatNetNode] = []
         
         let meatnetNodes = getMeatnetNodes()
         
         for node in meatnetNodes {
             // Check Nodes to which we are connected to see if they have a route to the Device
             if node.connectionState == .connected, node.hasConnectionToDevice(identifier) {
-                nodesWithProbe.append(node)
+                nodesWithDevice.append(node)
             }
         }
         
-        return nodesWithProbe
+        return nodesWithDevice
     }
     
     private func shouldSendMessageDirectlyTo(probe: Probe) -> Bool {
@@ -607,7 +607,6 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
             completionHandler(false)
             return
         }
-        
        
         sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
     }
@@ -661,14 +660,17 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     private func sendNodeRequestWithSuccessHandler(_ device: MeatNetNode,
                                    request: NodeRequest,
                                    completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        // Send message to all nodes that have a route to the device
-        let nodesConnectedToDevice = getNodesConnectedToDevice(identifier: device.uniqueIdentifier)
-        
-        // Store completion handler
         messageHandlers.addNodeSuccessCompletionHandler(request: request, completionHandler: completionHandler)
         
-        // Send request to device
-        BleManager.shared.sendRequestToNodes(nodesConnectedToDevice, request: request)
+        if shouldSendMessageDirectlyTo(device: device) {
+            // Send request to device
+            BleManager.shared.sendRequestToNodes([device], request: request)
+        }
+        else {
+            // Send message to all nodes that have a route to the device
+            let nodesConnectedToDevice = getNodesConnectedToDevice(identifier: device.uniqueIdentifier)
+            BleManager.shared.sendRequestToNodes(nodesConnectedToDevice, request: request)
+        }
     }
 }
 
@@ -896,9 +898,9 @@ extension DeviceManager : BleManagerDelegate {
                 meatNetNode.accessory = gauge
                 
                 addAccessory(accessory: gauge)
-                
-                connectionManager.receivedDeviceAdvertising(meatNetNode, from: meatNetNode)
             }
+            
+            connectionManager.receivedDeviceAdvertising(meatNetNode)
         case .unknown, .charger, .display:
             print("Found device with unknown type")
         }

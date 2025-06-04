@@ -26,21 +26,20 @@ import Foundation
 
 class SetNodeHighLowAlarmRequest: NodeRequest {
     
+    class Constants {
+        static let NODE_SERIAL_NUM_LENGTH = 10
+    }
+    
     init?(serialNumber: String, status: HighLowAlarmStatus) {
-        var serialNumberBytes = serialNumber
         
-        var payload = Data()
+        var payload = Data(capacity: Constants.NODE_SERIAL_NUM_LENGTH + 4)
         
-        guard let serialNumberData = serialNumber.data(using: .utf8) else {
-            return nil
-        }
+        var serialBytes = Array(serialNumber.utf8.prefix(Constants.NODE_SERIAL_NUM_LENGTH))
+        serialBytes += Array(repeating: 0, count: Constants.NODE_SERIAL_NUM_LENGTH - serialBytes.count)
         
-        payload.append(serialNumberData)
+        payload.append(contentsOf: serialBytes)
         
-        let highLowData = status.toRawData()
-        var rawHighLowData = highLowData
-        
-        payload.append(Data(bytes: &rawHighLowData, count: MemoryLayout.size(ofValue: rawHighLowData)))
+        payload.append(contentsOf: status.toRawData())
         
         super.init(outgoingPayload: payload, type: .setHighLowAlarm)
     }

@@ -76,44 +76,29 @@ public class ProbeTemperatureLog : ObservableObject {
     /// - parameter sequenceRangeStart: First sequence number to search for
     /// - parameter sequenceRangeEnd: Last sequence number to search for
     /// - returns: Range of the lowest to highest missing sequence numbers.
-    func missingRange(sequenceRangeStart: UInt32, sequenceRangeEnd: UInt32) -> ClosedRange<UInt32>? {
-        var missingRange : ClosedRange<UInt32>? = nil
-        
-        var lowerBound : UInt32? = nil
-        
-        // Find the lower bound
-        for search in sequenceRangeStart...sequenceRangeEnd {
-            if dataPointsDict[search] == nil {
-                // Record was missing so we're done searching
-                lowerBound = search
-                break
-            }
-        }
-        
-        if let lowerBound = lowerBound {
-            // If a lower bound was found, find the upper bound.
-            var upperBound : UInt32? = nil
-            
-            if lowerBound < sequenceRangeEnd {
-                for search in (lowerBound+1...sequenceRangeEnd).reversed() {
-                    if dataPointsDict[search] == nil {
-                        // Record was missing so we're done searching
-                        upperBound = search
-                        break
-                    }
+    func missingRanges(sequenceRangeStart: UInt32, sequenceRangeEnd: UInt32) -> [ClosedRange<UInt32>] {
+        var missingRanges: [ClosedRange<UInt32>] = []
+        var currentMissingStart: UInt32? = nil
+
+        for num in sequenceRangeStart...sequenceRangeEnd {
+            if dataPointsDict[num] == nil {
+                if currentMissingStart == nil {
+                    currentMissingStart = num
+                }
+            } else {
+                if let start = currentMissingStart {
+                    missingRanges.append(start...num-1)
+                    currentMissingStart = nil
                 }
             }
-            
-            if let upperBound = upperBound {
-                // If an upper bound was found, update the return range.
-                missingRange = lowerBound ... upperBound
-            } else {
-                // If not, grab everything from the lower bound on
-                missingRange = lowerBound ... sequenceRangeEnd
-            }
         }
         
-        return missingRange
+        // Handle the case where the range ends while missing
+        if let start = currentMissingStart {
+            missingRanges.append(start...sequenceRangeEnd)
+        }
+        
+        return missingRanges
     }
     
     
@@ -170,6 +155,7 @@ public class ProbeTemperatureLog : ObservableObject {
     private func insertDataPoint(newDataPoint: LoggedProbeDataPoint) {
         // Add the incoming data point to the accumulator
         let appendResult = dataPointAccumulator.append(newDataPoint)
+       
         if appendResult.inserted {
             // If the data point was inserted (i.e. it wasn't already in the accumulator), process it.
         
@@ -193,6 +179,7 @@ public class ProbeTemperatureLog : ObservableObject {
     
     /// Appends data point to the logged probe data.
     public func appendDataPoint(dataPoint: LoggedProbeDataPoint, sampledAt: Date? = nil) {
+        print("DEVIN: \(dataPoint.sequenceNum) added probe")
         // Check if new point's sequence number belongs at the end
         if let lastPoint = dataPointsDict.values.last {
             if(dataPoint.sequenceNum == (lastPoint.sequenceNum + 1)) {

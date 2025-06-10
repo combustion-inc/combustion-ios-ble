@@ -31,6 +31,8 @@ import Foundation
 /// Struct containing info about a Probe device.
 open class Probe : Device {
     
+    var hasReuqest = 0
+    
     /// Probe serial number
     @Published public private(set) var serialNumber: UInt32
         
@@ -206,6 +208,16 @@ open class Probe : Device {
         
         super.updateDeviceStale()
     }
+    
+    /// Merges or inserts a cloud-fetched ProbeTemperatureLog into the local logs array.
+    /// If a log with the same session ID exists, it is replaced; otherwise, it is added.
+    public func mergeCloudTemperatureLog(_ log: ProbeTemperatureLog) {
+        if let idx = temperatureLogs.firstIndex(where: { $0.sessionInformation.sessionID == log.sessionInformation.sessionID }) {
+            temperatureLogs[idx] = log
+        } else {
+            temperatureLogs.append(log)
+        }
+    }
 }
     
 extension Probe {
@@ -371,14 +383,15 @@ extension Probe {
             
             // Save the first missing range of sequence numbers.
             // Don't request the current sequence number as it should come via status notifications.
-            let missingRange = current.missingRange(sequenceRangeStart: deviceStatus.minSequenceNumber,
-                                                    sequenceRangeEnd: deviceStatus.maxSequenceNumber)
+            let missingRanges = [current.missingRanges(sequenceRangeStart: deviceStatus.minSequenceNumber,
+                                                       sequenceRangeEnd: deviceStatus.maxSequenceNumber).first].compactMap({ $0 })
             
-            if let missingRange = missingRange {
+            for range in missingRanges {
+                print("DEVIN: probe mr \(range.lowerBound) \(range.upperBound)")
                 // Request missing records
                 deviceManager.requestLogsFrom(self,
-                                              minSequence: missingRange.lowerBound,
-                                              maxSequence: missingRange.upperBound)
+                                              minSequence: range.lowerBound,
+                                              maxSequence: range.upperBound)
             }
         }
 
@@ -394,6 +407,7 @@ extension Probe {
         // Publish most recent status
         mostRecentStatus = deviceStatus
     }
+   
     
     public func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
         if(sessionInformation?.sessionID != sessionInfo.sessionID) {
@@ -427,18 +441,24 @@ extension Probe {
         // for the probe/node sending a record with invalid sequence number
         if let sequenceNumberRange = sequenceNumberRange,
            dataPoint.sequenceNum > sequenceNumberRange.upperBound {
+            print("DEVIN: skipping")
             return
         }
         
         if let current = getCurrentTemperatureLog() {
             // Append data to temperature log for current session
+            print("DEVIN: adding to current")
             current.appendDataPoint(dataPoint: dataPoint, sampledAt: sampledAt)
         }
         else if let sessionInformation = sessionInformation {
             // Create a new Temperature log for session and append data
             let log = ProbeTemperatureLog(sessionInfo: sessionInformation)
             log.appendDataPoint(dataPoint: dataPoint, sampledAt: sampledAt)
+            print("DEVIN: creating new")
             temperatureLogs.append(log)
+        }
+        else {
+            print("DEVIN: ignoring")
         }
     }
     

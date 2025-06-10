@@ -72,6 +72,7 @@ class NodeReadLogsResponse: NodeResponse {
 extension NodeReadLogsResponse {
 
     static func fromRaw(data: Data, success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) -> NodeReadLogsResponse? {
+        print("DEVIN: probe log response")
         if(payloadLength < Constants.MINIMUM_PAYLOAD_LENGTH) {
             return nil
         }

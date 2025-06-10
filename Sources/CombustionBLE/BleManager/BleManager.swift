@@ -96,7 +96,11 @@ class BleManager : NSObject {
             if let identifier = node.bleIdentifier,
                let connectionPeripheral = getConnectedPeripheral(identifier: identifier),
                let uartChar = getCharacteristicFor(identifier, type: .uartRx) {
+                print("DEVIN: sending \(identifier) \(request.messageType)")
                 connectionPeripheral.writeValue(request.data, for: uartChar, type: .withoutResponse)
+            }
+            else {
+                print("DEVIN: missing details \(node.bleIdentifier ?? "ni") \(request.messageType)")
             }
         }
     }

@@ -648,6 +648,8 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         // Store completion handler
         messageHandlers.addNodeSuccessCompletionHandler(request: request, completionHandler: completionHandler)
         
+        print("DEVIN: sending \(nodesConnectedToProbe.count)")
+        
         // Send request to device
         BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
     }
@@ -797,6 +799,7 @@ extension DeviceManager : BleManagerDelegate {
                                                     RSSI: rssi,
                                                     identifier: identifier)
             addDevice(device: bootloaderDevice)
+            print("DEVIN: Adding bootloader")
         }
     }
     
@@ -821,6 +824,7 @@ extension DeviceManager : BleManagerDelegate {
                 // If we don't yet have an entry for this Probe, create one.
                 let device = Probe(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
                 addDevice(device: device)
+                print("DEVIN: Adding probe from direct advertising")
                 foundProbe = device
             }
         }
@@ -863,6 +867,7 @@ extension DeviceManager : BleManagerDelegate {
                 // Create node and add to device list
                 meatnetNode = MeatNetNode(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
                 addDevice(device: meatnetNode)
+                print("DEVIN: Adding meat net node")
             }
             
             if let advertising = advertising as? ProbeAdvertisingData {
@@ -888,6 +893,7 @@ extension DeviceManager : BleManagerDelegate {
                 // Create node and add to device list
                 meatNetNode = MeatNetNode(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
                 addDevice(device: meatNetNode)
+                print("DEVIN: Adding meat net node gauge")
             }
             
             if let existingGauge = meatNetNode.accessory as? GrillGauge {

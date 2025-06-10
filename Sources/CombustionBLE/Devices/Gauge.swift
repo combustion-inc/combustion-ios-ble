@@ -160,14 +160,17 @@ public class GrillGauge: Accessory {
             
             // Save the first missing range of sequence numbers.
             // Don't request the current sequence number as it should come via status notifications.
-            let missingRange = current.missingRange(sequenceRangeStart: deviceStatus.minSequenceNumber,
-                                                    sequenceRangeEnd: deviceStatus.maxSequenceNumber)
+            let missingRanges = [current.missingRanges(sequenceRangeStart: deviceStatus.minSequenceNumber,
+                                                       sequenceRangeEnd: deviceStatus.maxSequenceNumber).first].compactMap({ $0 })
             
-            if let missingRange = missingRange, let parent = parent as? MeatNetNode {
-                // Request missing records
-                deviceManager.requestLogsFrom(parent,
-                                              minSequence: missingRange.lowerBound,
-                                              maxSequence: missingRange.upperBound)
+            if let parent = parent as? MeatNetNode {
+                for range in missingRanges {
+                    print("DEVIN: mr gauge \(range.lowerBound) \(range.upperBound)")
+                    // Request missing records
+                    deviceManager.requestLogsFrom(parent,
+                                                  minSequence: range.lowerBound,
+                                                  maxSequence: range.upperBound)
+                }
             }
         }
 
@@ -227,11 +230,13 @@ public class GrillGauge: Accessory {
         // for the gauge/node sending a record with invalid sequence number
         if let sequenceNumberRange = sequenceNumberRange,
            dataPoint.sequenceNum > sequenceNumberRange.upperBound {
+            print("DEVIN: ignoring gauge")
             return
         }
         
         if let current = getCurrentTemperatureLog() {
             // Append data to temperature log for current session
+            print("DEVIN: adding current gauge")
             current.appendDataPoint(dataPoint: dataPoint, sampledAt: sampledAt)
         }
         else if let sessionInformation = sessionInformation {
@@ -239,6 +244,10 @@ public class GrillGauge: Accessory {
             let log = DeviceTemperatureLog(sessionInfo: sessionInformation)
             log.appendDataPoint(dataPoint: dataPoint, sampledAt: sampledAt)
             deviceTemperatureLogs.append(log)
+            print("DEVIN: new log guage")
+        }
+        else {
+            print("DEVIN: skipping guage")
         }
     }
     

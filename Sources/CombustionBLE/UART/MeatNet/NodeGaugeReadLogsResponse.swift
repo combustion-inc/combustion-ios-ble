@@ -42,6 +42,7 @@ class NodeGaugeReadLogsResponse: NodeResponse {
     let sensorPresent: Bool
     
     init(data: Data, success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
+        print("DEVIN: gauge log response")
         let serialRaw = data.subdata(in: Constants.SERIAL_RANGE)
         gaugeSerialNumber = String(decoding: serialRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))
         
@@ -69,6 +70,7 @@ class NodeGaugeReadLogsResponse: NodeResponse {
 extension NodeGaugeReadLogsResponse {
 
     static func fromRaw(data: Data, success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) -> NodeReadLogsResponse? {
+        print("DEVIN: gauge log response")
         if(payloadLength < Constants.MINIMUM_PAYLOAD_LENGTH) {
             return nil
         }

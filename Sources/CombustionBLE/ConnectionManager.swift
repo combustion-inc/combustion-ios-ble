@@ -71,9 +71,9 @@ class ConnectionManager {
         else { // When MeatNet is enabled and the device data is stale, then connect to it
             if deviceInAllowList(device) &&
                 deviceStatusStale &&
-                (connectionTimers[device.uniqueIdentifier] == nil) {
+                connectionTimers[device.uniqueIdentifier] == nil {
                 
-                // Start timer to connect to probe after delay
+                // Start timer to connect to device after delay
                 connectionTimers[device.uniqueIdentifier] = Timer.scheduledTimer(withTimeInterval: 3, repeats: false, block: { [weak self] _ in
                     
                     if let device = self?.getDeviceWithIdentifier(device.uniqueIdentifier) {

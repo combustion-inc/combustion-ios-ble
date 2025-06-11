@@ -122,7 +122,7 @@ class ConnectionManager {
         // If also receiving status for a Probe from MeatNet and DFU mode is disabled,
         // then disconnect from the Probe to conserve the Probe's available inbound
         // connections and reduce the impact on its battery life.
-        if let _ = device as? Probe {
+        if device is Probe {
             let directProbeConnection = (node == nil)
             if !directProbeConnection && meatNetEnabled && !dfuModeEnabled {
                 

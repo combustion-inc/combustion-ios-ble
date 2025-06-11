@@ -113,19 +113,23 @@ class ConnectionManager {
     
     func receivedStatusFor(_ device: Device, node: MeatNetNode?) {
         guard let identifier = device.uniqueIdentifier as? String else { return }
-        let directConnection = node == nil || node == device // meat net node might report its own status
         
         lastStatusUpdate[identifier] = Date()
         
         // Track that data was recieved for device on node
         node?.dataReceivedFromDevice(device)
         
-        // if receiving status from meatnet and DFU disabled, then disconnect from device
-        if !directConnection && meatNetEnabled && !dfuModeEnabled {
-            
-            if let device = getDeviceWithIdentifier(identifier),
-               device.connectionState == .connected {
-                device.disconnect()
+        // If also receiving status for a Probe from MeatNet and DFU mode is disabled,
+        // then disconnect from the Probe to conserve the Probe's available inbound
+        // connections and reduce the impact on its battery life.
+        if device is Probe {
+            let directProbeConnection = (node == nil)
+            if !directProbeConnection && meatNetEnabled && !dfuModeEnabled {
+                
+                if let device = getDeviceWithIdentifier(identifier),
+                   device.connectionState == .connected {
+                    device.disconnect()
+                }
             }
         }
     }

@@ -167,8 +167,9 @@ extension NodeRequest {
             
         case .syncThermometerList, .connected, .disconnected, .log, .associateNode,
                 .probeModelInformation, .probeFirmwareRevision, .probeHardwareRevision, .sessionInfo, .getFeatureFlags:
-            // Nothing to do for this message type
-            return nil
+            // In case these are packed with other messages, we need to return something to ensure the other messages don't
+            // get dropped, even though we don't need to parse these messages currently.
+            return NodeCustomRequest(data: data, requestId: requestId, payloadLength: Int(payloadLength), address: typeRaw)
         case .custom(let address):
             return NodeCustomRequest(data: data, requestId: requestId, payloadLength: Int(payloadLength), address: address)
         default:

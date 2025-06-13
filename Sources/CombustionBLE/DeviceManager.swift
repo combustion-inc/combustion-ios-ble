@@ -766,11 +766,26 @@ extension DeviceManager : BleManagerDelegate {
     }
     
     private func updateDeviceWithNodeStatus(serialNumber: String, status: DeviceStatus, hopCount: HopCount, node: MeatNetNode) {
-        guard let device = findAccesoryBySerialNumber(serialNumber: serialNumber) else { return }
-        
-        device.updateDeviceStatus(deviceStatus: status, hopCount: hopCount)
-        
-        connectionManager.receivedStatusFor(device, node: node)
+        // accesory already created
+        if let accessory = findAccesoryBySerialNumber(serialNumber: serialNumber) {
+            accessory.updateDeviceStatus(deviceStatus: status, hopCount: hopCount)
+            connectionManager.receivedStatusFor(accessory, node: node)
+        }
+        else if let status = status as? GaugeStatus {
+            
+            let meatNetNode = MeatNetNode(isConnectable: false,
+                                          RSSI: 0,
+                                          identifier: UUID())
+            
+            self.addDevice(device: meatNetNode)
+            
+            let gauge = GrillGauge(parent: meatNetNode,
+                                   status: status,
+                                   hopCount: hopCount)
+            addAccessory(accessory: gauge)
+            
+            connectionManager.receivedStatusFor(meatNetNode, node: node)
+        }
     }
     
     func handleDFUData(identifier: UUID, characteristic: BleCharacteristic, data: Data) {
@@ -847,9 +862,9 @@ extension DeviceManager : BleManagerDelegate {
             connectionManager.receivedDeviceAdvertising(probe)
             
         case .meatNetNode:
-
+            
             // if meatnet is not enabled, then ignore advertising from meatnet nodes
-            if(!connectionManager.meatNetEnabled) {
+            if !connectionManager.meatNetEnabled {
                 return
             }
             
@@ -875,8 +890,8 @@ extension DeviceManager : BleManagerDelegate {
                 // Track that data was recieved for probe on node
                 meatnetNode.dataReceivedFromDevice(probe)
             }
-            
         case .gauge:
+            
             let meatNetNode: MeatNetNode
             
             // Update gauge if it is in device list
@@ -884,14 +899,28 @@ extension DeviceManager : BleManagerDelegate {
                 meatNetNode = node
                 node.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
             }
+            // check for existing accessory, may have been created from repeated device status
+            else if let accessory = self.accessories[advertising.serialNumberString] as? GrillGauge, let node = accessory.parent as? MeatNetNode {
+                // node stub was created before node came into range, populate with correct UUID
+                node.uniqueIdentifier = identifier.uuidString
+                node.bleIdentifier = identifier.uuidString
+                meatNetNode = node
+                
+                node.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
+            }
+            // Create node and add to device list
             else {
-                // Create node and add to device list
                 meatNetNode = MeatNetNode(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
                 addDevice(device: meatNetNode)
             }
             
             if let existingGauge = meatNetNode.accessory as? GrillGauge {
                 existingGauge.updateWithAdvertising(advertising)
+            }
+            else if let accessory = self.accessories[advertising.serialNumberString] as? GrillGauge {
+                meatNetNode.accessory = accessory
+                accessory.parent = meatNetNode
+                accessory.updateWithAdvertising(advertising)
             }
             else {
                 let gauge = GrillGauge(parent: meatNetNode, advertising: advertising)
@@ -1149,6 +1178,7 @@ extension DeviceManager : BleManagerDelegate {
     
     private func handleNodeUARTRequest(identifier: UUID, request: NodeRequest) {
 //        print("CombustionBLE : Received Request from Node: \(request)")
+        print("DEVIN: Received Request from Node: \(request)")
         if let statusRequest = request as? NodeProbeStatusRequest {
             
             if let probeStatus = statusRequest.probeStatus,
@@ -1163,16 +1193,29 @@ extension DeviceManager : BleManagerDelegate {
             }
         }
         else if let statusRequest = request as? NodeGaugeStatusRequest {
-            
-            if let gaugeStatus = statusRequest.gaugeStatus,
-               let node = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode,
-               let hopCount = statusRequest.hopCount {
-                
-                // Update the Gauge based on the information that was received
-                updateDeviceWithNodeStatus(serialNumber: statusRequest.serialNumber,
+            if let gaugeStatus = statusRequest.gaugeStatus {
+                if let node = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode,
+                   let hopCount = statusRequest.hopCount {
+                    // Update the Gauge based on the information that was received
+                    
+                    updateDeviceWithNodeStatus(serialNumber: statusRequest.serialNumber,
+                                               status: gaugeStatus,
+                                               hopCount: hopCount,
+                                               node: node)
+                }
+                // if gauge status has been repeated across meatnet, node may not have been created yet.
+                else {
+                    let meatNetNode = MeatNetNode(isConnectable: false,
+                                                  RSSI: 0,
+                                                  identifier: UUID())
+                    
+                    self.addDevice(device: meatNetNode)
+                    
+                    let gauge = GrillGauge(parent: meatNetNode,
                                            status: gaugeStatus,
-                                           hopCount: hopCount,
-                                           node: node)
+                                           hopCount: statusRequest.hopCount)
+                    addAccessory(accessory: gauge)
+                }
             }
         }
         else if let heartBeatRequest = request as? NodeHeartbeatRequest {

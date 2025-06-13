@@ -82,7 +82,7 @@ public class GrillGauge: Accessory {
     private var deviceManager = DeviceManager.shared
     
     public var connectionState: Device.ConnectionState {
-        return parent.connectionState
+        return parent.connectionState ?? .disconnected
     }
     
     init(parent: MeatNetNode, advertising: any AdvertisingData) {
@@ -90,6 +90,13 @@ public class GrillGauge: Accessory {
         self.serialNumber = advertising.serialNumberString
         
         updateWithAdvertising(advertising)
+    }
+    
+    init(parent: MeatNetNode, status: GaugeStatus, hopCount: HopCount?) {
+        self.parent = parent
+        self.serialNumber = status.serialNumber
+        
+        updateDeviceStatus(deviceStatus: status, hopCount: hopCount)
     }
     
     public func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
@@ -104,7 +111,7 @@ public class GrillGauge: Accessory {
         
         (parent as? MeatNetNode)?.updateLastUpdateTime()
         
-        if(parent.connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(parent)) {
+        if parent.connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(parent) {
             updateTemperatures(temperature: advertisingData.temperatures)
             updateBatteryPercentage(Int(advertisingData.batteryPercentage))
             updateHighLowAlarms(advertisingData.highLowAlarmStatus)

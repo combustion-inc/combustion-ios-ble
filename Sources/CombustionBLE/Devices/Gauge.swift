@@ -34,11 +34,7 @@ public class GrillGauge: Accessory {
         return .gauge
     }
     
-    public internal(set) var parent: Device? {
-        didSet {
-            parentSubject.value = parent
-        }
-    }
+    public private(set) var parent: Device?
     
     // device serial number
     @Published public private(set) var serialNumber: String
@@ -87,39 +83,7 @@ public class GrillGauge: Accessory {
     /// Tracks the last time any update recieved for accessory
     @Published public internal(set) var lastUpdateTime: Date = Date()
     
-    var parentSubject = CurrentValueSubject<Device?, Never>(nil)
-    
-    public var firmareVersionPublisher: AnyPublisher<String?, Never> {
-        parentSubject
-            .flatMap { parent in
-                parent?.$firmareVersion.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
-            }
-            .eraseToAnyPublisher()
-    }
-    
-    public var hardwareRevisionPublisher: AnyPublisher<String?, Never> {
-        parentSubject
-            .flatMap { parent in
-                parent?.$hardwareRevision.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
-            }
-            .eraseToAnyPublisher()
-    }
-    
-    public var skuPublisher: AnyPublisher<String?, Never> {
-        parentSubject
-            .flatMap { parent in
-                parent?.$sku.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
-            }
-            .eraseToAnyPublisher()
-    }
-    
-    public var manufacturingLotPublisher: AnyPublisher<String?, Never> {
-        parentSubject
-            .flatMap { parent in
-                parent?.$manufacturingLot.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
-            }
-            .eraseToAnyPublisher()
-    }
+    public var parentSubject = CurrentValueSubject<Device?, Never>(nil)
     
     private var deviceManager = DeviceManager.shared
     
@@ -132,17 +96,25 @@ public class GrillGauge: Accessory {
     }
     
     init(parent: MeatNetNode, advertising: any AdvertisingData) {
-        self.parent = parent
         self.serialNumber = advertising.serialNumberString
         
+        setParent(parent)
         updateWithAdvertising(advertising)
     }
     
     init(parent: MeatNetNode? = nil, status: GaugeStatus, hopCount: HopCount?) {
-        self.parent = parent
         self.serialNumber = status.serialNumber
         
+        setParent(parent)
         updateDeviceStatus(deviceStatus: status, hopCount: hopCount)
+    }
+    
+    public func setParent(_ device: Device?) {
+        self.parent = device
+        
+        if let device = device {
+            self.parentSubject.value = device
+        }
     }
     
     public func updateWithSessionInformation(_ sessionInfo: SessionInformation) {

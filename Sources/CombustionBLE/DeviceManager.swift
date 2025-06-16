@@ -912,7 +912,7 @@ extension DeviceManager : BleManagerDelegate {
             }
             else if let accessory = self.accessories[advertising.serialNumberString] as? GrillGauge {
                 meatNetNode.accessory = accessory
-                accessory.parent = meatNetNode
+                accessory.setParent(meatNetNode)
                 accessory.updateWithAdvertising(advertising)
             }
             else {

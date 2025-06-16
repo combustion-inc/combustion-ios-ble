@@ -24,6 +24,7 @@ SOFTWARE.
 --*/
 
 import Foundation
+import Combine
 
 public class GrillGauge: Accessory {
     
@@ -33,7 +34,11 @@ public class GrillGauge: Accessory {
         return .gauge
     }
     
-    public internal(set) var parent: Device
+    public internal(set) var parent: Device? {
+        didSet {
+            parentSubject.value = parent
+        }
+    }
     
     // device serial number
     @Published public private(set) var serialNumber: String
@@ -79,10 +84,51 @@ public class GrillGauge: Accessory {
     /// Tracks what percent of logs on probe have been synced to the app
     @Published public internal(set) var percentOfLogsSynced: Int?
     
+    /// Tracks the last time any update recieved for accessory
+    @Published public internal(set) var lastUpdateTime: Date = Date()
+    
+    var parentSubject = CurrentValueSubject<Device?, Never>(nil)
+    
+    public var firmareVersionPublisher: AnyPublisher<String?, Never> {
+        parentSubject
+            .flatMap { parent in
+                parent?.$firmareVersion.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    public var hardwareRevisionPublisher: AnyPublisher<String?, Never> {
+        parentSubject
+            .flatMap { parent in
+                parent?.$hardwareRevision.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    public var skuPublisher: AnyPublisher<String?, Never> {
+        parentSubject
+            .flatMap { parent in
+                parent?.$sku.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    public var manufacturingLotPublisher: AnyPublisher<String?, Never> {
+        parentSubject
+            .flatMap { parent in
+                parent?.$manufacturingLot.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
+            }
+            .eraseToAnyPublisher()
+    }
+    
     private var deviceManager = DeviceManager.shared
     
+    public var lastUpdateTimePublisher: AnyPublisher<Date, Never> {
+        $lastUpdateTime.eraseToAnyPublisher()
+    }
+    
     public var connectionState: Device.ConnectionState {
-        return parent.connectionState ?? .disconnected
+        return parent?.connectionState ?? .disconnected
     }
     
     init(parent: MeatNetNode, advertising: any AdvertisingData) {
@@ -92,7 +138,7 @@ public class GrillGauge: Accessory {
         updateWithAdvertising(advertising)
     }
     
-    init(parent: MeatNetNode, status: GaugeStatus, hopCount: HopCount?) {
+    init(parent: MeatNetNode? = nil, status: GaugeStatus, hopCount: HopCount?) {
         self.parent = parent
         self.serialNumber = status.serialNumber
         
@@ -109,9 +155,9 @@ public class GrillGauge: Accessory {
     public func updateWithAdvertising(_ advertising: any AdvertisingData) {
         guard let advertisingData = advertising as? GaugeAdvertisingData else { return }
         
-        (parent as? MeatNetNode)?.updateLastUpdateTime()
+        updateLastUpdateTime()
         
-        if parent.connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(parent) {
+        if let parent = parent, parent.connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(parent) {
             updateTemperatures(temperature: advertisingData.temperatures)
             updateBatteryPercentage(Int(advertisingData.batteryPercentage))
             updateHighLowAlarms(advertisingData.highLowAlarmStatus)
@@ -186,6 +232,8 @@ public class GrillGauge: Accessory {
         
         // Publish most recent status
         mostRecentStatus = deviceStatus
+        
+        updateLastUpdateTime()
     }
     
     /// Determines whether to update Normal Mode info based on the hop count of the data.
@@ -256,6 +304,13 @@ public class GrillGauge: Accessory {
     
     func updateStatusNotificationsStale() {
         statusNotificationsStale = Date().timeIntervalSince(lastStatusNotificationTime) > Constants.STATUS_NOTIFICATION_STALE_TIMEOUT
+    }
+    
+    public func updateLastUpdateTime() {
+        guard Date().timeIntervalSince(lastUpdateTime) > Constants.MINIMUM_LAST_UPDATE_CHANGE else { return }
+        
+        lastUpdateTime = Date()
+        (parent as? MeatNetNode)?.updateLastUpdateTime()
     }
 }
 

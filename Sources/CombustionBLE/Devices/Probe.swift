@@ -36,7 +36,7 @@ open class Probe : Device {
         
     /// Returns serial number formatted as a string
     public var serialNumberString : String {
-        return String(format: "%08X", serialNumber)
+        return Probe.serialNumberToString(serialNumber)
     }
     
     @Published public internal(set) var currentTemperatures: ProbeTemperatures?
@@ -163,7 +163,8 @@ open class Probe : Device {
         id = advertising.modeId.id
         color = advertising.modeId.color
         
-        super.init(uniqueIdentifier: String(advertising.serialNumber), bleIdentifier: identifier, RSSI: RSSI)
+        super.init(uniqueIdentifier: Probe.serialNumberToString(advertising.serialNumber),
+                   bleIdentifier: identifier, RSSI: RSSI)
         
         updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: RSSI, bleIdentifier: identifier)
         
@@ -205,6 +206,10 @@ open class Probe : Device {
         updateStatusNotificationsStale()
         
         super.updateDeviceStale()
+    }
+    
+    static func serialNumberToString(_ serialNumber: UInt32) -> String {
+        return String(format: "%08X", serialNumber)
     }
 }
     
@@ -309,8 +314,8 @@ extension Probe {
                    
         var updated : Bool = false
         
-        if(deviceStatus.modeId.mode == .normal) {
-            if(shouldUpdateNormalMode(hopCount: hopCount)) {
+        if deviceStatus.modeId.mode == .normal {
+            if shouldUpdateNormalMode(hopCount: hopCount) {
                 // Update ID, Color, Battery status
                 updateIdColorBattery(probeId: deviceStatus.modeId.id,
                                      probeColor: deviceStatus.modeId.color,
@@ -347,7 +352,7 @@ extension Probe {
                 updated = true
             }
         }
-        else if(deviceStatus.modeId.mode == .instantRead) {
+        else if deviceStatus.modeId.mode == .instantRead {
             // Update Instant Read temperature, including hop count information.
             updated = updateInstantRead(deviceStatus.temperatures.values[0],
                                         probeId: deviceStatus.modeId.id,
@@ -599,7 +604,7 @@ extension Probe: Accessory {
         return []
     }
     
-    public var parent: Device {
+    public var parent: Device? {
         return self
     }
     
@@ -607,6 +612,30 @@ extension Probe: Accessory {
         guard let advertisingData = advertising as? ProbeAdvertisingData else { return }
 
         self.updateWithAdvertising(advertisingData, isConnectable: nil, RSSI: nil, bleIdentifier: nil)
+    }
+    
+    public func updateLastUpdateTime() {
+        self.setLastUpdateTime()
+    }
+    
+    public var lastUpdateTimePublisher: AnyPublisher<Date, Never> {
+        return $lastUpdateTime.eraseToAnyPublisher()
+    }
+    
+    public var firmareVersionPublisher: AnyPublisher<String?, Never> {
+        return $firmareVersion.eraseToAnyPublisher()
+    }
+    
+    public var hardwareRevisionPublisher: AnyPublisher<String?, Never> {
+        return $hardwareRevision.eraseToAnyPublisher()
+    }
+    
+    public var skuPublisher: AnyPublisher<String?, Never> {
+        return $sku.eraseToAnyPublisher()
+    }
+    
+    public var manufacturingLotPublisher: AnyPublisher<String?, Never> {
+        return $manufacturingLot.eraseToAnyPublisher()
     }
     
 }

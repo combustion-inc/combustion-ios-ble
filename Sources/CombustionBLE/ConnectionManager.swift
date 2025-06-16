@@ -56,7 +56,7 @@ class ConnectionManager {
               device.connectionState != .connected else { return }
         
         var deviceStatusStale = true
-        if let lastUpdateTime = lastStatusUpdate[device.uniqueIdentifier] {
+        if let lastUpdateTime = getLastStatusUpdate(device: device) {
             deviceStatusStale = Date().timeIntervalSince(lastUpdateTime) > DEVICE_STATUS_STALE_TIMEOUT
         }
         
@@ -111,10 +111,14 @@ class ConnectionManager {
         }
     }
     
-    func receivedStatusFor(_ device: Device, node: MeatNetNode?) {
-        guard let identifier = device.uniqueIdentifier as? String else { return }
-        
-        lastStatusUpdate[identifier] = Date()
+    func receivedStatusFor(_ device: MeatNetNode, node: MeatNetNode?) {
+        if let accessory = device.accessory {
+            receivedStatusFor(accessory, node: node)
+        }
+    }
+    
+    func receivedStatusFor(_ device: any Accessory, node: MeatNetNode?) {
+        updateLastStatusUpdate(device: device)
         
         // Track that data was recieved for device on node
         node?.dataReceivedFromDevice(device)
@@ -126,7 +130,7 @@ class ConnectionManager {
             let directProbeConnection = (node == nil)
             if !directProbeConnection && meatNetEnabled && !dfuModeEnabled {
                 
-                if let device = getDeviceWithIdentifier(identifier),
+                if let device = getProbeWithIdentifier(device.serialNumberString),
                    device.connectionState == .connected {
                     device.disconnect()
                 }
@@ -134,15 +138,37 @@ class ConnectionManager {
         }
     }
     
+    private func updateLastStatusUpdate(device: any Accessory) {
+        lastStatusUpdate[device.serialNumberString] = Date()
+    }
+    
+    private func getLastStatusUpdate(device: any Accessory) -> Date? {
+        return lastStatusUpdate[device.serialNumberString]
+    }
+    
+    private func getLastStatusUpdate(device: Device) -> Date? {
+        if let device = device as? MeatNetNode, let accessory = device.accessory {
+            return lastStatusUpdate[accessory.serialNumberString]
+        }
+        else {
+            return lastStatusUpdate[device.uniqueIdentifier]
+        }
+    }
+    
+    private func getProbeWithIdentifier(_ serialNumber: String) -> Device? {
+        let devices = DeviceManager.shared.getProbes()
+        return devices.filter { $0.serialNumberString == serialNumber }.first
+    }
+    
     private func getDeviceWithIdentifier(_ identifier: String) -> Device? {
         let devices = DeviceManager.shared.getDevices()
-        return devices.filter { $0.uniqueIdentifier == identifier}.first
+        return devices.filter { $0.uniqueIdentifier == identifier }.first
     }
     
     private func deviceInAllowList(_ device: Device) -> Bool {
         // If allowList is nil, then return true
         guard let allowList = deviceAllowList else { return true }
-        
+
         if let device = device as? Probe {
             return allowList.contains(device.serialNumberString)
         }

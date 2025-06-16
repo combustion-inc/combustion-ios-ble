@@ -772,19 +772,11 @@ extension DeviceManager : BleManagerDelegate {
             connectionManager.receivedStatusFor(accessory, node: node)
         }
         else if let status = status as? GaugeStatus {
-            
-            let meatNetNode = MeatNetNode(isConnectable: false,
-                                          RSSI: 0,
-                                          identifier: UUID())
-            
-            self.addDevice(device: meatNetNode)
-            
-            let gauge = GrillGauge(parent: meatNetNode,
-                                   status: status,
+            let gauge = GrillGauge(status: status,
                                    hopCount: hopCount)
             addAccessory(accessory: gauge)
             
-            connectionManager.receivedStatusFor(meatNetNode, node: node)
+            connectionManager.receivedStatusFor(gauge, node: node)
         }
     }
     
@@ -827,7 +819,7 @@ extension DeviceManager : BleManagerDelegate {
         
         // If this advertising data was from a Probe, attempt to find its Device entry by its serial number.
         if advertising.serialNumber != Constants.INVALID_PROBE_SERIAL_NUMBER {
-            let uniqueIdentifier = String(advertising.serialNumber)
+            let uniqueIdentifier = Probe.serialNumberToString(advertising.serialNumber)
             if let probe = devices[uniqueIdentifier] as? Probe {
                 // If we already have an entry for this Probe, update its information.
                 probe.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi, bleIdentifier: identifier)
@@ -899,18 +891,10 @@ extension DeviceManager : BleManagerDelegate {
                 meatNetNode = node
                 node.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
             }
-            // check for existing accessory, may have been created from repeated device status
-            else if let accessory = self.accessories[advertising.serialNumberString] as? GrillGauge, let node = accessory.parent as? MeatNetNode {
-                // node stub was created before node came into range, populate with correct UUID
-                node.uniqueIdentifier = identifier.uuidString
-                node.bleIdentifier = identifier.uuidString
-                meatNetNode = node
-                
-                node.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
-            }
             // Create node and add to device list
             else {
                 meatNetNode = MeatNetNode(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
+                
                 addDevice(device: meatNetNode)
             }
             
@@ -928,8 +912,6 @@ extension DeviceManager : BleManagerDelegate {
                 
                 addAccessory(accessory: gauge)
             }
-            
-            connectionManager.receivedDeviceAdvertising(meatNetNode)
         case .unknown, .charger, .display:
             print("Found device with unknown type")
         }
@@ -995,7 +977,7 @@ extension DeviceManager : BleManagerDelegate {
     private func findProbeBySerialNumber(serialNumber: UInt32) -> Probe? {
         var foundProbe : Probe? = nil
         
-        if let probe = devices[String(serialNumber)] as? Probe {
+        if let probe = devices[Probe.serialNumberToString(serialNumber)] as? Probe {
             // Probes are stored using their serial number encoded as a String as their key.
             foundProbe = probe
         }
@@ -1178,7 +1160,6 @@ extension DeviceManager : BleManagerDelegate {
     
     private func handleNodeUARTRequest(identifier: UUID, request: NodeRequest) {
 //        print("CombustionBLE : Received Request from Node: \(request)")
-        print("DEVIN: Received Request from Node: \(request)")
         if let statusRequest = request as? NodeProbeStatusRequest {
             
             if let probeStatus = statusRequest.probeStatus,

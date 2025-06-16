@@ -768,8 +768,18 @@ extension DeviceManager : BleManagerDelegate {
     private func updateDeviceWithNodeStatus(serialNumber: String, status: DeviceStatus, hopCount: HopCount, node: MeatNetNode) {
         // accesory already created
         if let accessory = findAccesoryBySerialNumber(serialNumber: serialNumber) {
-            accessory.updateDeviceStatus(deviceStatus: status, hopCount: hopCount)
+            if let parent = accessory.parent as? MeatNetNode {
+                parent.updateDeviceStatus(deviceStatus: status, hopCount: hopCount)
+            }
+            else {
+                accessory.updateDeviceStatus(deviceStatus: status, hopCount: hopCount)
+            }
+            
             connectionManager.receivedStatusFor(accessory, node: node)
+        }
+        else if let device = self.findDeviceBySerialNumber(serialNumber: serialNumber) as? MeatNetNode {
+            device.updateDeviceStatus(deviceStatus: status, hopCount: hopCount)
+            connectionManager.receivedStatusFor(device, node: node)
         }
         else if let status = status as? GaugeStatus {
             let gauge = GrillGauge(status: status,
@@ -883,7 +893,6 @@ extension DeviceManager : BleManagerDelegate {
                 meatnetNode.dataReceivedFromDevice(probe)
             }
         case .gauge:
-            
             let meatNetNode: MeatNetNode
             
             // Update gauge if it is in device list
@@ -985,14 +994,8 @@ extension DeviceManager : BleManagerDelegate {
         return foundProbe
     }
     
-    private func findAccesoryBySerialNumber(serialNumber: String) -> MeatNetNode? {
-        var foundDevice : MeatNetNode? = nil
-        
-        if let device = devices.first(where: { ($0.value as? MeatNetNode)?.accessory?.serialNumberString == serialNumber })?.value as? MeatNetNode {
-            foundDevice = device
-        }
-        
-        return foundDevice
+    private func findAccesoryBySerialNumber(serialNumber: String) -> (any Accessory)? {
+        return self.accessories[serialNumber]
     }
     
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String) {
@@ -1141,7 +1144,7 @@ extension DeviceManager : BleManagerDelegate {
                     probe.processLogResponse(logResponse: readLogsResponse)
                 }
         case .gaugeLog:
-            if let readGaugeLogsResponse = response as? NodeGaugeReadLogsResponse, let gauge = findAccesoryBySerialNumber(serialNumber: readGaugeLogsResponse.gaugeSerialNumber)?.accessory as? GrillGauge {
+            if let readGaugeLogsResponse = response as? NodeGaugeReadLogsResponse, let gauge = findAccesoryBySerialNumber(serialNumber: readGaugeLogsResponse.gaugeSerialNumber) as? GrillGauge {
                 gauge.processLogResponse(logResponse: readGaugeLogsResponse)
             }
         case .getFeatureFlags:

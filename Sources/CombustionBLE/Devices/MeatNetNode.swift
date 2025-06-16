@@ -38,7 +38,7 @@ public class MeatNetNode: Device {
     @Published public internal(set) var serialNumberString: String?
     
     /// Dictionary of Devices connected to this Node's Network
-    @Published public var devices: [String : Device] = [:]
+    @Published public var devices: [String : any Accessory] = [:]
     
     /// dfudevice type
     @Published public internal(set) var dfuType: ProductType = .unknown
@@ -118,14 +118,14 @@ public class MeatNetNode: Device {
         updateLastUpdateTime()
     }
     
-    func dataReceivedFromDevice(_ device: Device?) {
+    func dataReceivedFromDevice(_ device: (any Accessory)?) {
         guard let device = device else { return }
         
         // Add connection to gauge
-        devices[device.uniqueIdentifier] = device
+        devices[device.serialNumberString] = device
         
         // Update last time data was recieved for device
-        lastTimeDataRecieved[device.uniqueIdentifier] = Date()
+        lastTimeDataRecieved[device.serialNumberString] = Date()
         updateLastUpdateTime()
     }
     

@@ -24,13 +24,14 @@ SOFTWARE.
 --*/
 
 import Foundation
+import Combine
 
 /// Representation of a meat net nodes native abilites, such as Grill Gauge
 public protocol Accessory {
     
     associatedtype SerialNumberType
         
-    var parent: Device { get }
+    var parent: Device? { get }
     
     var type: ProductType { get }
      
@@ -48,6 +49,16 @@ public protocol Accessory {
     func updateWithAdvertising(_ advertising: any AdvertisingData)
     
     func updateWithSessionInformation(_ sessionInfo: SessionInformation)
+    
+    func updateLastUpdateTime() 
+    
+    var lastUpdateTimePublisher: AnyPublisher<Date, Never> { get }
+    
+    // forwarding publishers for parent values
+    var firmareVersionPublisher: AnyPublisher<String?, Never> { get }
+    var hardwareRevisionPublisher: AnyPublisher<String?, Never> { get }
+    var skuPublisher: AnyPublisher<String?, Never> { get }
+    var manufacturingLotPublisher: AnyPublisher<String?, Never> { get }
 }
 
 public extension Accessory {

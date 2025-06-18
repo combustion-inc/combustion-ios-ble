@@ -59,6 +59,42 @@ public protocol Accessory {
     var hardwareRevisionPublisher: AnyPublisher<String?, Never> { get }
     var skuPublisher: AnyPublisher<String?, Never> { get }
     var manufacturingLotPublisher: AnyPublisher<String?, Never> { get }
+    var parentSubject: CurrentValueSubject<Device?, Never> { get }
+}
+
+public extension Accessory {
+    
+    public var firmareVersionPublisher: AnyPublisher<String?, Never> {
+        parentSubject
+            .flatMap { parent in
+                parent?.$firmareVersion.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    public var hardwareRevisionPublisher: AnyPublisher<String?, Never> {
+        parentSubject
+            .flatMap { parent in
+                parent?.$hardwareRevision.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    public var skuPublisher: AnyPublisher<String?, Never> {
+        parentSubject
+            .flatMap { parent in
+                parent?.$sku.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    public var manufacturingLotPublisher: AnyPublisher<String?, Never> {
+        parentSubject
+            .flatMap { parent in
+                parent?.$manufacturingLot.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
+            }
+            .eraseToAnyPublisher()
+    }
 }
 
 public extension Accessory {

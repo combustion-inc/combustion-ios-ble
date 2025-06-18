@@ -912,7 +912,7 @@ extension DeviceManager : BleManagerDelegate {
             }
             else if let accessory = self.accessories[advertising.serialNumberString] as? GrillGauge {
                 meatNetNode.accessory = accessory
-                accessory.parent = meatNetNode
+                accessory.setParent(meatNetNode)
                 accessory.updateWithAdvertising(advertising)
             }
             else {
@@ -921,6 +921,8 @@ extension DeviceManager : BleManagerDelegate {
                 
                 addAccessory(accessory: gauge)
             }
+            
+            connectionManager.receivedDeviceAdvertising(meatNetNode)
         case .unknown, .charger, .display:
             print("Found device with unknown type")
         }

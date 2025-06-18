@@ -594,6 +594,10 @@ extension Probe {
 
 extension Probe: Accessory {
     
+    public var parentSubject: CurrentValueSubject<Device?, Never> {
+        return CurrentValueSubject<Device?, Never>(nil)
+    }
+    
     public typealias SerialNumberType = UInt32
     
     public var type: ProductType {
@@ -620,22 +624,6 @@ extension Probe: Accessory {
     
     public var lastUpdateTimePublisher: AnyPublisher<Date, Never> {
         return $lastUpdateTime.eraseToAnyPublisher()
-    }
-    
-    public var firmareVersionPublisher: AnyPublisher<String?, Never> {
-        return $firmareVersion.eraseToAnyPublisher()
-    }
-    
-    public var hardwareRevisionPublisher: AnyPublisher<String?, Never> {
-        return $hardwareRevision.eraseToAnyPublisher()
-    }
-    
-    public var skuPublisher: AnyPublisher<String?, Never> {
-        return $sku.eraseToAnyPublisher()
-    }
-    
-    public var manufacturingLotPublisher: AnyPublisher<String?, Never> {
-        return $manufacturingLot.eraseToAnyPublisher()
     }
     
 }

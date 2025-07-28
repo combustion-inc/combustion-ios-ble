@@ -266,7 +266,12 @@ extension BleManager: CBCentralManagerDelegate{
     
     /// Connect to device with the specified name.
     public func connect(identifier: String) {
-        guard let combustionPeripheral = peripherals[identifier] else { return }
+        guard let combustionPeripheral = peripherals[identifier],
+                  combustionPeripheral.peripheral.state != .connecting,
+                  combustionPeripheral.peripheral.state != .connected
+            else { return }
+        
+        combustionPeripheral.peripheral.state == .connecting
         manager?.connect(combustionPeripheral.peripheral, options: nil)
     }
     

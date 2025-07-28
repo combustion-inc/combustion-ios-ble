@@ -271,7 +271,6 @@ extension BleManager: CBCentralManagerDelegate{
                   combustionPeripheral.peripheral.state != .connected
             else { return }
         
-        combustionPeripheral.peripheral.state == .connecting
         manager?.connect(combustionPeripheral.peripheral, options: nil)
     }
     

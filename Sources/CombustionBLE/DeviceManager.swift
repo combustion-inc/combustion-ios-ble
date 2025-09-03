@@ -377,6 +377,16 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
     }
     
+    public func setProbeHighLowAlarms(_ probe: Probe, highAlarms: [AlarmStatus], lowAlarms: [AlarmStatus], completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        if shouldSendMessageDirectlyTo(probe: probe) {
+            let request = SetHighLowAlarmsRequest(highAlarms: highAlarms, lowAlarms: lowAlarms)
+            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+        }
+        else {
+            // TODO: add meat net call
+        }
+    }
+    
     /// Sends a request to the device to set/change the set point temperature for the time to
     /// removal prediction.  If a prediction is not currently active, it will be started.  If a
     /// removal prediction is currently active, then the set point will be modified.  If another
@@ -1078,6 +1088,7 @@ extension DeviceManager : BleManagerDelegate {
                 .setPowerMode,
                 .setID,
                 .setPrediction,
+                .setHighLowAlarms,
                 .resetSession:
                 messageHandlers.callSuccessHandler(identifier, response: response)
         }

@@ -28,6 +28,7 @@ import Foundation
 
 /// Message containing Probe status information.
 public struct ProbeStatus {
+    
     /// Minimum sequence number of records in Probe's memory.
     public let minSequenceNumber: UInt32
     
@@ -58,6 +59,12 @@ public struct ProbeStatus {
     /// Thermometer preferences
     public let thermometerPreferences: ThermometerPreferences
     
+    /// High alarm status for each alarm (T1, T2, T3, T4, T5, T6, T7, T8, Core, Surface, Ambient)
+    public let highAlarms: [AlarmStatus]
+    
+    /// Low alarm status for each alarm (T1, T2, T3, T4, T5, T6, T7, T8, Core, Surface, Ambient)
+    public let lowAlarms: [AlarmStatus]
+    
     public init(minSequenceNumber: UInt32,
                 maxSequenceNumber: UInt32,
                 temperatures: ProbeTemperatures,
@@ -67,7 +74,9 @@ public struct ProbeStatus {
                 foodSafeData: FoodSafeData?,
                 foodSafeStatus: FoodSafeStatus?,
                 overheatingSensors: OverheatingSensors,
-                preferences: ThermometerPreferences) {
+                preferences: ThermometerPreferences,
+                highAlarms: [AlarmStatus],
+                lowAlarms: [AlarmStatus]) {
         self.minSequenceNumber = minSequenceNumber
         self.maxSequenceNumber = maxSequenceNumber
         self.temperatures = temperatures
@@ -78,10 +87,13 @@ public struct ProbeStatus {
         self.foodSafeStatus = foodSafeStatus
         self.overheatingSensors = overheatingSensors
         self.thermometerPreferences = preferences
+        self.highAlarms = highAlarms
+        self.lowAlarms = lowAlarms
     }
 }
 
 extension ProbeStatus {
+    
     private enum Constants {
         // Locations of data in status packet
         static let MIN_SEQ_RANGE = 0..<4
@@ -94,9 +106,11 @@ extension ProbeStatus {
         static let FOOD_SAFE_STATUS_RANGE = 40..<48
         static let OVERHEAT_BYTE_RANGE = 48..<49
         static let PREFERENCES_BYTE_RANGE = 49..<50
+        static let HIGH_ALARM_BYTE_RANGE = 50..<72
+        static let LOW_ALARM_BYTE_RANGE = 72..<94
     }
     
-    init?(fromData data: Data, overheatRange: Range<Int> = Constants.OVERHEAT_BYTE_RANGE, preferencesRange: Range<Int> = Constants.PREFERENCES_BYTE_RANGE) {
+    init?(fromData data: Data, overheatRange: Range<Int> = Constants.OVERHEAT_BYTE_RANGE, preferencesRange: Range<Int> = Constants.PREFERENCES_BYTE_RANGE, highAlarmRange: Range<Int> = Constants.HIGH_ALARM_BYTE_RANGE, lowAlarmRange: Range<Int> = Constants.LOW_ALARM_BYTE_RANGE) {
         guard data.count >= Constants.PREDICTION_STATUS_RANGE.endIndex else { return nil }
         
         let minRaw = data.subdata(in: Constants.MIN_SEQ_RANGE)
@@ -144,10 +158,9 @@ extension ProbeStatus {
         else {
             foodSafeStatus = nil
         }
-
+        
         // Decode Over heating flags
         if data.count >= overheatRange.endIndex {
-            
             // Sanity check for overheating flags. If none of the temperatures are
             // above previous temperature thresholds, then there are no overheating sensors.
             // This check was added due to a bug in Node (display and booster) firmware versions < 2.2.0
@@ -171,6 +184,22 @@ extension ProbeStatus {
         else {
             // default to normal if no preferences available
             thermometerPreferences = ThermometerPreferences(powerMode: .normal)
+        }
+        
+        if data.count >= highAlarmRange.endIndex {
+            let highAlarmData = data.subdata(in: highAlarmRange)
+            highAlarms = AlarmStatus.arrayFromRawData(data: highAlarmData)
+        }
+        else {
+            highAlarms = []
+        }
+        
+        if data.count >= lowAlarmRange.endIndex {
+            let lowAlarmData = data.subdata(in: lowAlarmRange)
+            lowAlarms = AlarmStatus.arrayFromRawData(data: lowAlarmData)
+        }
+        else {
+            lowAlarms = []
         }
     }
 }

@@ -80,6 +80,26 @@ public struct AlarmStatus: Equatable, Hashable {
         
         return AlarmStatus(set: set, tripped: tripped, alarming: alarming, alarmTemperature: alarmTemperature)
     }
+    
+    /// Parses an array of AlarmStatus values from a raw data buffer.
+    static func arrayFromRawData(data: Data) -> [AlarmStatus] {
+        guard data.count >= 2, data.count % 2 == 0 else { return [] }
+
+        var result: [AlarmStatus] = []
+        result.reserveCapacity(data.count / 2)
+
+        var i = data.startIndex
+        while i < data.endIndex {
+            let low  = UInt16(data[i])
+            let high = UInt16(data[i.advanced(by: 1)]) << 8
+            let raw  = low | high // little-endian compose
+
+            result.append(AlarmStatus.fromByte(raw))
+            i = data.index(i, offsetBy: 2)
+        }
+
+        return result
+    }
 }
 
 extension HighLowAlarmStatus {

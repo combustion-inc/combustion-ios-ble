@@ -34,6 +34,7 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         static let SERIAL_RANGE = 3..<13
         static let TEMPERATURE_RANGE = 13..<15
         static let DEVICE_STATUS_RANGE = 15..<16
+        static let RESERVED_RANGE = 16..<17
         static let HI_LO_STATUS_ALARM_RANGE = 16..<20
         
         static let COMBUSTION_VENDOR_ID = 0x09C7

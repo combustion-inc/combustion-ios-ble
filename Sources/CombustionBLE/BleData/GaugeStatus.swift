@@ -85,9 +85,9 @@ extension GaugeStatus {
         static let TEMPERATURE_RANGE = 26..<28
         static let GAUGE_STATUS_RANGE = 28..<29
         static let LOG_RANGE = 29..<37
-        static let BATTERY_PERCENTAGE_RANGE = 37..<38
-        static let HIGH_LOW_ALARM_RANGE = 37..<41
-        static let NEW_RECORD_FLAG_RANGE = 41..<42 //
+        static let RESERVED_RANGE = 37..<38
+        static let HIGH_LOW_ALARM_RANGE = 38..<42
+        static let NEW_RECORD_FLAG_RANGE = 42..<43
     }
     
     init?(fromData data: Data) {

@@ -34,21 +34,22 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         static let SERIAL_RANGE = 3..<13
         static let TEMPERATURE_RANGE = 13..<15
         static let DEVICE_STATUS_RANGE = 15..<16
-        static let BATTERY_PERCENTAGE_RANGE = 16..<17
-        static let HI_LO_STATUS_ALARM_RANGE = 17..<21
+        static let HI_LO_STATUS_ALARM_RANGE = 16..<20
         
         static let COMBUSTION_VENDOR_ID = 0x09C7
     }
     
     var temperatures: GaugeTemperature
     var status: GaugeDetails
-    var batteryPercentage: UInt8
     var highLowAlarmStatus: HighLowAlarmStatus
     
-    init(type: ProductType, serialNumber: String, temperature: GaugeTemperature, status: GaugeDetails, batteryPercentage: UInt8, highLowAlarmStatus: HighLowAlarmStatus) {
+    init(type: ProductType,
+         serialNumber: String,
+         temperature: GaugeTemperature,
+         status: GaugeDetails,
+         highLowAlarmStatus: HighLowAlarmStatus) {
         self.temperatures = temperature
         self.status = status
-        self.batteryPercentage = batteryPercentage
         self.highLowAlarmStatus = highLowAlarmStatus
         super.init(type: type, serialNumber: serialNumber)
     }
@@ -74,8 +75,6 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         
         let status = GaugeDetails.fromByte(data.subdata(in: Constants.DEVICE_STATUS_RANGE)[0])
         
-        let batteryPercentage = data.subdata(in: Constants.BATTERY_PERCENTAGE_RANGE)[0]
-        
         let hiLoAlarmData = data.subdata(in: Constants.HI_LO_STATUS_ALARM_RANGE)
         let hiLoAlarmStatus = HighLowAlarmStatus.fromData(hiLoAlarmData)
         
@@ -83,7 +82,6 @@ class GaugeAdvertisingData: NodeAdvertisingData {
                                     serialNumber: serialNumberString,
                                     temperature: temperatures,
                                     status: status,
-                                    batteryPercentage: batteryPercentage,
                                     highLowAlarmStatus: hiLoAlarmStatus)
     }
 }
@@ -95,7 +93,6 @@ extension GaugeAdvertisingData {
                   serialNumber: fakeSerial,
                   temperature: GaugeTemperature.withFakeData(),
                   status: GaugeDetails.defaultValues(),
-                  batteryPercentage: 100,
                   highLowAlarmStatus: HighLowAlarmStatus.defaultValues())
     }
     
@@ -105,7 +102,6 @@ extension GaugeAdvertisingData {
                   serialNumber: fakeSerial,
                   temperature: fakeTemperatures,
                   status: GaugeDetails.defaultValues(),
-                  batteryPercentage: 100,
                   highLowAlarmStatus: HighLowAlarmStatus.defaultValues())
     }
 }

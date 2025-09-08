@@ -49,9 +49,6 @@ public struct GaugeStatus: DeviceStatus {
     /// gauge details, sensorPresent, sensoryOverheating, lowBattery
     public let status: GaugeDetails
     
-    /// current battery percetage out of 100
-    public let batteryPercentage: UInt8
-    
     /// Number of milliseconds between each log
     public let samplePeriod: UInt16
     
@@ -65,7 +62,6 @@ public struct GaugeStatus: DeviceStatus {
                 temperature: GaugeTemperature,
                 alarmStatus: HighLowAlarmStatus,
                 status: GaugeDetails,
-                batteryPercentage: UInt8,
                 samplePeriod: UInt16,
                 newRecordFlag: Bool) {
         self.serialNumber = serialNumber
@@ -75,7 +71,6 @@ public struct GaugeStatus: DeviceStatus {
         self.temperature = temperature
         self.highLowAlarmStatus = alarmStatus
         self.status = status
-        self.batteryPercentage = batteryPercentage
         self.samplePeriod = samplePeriod
         self.newRecordFlag = newRecordFlag
     }
@@ -91,8 +86,8 @@ extension GaugeStatus {
         static let GAUGE_STATUS_RANGE = 28..<29
         static let LOG_RANGE = 29..<37
         static let BATTERY_PERCENTAGE_RANGE = 37..<38
-        static let HIGH_LOW_ALARM_RANGE = 38..<42
-        static let NEW_RECORD_FLAG_RANGE = 42..<43
+        static let HIGH_LOW_ALARM_RANGE = 37..<41
+        static let NEW_RECORD_FLAG_RANGE = 41..<42 //
     }
     
     init?(fromData data: Data) {
@@ -133,9 +128,6 @@ extension GaugeStatus {
         
         // Status
         self.status = GaugeDetails.fromByte(data.subdata(in: Constants.GAUGE_STATUS_RANGE)[0])
-        
-        // Battery Percentage
-        self.batteryPercentage = data.subdata(in: Constants.BATTERY_PERCENTAGE_RANGE)[0]
         
         // New Record Flag
         let newRecordFlagData = data.subdata(in: Constants.NEW_RECORD_FLAG_RANGE)

@@ -96,7 +96,6 @@ public class SimulatedGauge: MeatNetNode {
                                        temperature: GaugeTemperature.withRandomData(),
                                        alarmStatus: .defaultValues(),
                                        status: .defaultValues(),
-                                       batteryPercentage: 98,
                                        samplePeriod: 5000,
                                        newRecordFlag: false)
         

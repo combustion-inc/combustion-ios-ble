@@ -77,7 +77,6 @@ public struct AlarmStatus: Equatable, Hashable {
         
         let tempRaw = (rawValue >> 3) & 0x1FFF // Extract 13-bit temperature field
         let alarmTemperature: Double? = tempRaw > 0 ? Double(tempRaw) * 0.1 - 20.0 : nil
-        
         return AlarmStatus(set: set, tripped: tripped, alarming: alarming, alarmTemperature: alarmTemperature)
     }
     
@@ -90,9 +89,8 @@ public struct AlarmStatus: Equatable, Hashable {
 
         var i = data.startIndex
         while i < data.endIndex {
-            let low  = UInt16(data[i])
-            let high = UInt16(data[i.advanced(by: 1)]) << 8
-            let raw  = low | high // little-endian compose
+            let value = (UInt16(data[i]) << 8) | UInt16(data[i+1])
+            let raw = UInt16(bigEndian: value)
 
             result.append(AlarmStatus.fromByte(raw))
             i = data.index(i, offsetBy: 2)

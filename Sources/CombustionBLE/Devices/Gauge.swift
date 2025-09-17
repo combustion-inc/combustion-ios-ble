@@ -50,8 +50,6 @@ public class GrillGauge: Accessory {
     
     @Published public internal(set) var mostRecentStatus: GaugeStatus?
     
-    @Published public internal(set) var batteryPercentage: Int?
-    
     @Published public internal(set) var mostRecentHighLowAlarm: HighLowAlarmStatus?
     
     @Published public internal(set) var isSensorAttached: Bool?
@@ -131,7 +129,6 @@ public class GrillGauge: Accessory {
         
         if let parent = parent, parent.connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(parent) {
             updateTemperatures(temperature: advertisingData.temperatures)
-            updateBatteryPercentage(Int(advertisingData.batteryPercentage))
             updateHighLowAlarms(advertisingData.highLowAlarmStatus)
             updateIsSensorAttached(advertisingData.status.sensorPresent)
         }
@@ -152,8 +149,6 @@ public class GrillGauge: Accessory {
             sequenceNumberRange = deviceStatus.minSequenceNumber...deviceStatus.maxSequenceNumber
             
             updateTemperatures(temperature: deviceStatus.temperature)
-            
-            updateBatteryPercentage(Int(deviceStatus.batteryPercentage))
             
             updateHighLowAlarms(deviceStatus.highLowAlarmStatus)
             
@@ -302,10 +297,6 @@ extension GrillGauge {
     
     private func updateTemperatures(temperature: GaugeTemperature) {
         self.currentTemperature = temperature
-    }
-    
-    private func updateBatteryPercentage(_ percentage: Int) {
-        self.batteryPercentage = percentage
     }
     
     private func updateHighLowAlarms(_ highLowAlarmStatus: HighLowAlarmStatus) {

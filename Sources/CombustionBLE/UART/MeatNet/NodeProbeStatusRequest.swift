@@ -69,7 +69,9 @@ class NodeProbeStatusRequest: NodeRequest {
         
         if let ps = ProbeStatus(fromData: probeStatusRaw,
                                 overheatRange: 49..<50,
-                                preferencesRange: 50..<51) {
+                                preferencesRange: 50..<51,
+                                highAlarmRange: 51..<73,
+                                lowAlarmRange: 73..<95) {
             self.probeStatus = ps
         }
         

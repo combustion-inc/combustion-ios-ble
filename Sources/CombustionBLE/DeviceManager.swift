@@ -379,11 +379,19 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     
     public func setProbeHighLowAlarms(_ probe: Probe, highAlarms: [AlarmStatus], lowAlarms: [AlarmStatus], completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
         if shouldSendMessageDirectlyTo(probe: probe) {
-            let request = SetHighLowAlarmsRequest(highAlarms: highAlarms, lowAlarms: lowAlarms)
-            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+            let request = SetHighLowAlarmsRequest(highAlarms: highAlarms,
+                                                  lowAlarms: lowAlarms)
+            sendDirectRequestWithSuccessHandler(probe,
+                                                request: request,
+                                                completionHandler: completionHandler)
         }
         else {
-            // TODO: add meat net call
+            let request = NodeSetProbeHighLowAlarmRequest(serialNumber: probe.serialNumber,
+                                                          highAlarms: highAlarms,
+                                                          lowAlarms: lowAlarms)
+            sendNodeRequestWithSuccessHandler(probe,
+                                              request: request,
+                                              completionHandler: completionHandler)
         }
     }
     
@@ -1165,7 +1173,7 @@ extension DeviceManager : BleManagerDelegate {
                let device = findDeviceBySerialNumber(serialNumber: featureFlagsResponse.nodeSerialNumber) as? MeatNetNode {
                 device.updateFeatureFlags(featureFlagsResponse.flags)
             }
-        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm:
+        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm, .setProbeHighLowAlarm:
             messageHandlers.callNodeSuccessCompletionHandler(response: response)
         case .custom(_):
             deviceResponseHandler?.handleResponse(identifier: identifier, response: response)

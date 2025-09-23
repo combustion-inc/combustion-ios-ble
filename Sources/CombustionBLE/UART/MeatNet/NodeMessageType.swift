@@ -56,6 +56,7 @@ public enum NodeMessageType: Hashable, CaseIterable {
     
     case gaugeStatus
     case setHighLowAlarm
+    case setProbeHighLowAlarm
     
     case custom(address: UInt8)
     
@@ -85,7 +86,8 @@ public enum NodeMessageType: Hashable, CaseIterable {
             .syncThermometerList,
             .resetSession,
             .gaugeStatus,
-            .setHighLowAlarm]
+            .setHighLowAlarm,
+            .setProbeHighLowAlarm]
     }
 }
 
@@ -119,6 +121,7 @@ extension NodeMessageType {
         case .resetSession: 0x0A
         case .gaugeStatus: 0x60
         case .setHighLowAlarm: 0x61
+        case .setProbeHighLowAlarm: 0x0B
         case .custom(let value):
             value
         }

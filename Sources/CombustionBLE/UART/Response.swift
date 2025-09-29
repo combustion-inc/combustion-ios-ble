@@ -140,6 +140,8 @@ extension Response {
             return ResetFoodSafeResponse(success: success, payloadLength: Int(payloadLength))
         case .resetSession:
             return ResetSessionResponse(success: success, payloadLength: Int(payloadLength))
+        case .setHighLowAlarms:
+            return SetHighLowAlarmsResponse(success: success, payloadLength: Int(payloadLength))
         }
     }
 }

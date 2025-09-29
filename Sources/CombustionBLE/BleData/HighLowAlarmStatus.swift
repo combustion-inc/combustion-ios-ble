@@ -77,8 +77,26 @@ public struct AlarmStatus: Equatable, Hashable {
         
         let tempRaw = (rawValue >> 3) & 0x1FFF // Extract 13-bit temperature field
         let alarmTemperature: Double? = tempRaw > 0 ? Double(tempRaw) * 0.1 - 20.0 : nil
-        
         return AlarmStatus(set: set, tripped: tripped, alarming: alarming, alarmTemperature: alarmTemperature)
+    }
+    
+    /// Parses an array of AlarmStatus values from a raw data buffer.
+    static func arrayFromRawData(data: Data) -> [AlarmStatus] {
+        guard data.count >= 2, data.count % 2 == 0 else { return [] }
+
+        var result: [AlarmStatus] = []
+        result.reserveCapacity(data.count / 2)
+
+        var i = data.startIndex
+        while i < data.endIndex {
+            let value = (UInt16(data[i]) << 8) | UInt16(data[i+1])
+            let raw = UInt16(bigEndian: value)
+
+            result.append(AlarmStatus.fromByte(raw))
+            i = data.index(i, offsetBy: 2)
+        }
+
+        return result
     }
 }
 

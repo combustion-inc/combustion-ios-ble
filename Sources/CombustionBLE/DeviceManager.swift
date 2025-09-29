@@ -377,6 +377,24 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
     }
     
+    public func setProbeHighLowAlarms(_ probe: Probe, highAlarms: [AlarmStatus], lowAlarms: [AlarmStatus], completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        if shouldSendMessageDirectlyTo(probe: probe) {
+            let request = SetHighLowAlarmsRequest(highAlarms: highAlarms,
+                                                  lowAlarms: lowAlarms)
+            sendDirectRequestWithSuccessHandler(probe,
+                                                request: request,
+                                                completionHandler: completionHandler)
+        }
+        else {
+            let request = NodeSetProbeHighLowAlarmRequest(serialNumber: probe.serialNumber,
+                                                          highAlarms: highAlarms,
+                                                          lowAlarms: lowAlarms)
+            sendNodeRequestWithSuccessHandler(probe,
+                                              request: request,
+                                              completionHandler: completionHandler)
+        }
+    }
+    
     /// Sends a request to the device to set/change the set point temperature for the time to
     /// removal prediction.  If a prediction is not currently active, it will be started.  If a
     /// removal prediction is currently active, then the set point will be modified.  If another
@@ -1078,6 +1096,7 @@ extension DeviceManager : BleManagerDelegate {
                 .setPowerMode,
                 .setID,
                 .setPrediction,
+                .setHighLowAlarms,
                 .resetSession:
                 messageHandlers.callSuccessHandler(identifier, response: response)
         }
@@ -1154,7 +1173,7 @@ extension DeviceManager : BleManagerDelegate {
                let device = findDeviceBySerialNumber(serialNumber: featureFlagsResponse.nodeSerialNumber) as? MeatNetNode {
                 device.updateFeatureFlags(featureFlagsResponse.flags)
             }
-        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm:
+        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm, .setProbeHighLowAlarm:
             messageHandlers.callNodeSuccessCompletionHandler(response: response)
         case .custom(_):
             deviceResponseHandler?.handleResponse(identifier: identifier, response: response)

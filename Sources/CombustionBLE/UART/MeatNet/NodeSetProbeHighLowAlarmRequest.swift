@@ -1,4 +1,5 @@
-//  MessageType.swift
+//
+//  NodeSetProbeHighLowAlarm.swift
 
 /*--
 MIT License
@@ -21,21 +22,38 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
---*/
+SOFTWARE
+ --*/
 
 import Foundation
 
-enum MessageType: UInt8, CaseIterable  {
-    case setID = 0x01
-    case setColor = 0x02
-    case sessionInfo = 0x03
-    case log = 0x04
-    case setPrediction = 0x05
-    case readOverTemperature = 0x06
-    case configureFoodSafe = 0x07
-    case resetFoodSafe = 0x08
-    case setPowerMode = 0x09
-    case resetSession = 0x0A
-    case setHighLowAlarms = 0x0B
+class NodeSetProbeHighLowAlarmRequest: NodeRequest {
+    
+    init(serialNumber: UInt32, highAlarms: [AlarmStatus], lowAlarms: [AlarmStatus]) {
+        var payload = Data()
+        
+        var serialNumberBytes = serialNumber
+        
+        payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
+        
+        for status in highAlarms {
+            payload.append(contentsOf: status.toBytes())
+        }
+        
+        for status in lowAlarms {
+            payload.append(contentsOf: status.toBytes())
+        }
+        
+        super.init(outgoingPayload: payload, type: .setProbeHighLowAlarm)
+    }
+}
+
+class NodeSetProbeHighLowAlarmResponse : NodeResponse {
+    init(success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
+        super.init(success: success,
+                   requestId: requestId,
+                   responseId: responseId,
+                   payloadLength: payloadLength,
+                   messageType: .setProbeHighLowAlarm)
+    }
 }

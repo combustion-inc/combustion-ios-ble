@@ -108,7 +108,9 @@ public class SimulatedProbe: Probe {
                                       foodSafeData: nil,
                                       foodSafeStatus: nil,
                                       overheatingSensors: OverheatingSensors(sensorIndexes: []),
-                                      preferences: .init(powerMode: .normal))
+                                      preferences: .init(powerMode: .normal),
+                                      highAlarms: [],
+                                      lowAlarms: [])
         
         updateProbeStatus(deviceStatus: probeStatus)
     }

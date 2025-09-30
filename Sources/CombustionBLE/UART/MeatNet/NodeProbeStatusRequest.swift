@@ -36,15 +36,17 @@ class NodeProbeStatusRequest: NodeRequest {
         // length for backwards compatibility
         static let OLD_PAYLOAD_LENGTH = 35
         
-        // Payload length for current firmware
-        static let PAYLOAD_LENGTH = 53
+        // minimum payload length for current firmware
+        static let MIN_PAYLOAD_LENGTH = 55
+        
+        static let SERIAL_NUMBER_LENGTH = 4
     }
 
     
     init?(data: Data, requestId: UInt32, payloadLength: Int) {
         let sequenceByteIndex = NodeRequest.HEADER_LENGTH
         
-        let serialNumberRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + 4))
+        let serialNumberRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + Constants.SERIAL_NUMBER_LENGTH))
         self.serialNumber = serialNumberRaw.withUnsafeBytes {
             $0.load(as: UInt32.self)
         }
@@ -53,20 +55,21 @@ class NodeProbeStatusRequest: NodeRequest {
         let hopCountRaw: Data
         
         // Parse Probe Status
-        let payloadLength = data.count - NodeRequest.HEADER_LENGTH
         
+        let payloadEnd = NodeRequest.HEADER_LENGTH + payloadLength
+
         // Note - ProbeStatus can parse the entire payload intelligently. Pass it the entire remainder of
         // the message.
-        probeStatusRaw = data.subdata(in: (sequenceByteIndex + 4)..<data.count)
-        
-        // Probe status will be 30 bytes or 48 bytes, depending on the firmware version of node
-        if(payloadLength >= Constants.PAYLOAD_LENGTH) {
+        probeStatusRaw = data.subdata(in: (sequenceByteIndex + Constants.SERIAL_NUMBER_LENGTH)..<payloadEnd)
+
+        // Probe status will be 30 bytes or 48 or 99 bytes, depending on the firmware version of node
+        if payloadLength >= Constants.MIN_PAYLOAD_LENGTH {
             hopCountRaw = data.subdata(in: (sequenceByteIndex + 52)..<(sequenceByteIndex + 53))
         }
         else {
             hopCountRaw = data.subdata(in: (sequenceByteIndex + 34)..<(sequenceByteIndex + 35))
         }
-        
+
         if let ps = ProbeStatus(fromData: probeStatusRaw,
                                 overheatRange: 49..<50,
                                 preferencesRange: 50..<51,

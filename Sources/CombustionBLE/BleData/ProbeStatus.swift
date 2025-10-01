@@ -60,10 +60,10 @@ public struct ProbeStatus {
     public let thermometerPreferences: ThermometerPreferences
     
     /// High alarm status for each alarm (T1, T2, T3, T4, T5, T6, T7, T8, Core, Surface, Ambient)
-    public let highAlarms: [AlarmStatus]
+    public let highAlarms: [AlarmStatus]?
     
     /// Low alarm status for each alarm (T1, T2, T3, T4, T5, T6, T7, T8, Core, Surface, Ambient)
-    public let lowAlarms: [AlarmStatus]
+    public let lowAlarms: [AlarmStatus]?
     
     public init(minSequenceNumber: UInt32,
                 maxSequenceNumber: UInt32,
@@ -75,8 +75,8 @@ public struct ProbeStatus {
                 foodSafeStatus: FoodSafeStatus?,
                 overheatingSensors: OverheatingSensors,
                 preferences: ThermometerPreferences,
-                highAlarms: [AlarmStatus],
-                lowAlarms: [AlarmStatus]) {
+                highAlarms: [AlarmStatus]?,
+                lowAlarms: [AlarmStatus]?) {
         self.minSequenceNumber = minSequenceNumber
         self.maxSequenceNumber = maxSequenceNumber
         self.temperatures = temperatures
@@ -191,7 +191,7 @@ extension ProbeStatus {
             highAlarms = AlarmStatus.arrayFromRawData(data: highAlarmData)
         }
         else {
-            highAlarms = []
+            highAlarms = nil
         }
         
         if data.count >= lowAlarmRange.endIndex {
@@ -199,7 +199,7 @@ extension ProbeStatus {
             lowAlarms = AlarmStatus.arrayFromRawData(data: lowAlarmData)
         }
         else {
-            lowAlarms = []
+            lowAlarms = nil
         }
     }
 }

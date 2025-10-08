@@ -405,13 +405,14 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         let meatNetNodes = getMeatnetNodes()
         let probes = getProbes()
         
+        let silenceAlarmRequest = NodeSilenceAlarmsRequest(global: true)
+        
         for node in meatNetNodes {
             guard node.connectionState == .connected else {
                 continue
             }
             
-            let request = NodeSilenceAlarmsRequest(global: true)
-            sendNodeRequest(node: node, request: request)
+            sendNodeRequest(node: node, request: silenceAlarmRequest)
         }
         
         for probe in probes {

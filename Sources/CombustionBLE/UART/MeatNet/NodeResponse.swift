@@ -162,6 +162,8 @@ extension NodeResponse {
             return SetNodeHighLowAlarmResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .setProbeHighLowAlarm:
             return NodeSetProbeHighLowAlarmResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .setHighLowAlarm:
+            return NodeSilenceAlarmsResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .custom(let address):
             return NodeCustomResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength), messageType: messageType)
 //        case .readOverTemperature:

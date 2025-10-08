@@ -57,6 +57,7 @@ public enum NodeMessageType: Hashable, CaseIterable {
     case gaugeStatus
     case setHighLowAlarm
     case setProbeHighLowAlarm
+    case silenceAlarms
     
     case custom(address: UInt8)
     
@@ -87,7 +88,8 @@ public enum NodeMessageType: Hashable, CaseIterable {
             .resetSession,
             .gaugeStatus,
             .setHighLowAlarm,
-            .setProbeHighLowAlarm]
+            .setProbeHighLowAlarm,
+            .silenceAlarms]
     }
 }
 
@@ -122,6 +124,7 @@ extension NodeMessageType {
         case .gaugeStatus: 0x60
         case .setHighLowAlarm: 0x61
         case .setProbeHighLowAlarm: 0x0B
+        case .silenceAlarms: 0x0C
         case .custom(let value):
             value
         }

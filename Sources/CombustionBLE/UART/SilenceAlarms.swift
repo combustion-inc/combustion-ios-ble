@@ -1,4 +1,4 @@
-//  MessageType.swift
+//  SilenceAlarms.swift
 
 /*--
 MIT License
@@ -26,17 +26,16 @@ SOFTWARE.
 
 import Foundation
 
-enum MessageType: UInt8, CaseIterable  {
-    case setID = 0x01
-    case setColor = 0x02
-    case sessionInfo = 0x03
-    case log = 0x04
-    case setPrediction = 0x05
-    case readOverTemperature = 0x06
-    case configureFoodSafe = 0x07
-    case resetFoodSafe = 0x08
-    case setPowerMode = 0x09
-    case resetSession = 0x0A
-    case setHighLowAlarms = 0x0B
-    case silenceAlarms = 0x0C
+class SilenceAlarmsRequest: Request {
+    init() {
+        super.init(payload: .init(), type: .silenceAlarms)
+    }
+}
+
+class SilenceAlarmsResponse : Response {
+    init(success: Bool, payloadLength: Int) {
+        super.init(success:success,
+                   payloadLength: payloadLength,
+                   messageType: .silenceAlarms)
+    }
 }

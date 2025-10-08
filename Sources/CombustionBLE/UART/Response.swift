@@ -142,6 +142,8 @@ extension Response {
             return ResetSessionResponse(success: success, payloadLength: Int(payloadLength))
         case .setHighLowAlarms:
             return SetHighLowAlarmsResponse(success: success, payloadLength: Int(payloadLength))
+        case .silenceAlarms:
+            return SilenceAlarmsResponse(success: success, payloadLength: Int(payloadLength))
         }
     }
 }

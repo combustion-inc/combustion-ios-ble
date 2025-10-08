@@ -377,6 +377,11 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
     }
     
+    // Set probe high low alarms
+    /// - parameter probe: Probe to set the power mode on
+    /// - parameter highAlarms: high alarms to set
+    /// - parameter lowAlarms: low alarms to set
+    /// - parameter completionHandler: Completion handler to be called once operation is complete
     public func setProbeHighLowAlarms(_ probe: Probe, highAlarms: [AlarmStatus], lowAlarms: [AlarmStatus], completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
         if shouldSendMessageDirectlyTo(probe: probe) {
             let request = SetHighLowAlarmsRequest(highAlarms: highAlarms,
@@ -392,6 +397,32 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
             sendNodeRequestWithSuccessHandler(probe,
                                               request: request,
                                               completionHandler: completionHandler)
+        }
+    }
+    
+    // Silence alarms on all devices
+    public func silenceAllAlarms() {
+        let meatNetNodes = getMeatnetNodes()
+        let probes = getProbes()
+        
+        let silenceAlarmRequest = NodeSilenceAlarmsRequest(global: true)
+        
+        for node in meatNetNodes {
+            guard node.connectionState == .connected else {
+                continue
+            }
+            
+            sendNodeRequest(node: node, request: silenceAlarmRequest)
+        }
+        
+        for probe in probes {
+            guard probe.connectionState == .connected else {
+                continue
+            }
+            
+            let request = SilenceAlarmsRequest()
+            BleManager.shared.sendRequest(identifier: probe.bleIdentifier,
+                                          request: request)
         }
     }
     
@@ -1097,6 +1128,7 @@ extension DeviceManager : BleManagerDelegate {
                 .setID,
                 .setPrediction,
                 .setHighLowAlarms,
+                .silenceAlarms,
                 .resetSession:
                 messageHandlers.callSuccessHandler(identifier, response: response)
         }
@@ -1173,7 +1205,7 @@ extension DeviceManager : BleManagerDelegate {
                let device = findDeviceBySerialNumber(serialNumber: featureFlagsResponse.nodeSerialNumber) as? MeatNetNode {
                 device.updateFeatureFlags(featureFlagsResponse.flags)
             }
-        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm, .setProbeHighLowAlarm:
+        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm, .setProbeHighLowAlarm, .silenceAlarms:
             messageHandlers.callNodeSuccessCompletionHandler(response: response)
         case .custom(_):
             deviceResponseHandler?.handleResponse(identifier: identifier, response: response)

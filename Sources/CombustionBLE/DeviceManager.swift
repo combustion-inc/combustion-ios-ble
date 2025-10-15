@@ -44,6 +44,16 @@ public protocol DeviceResponseHandlerProtocol: AnyObject {
     func handleRequest(identifier: UUID, request: NodeRequest)
 }
 
+public protocol MeatNetActionDelegate: AnyObject {
+    
+    /// Adds a device to the local list.
+    /// - parameter global: whether to silence all alarms
+    /// - parameter productType: if not global, then the product type of the alarm to dismiss
+    /// - parameter probeSerialNumber: the probe serial number that has alarms to silence, nil if global
+    /// - parameter nodeSerialNumber: the node serial number that has alarms to silence, nil if global
+    func silenceAlarms(global: Bool, productType: ProductType?, probeSerialNumber: String?, nodeSerialNumber: String?)
+}
+
 /// Singleton that provides list of detected Devices
 /// (either via Bluetooth or from a list in the Cloud)
 open class DeviceManager : DeviceManagerProtocol, ObservableObject {
@@ -88,6 +98,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     private let connectionManager = ConnectionManager()
     
     public weak var deviceResponseHandler: DeviceResponseHandlerProtocol?
+    public weak var meatNetActionDelegate: MeatNetActionDelegate?
     
     public func addSimulatedProbe() {
         addDevice(device: SimulatedProbe())
@@ -1254,6 +1265,12 @@ extension DeviceManager : BleManagerDelegate {
                     addAccessory(accessory: gauge)
                 }
             }
+        }
+        else if let silenceAlarmRequest = request as? NodeSilenceAlarmsRequest {
+            meatNetActionDelegate?.silenceAlarms(global: silenceAlarmRequest.global,
+                                                 productType: silenceAlarmRequest.productType,
+                                                 probeSerialNumber: silenceAlarmRequest.probeSerialNumber,
+                                                 nodeSerialNumber: silenceAlarmRequest.nodeSerialNumber)
         }
         else if let heartBeatRequest = request as? NodeHeartbeatRequest {
             // TODO handle heartBeatRequest

@@ -164,7 +164,8 @@ extension NodeRequest {
             return NodeGaugeStatusRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
         case .heartbeat:
             return NodeHeartbeatRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
-            
+        case .silenceAlarms:
+            return NodeSilenceAlarmsRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
         case .syncThermometerList, .connected, .disconnected, .log, .associateNode,
                 .probeModelInformation, .probeFirmwareRevision, .probeHardwareRevision, .sessionInfo, .getFeatureFlags:
             // In case these are packed with other messages, we need to return something to ensure the other messages don't

@@ -28,10 +28,30 @@ import Foundation
 
 class NodeSilenceAlarmsRequest: NodeRequest {
     
+    var global: Bool
+    var productType: ProductType?
+    var probeSerialNumber: String?
+    var nodeSerialNumber: String?
+    
+    private enum Constants {
+        static let GLOBAL_FLAG_RANGE = 0..<1
+        static let PRODUCT_TYPE_RANGE = 1..<2
+        static let PROBE_SERIAL_RANGE = 2..<6
+        static let NODE_SERIAL_RANGE = 6..<16
+
+        static let PAYLOAD_LENGTH = 16
+    }
+    
     init(global: Bool,
          productType: ProductType? = nil,
-         probeSerialNumber: UInt32? = nil,
-         nodeSerialNumber: UInt8? = nil) {
+         probeSerialNumber: String? = nil,
+         nodeSerialNumber: String? = nil) {
+        
+        self.global = global
+        self.productType = productType
+        self.probeSerialNumber = probeSerialNumber
+        self.nodeSerialNumber = nodeSerialNumber
+        
         var payload = Data()
         
         var globalFlagBytes: UInt8 = global ? 1 : 0
@@ -46,7 +66,7 @@ class NodeSilenceAlarmsRequest: NodeRequest {
         }
         
         if let probeSerialNumber = probeSerialNumber {
-            var serialNumberBytes = probeSerialNumber
+            var serialNumberBytes = UInt32(probeSerialNumber, radix: 16)
             payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
         }
         else {
@@ -54,7 +74,7 @@ class NodeSilenceAlarmsRequest: NodeRequest {
         }
         
         if let nodeSerialNumber = nodeSerialNumber {
-            var serialNumberBytes = nodeSerialNumber
+            var serialNumberBytes = UInt8(nodeSerialNumber, radix: 16)
             payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
         }
         else {
@@ -62,6 +82,51 @@ class NodeSilenceAlarmsRequest: NodeRequest {
         }
         
         super.init(outgoingPayload: payload, type: .silenceAlarms)
+    }
+    
+    init?(data: Data, requestId: UInt32, payloadLength: Int) {
+        // Validate payload length
+        guard payloadLength >= Constants.PAYLOAD_LENGTH else {
+            return nil
+        }
+
+        // Global flag
+        let globalByte = data.subdata(in: Constants.GLOBAL_FLAG_RANGE).first
+        self.global = (globalByte != 0)
+
+        // Product type
+        let typeByte = data.subdata(in: Constants.PRODUCT_TYPE_RANGE)[0]
+        productType = ProductType(rawValue: typeByte) ?? .unknown
+
+        // if not a global silence all, then parse device serial number
+        if !global {
+            switch productType {
+            case .probe:
+                let probeSerialRaw = data.subdata(in: Constants.PROBE_SERIAL_RANGE)
+                let rawProbeSerialNumber = probeSerialRaw.withUnsafeBytes { pointer in
+                    pointer.load(as: UInt32.self)
+                }
+                
+                probeSerialNumber = String(format:"%02X", rawProbeSerialNumber)
+            default:
+                let nodeSerialRaw = data.subdata(in: Constants.NODE_SERIAL_RANGE)
+                
+                nodeSerialNumber = String(decoding: nodeSerialRaw, as: UTF8.self)
+            }
+        }
+
+        super.init(requestId: requestId, payloadLength: payloadLength, type: .silenceAlarms)
+    }
+}
+
+extension NodeSilenceAlarmsRequest {
+    
+    static func fromRaw(data: Data, requestId: UInt32, payloadLength: Int) -> NodeSilenceAlarmsRequest? {
+        if payloadLength < Constants.PAYLOAD_LENGTH {
+            return nil
+        }
+            
+        return NodeSilenceAlarmsRequest(data: data, requestId: requestId, payloadLength: payloadLength)
     }
 }
 

@@ -26,7 +26,7 @@ SOFTWARE.
 import Foundation
 
 /// Contains most recent gauge temperatures, in celcius.
-public struct GaugeTemperature: Equatable {
+public struct GaugeTemperature: Equatable, Codable {
 
     // ambient sensor
     public let value: Double?

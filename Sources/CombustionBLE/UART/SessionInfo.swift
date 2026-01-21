@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-public struct SessionInformation: Hashable {
+public struct SessionInformation: Codable, Hashable {
     public let sessionID: UInt32
     public let samplePeriod: UInt16
     

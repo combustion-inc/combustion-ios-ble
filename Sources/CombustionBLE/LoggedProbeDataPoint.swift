@@ -27,7 +27,7 @@ SOFTWARE.
 import Foundation
 
 public class LoggedProbeDataPoint: LoggedDeviceDataPoint {
-
+    
     public let temperatures: ProbeTemperatures
     public let virtualCore: VirtualCoreSensor
     public let virtualSurface: VirtualSurfaceSensor
@@ -39,8 +39,12 @@ public class LoggedProbeDataPoint: LoggedDeviceDataPoint {
     public let predictionValueSeconds: UInt
     public let estimatedCoreTemperature: Double
     
+    public override var deviceType: LoggedDeviceDataPointType {
+        return .probe
+    }
+    
     public init(sequenceNum: UInt32, temperatures: ProbeTemperatures, virtualCore: VirtualCoreSensor, virtualSurface: VirtualSurfaceSensor, virtualAmbient: VirtualAmbientSensor, predictionState: PredictionState, predictionMode: PredictionMode, predictionType: PredictionType, predictionSetPointTemperature: Double, predictionValueSeconds: UInt, estimatedCoreTemperature: Double) {
-
+        
         self.temperatures = temperatures
         self.virtualCore = virtualCore
         self.virtualSurface = virtualSurface
@@ -57,6 +61,51 @@ public class LoggedProbeDataPoint: LoggedDeviceDataPoint {
     
     override public func temperatureForChannelIndex(_ index: Int) -> Double? {
         return temperatures.values[index]
+    }
+    
+    // MARK: - Codable
+    
+    private enum CodingKeys: String, CodingKey {
+        case temperatures
+        case virtualCore
+        case virtualSurface
+        case virtualAmbient
+        case predictionState
+        case predictionMode
+        case predictionType
+        case predictionSetPointTemperature
+        case predictionValueSeconds
+        case estimatedCoreTemperature
+    }
+    
+    public override func encode(to encoder: Encoder) throws {
+        try super.encode(to: encoder)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(temperatures, forKey: .temperatures)
+        try container.encode(virtualCore, forKey: .virtualCore)
+        try container.encode(virtualSurface, forKey: .virtualSurface)
+        try container.encode(virtualAmbient, forKey: .virtualAmbient)
+        try container.encode(predictionState, forKey: .predictionState)
+        try container.encode(predictionMode, forKey: .predictionMode)
+        try container.encode(predictionType, forKey: .predictionType)
+        try container.encode(predictionSetPointTemperature, forKey: .predictionSetPointTemperature)
+        try container.encode(predictionValueSeconds, forKey: .predictionValueSeconds)
+        try container.encode(estimatedCoreTemperature, forKey: .estimatedCoreTemperature)
+    }
+    
+    public required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.temperatures = try container.decode(ProbeTemperatures.self, forKey: .temperatures)
+        self.virtualCore = try container.decode(VirtualCoreSensor.self, forKey: .virtualCore)
+        self.virtualSurface = try container.decode(VirtualSurfaceSensor.self, forKey: .virtualSurface)
+        self.virtualAmbient = try container.decode(VirtualAmbientSensor.self, forKey: .virtualAmbient)
+        self.predictionState = try container.decode(PredictionState.self, forKey: .predictionState)
+        self.predictionMode = try container.decode(PredictionMode.self, forKey: .predictionMode)
+        self.predictionType = try container.decode(PredictionType.self, forKey: .predictionType)
+        self.predictionSetPointTemperature = try container.decode(Double.self, forKey: .predictionSetPointTemperature)
+        self.predictionValueSeconds = try container.decode(UInt.self, forKey: .predictionValueSeconds)
+        self.estimatedCoreTemperature = try container.decode(Double.self, forKey: .estimatedCoreTemperature)
+        try super.init(from: decoder)
     }
 }
 

@@ -23,12 +23,40 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
-public class LoggedDeviceDataPoint: Equatable {
+public enum LoggedDeviceDataPointType: String, Codable {
+     case probe
+     case gauge
+}
+
+public class LoggedDeviceDataPoint: Codable, Equatable {
+    
     public var sequenceNum: UInt32
+    
+    open var deviceType: LoggedDeviceDataPointType {
+        fatalError("Subclasses must override deviceType")
+    }
     
     public init(sequenceNum: UInt32) {
         self.sequenceNum = sequenceNum
     }
+    
+    // MARK: - Codable
+
+     private enum CodingKeys: String, CodingKey {
+         case type
+         case sequenceNum
+     }
+
+     public func encode(to encoder: Encoder) throws {
+         var container = encoder.container(keyedBy: CodingKeys.self)
+         try container.encode(deviceType, forKey: .type)
+         try container.encode(sequenceNum, forKey: .sequenceNum)
+     }
+
+     public required init(from decoder: Decoder) throws {
+         let container = try decoder.container(keyedBy: CodingKeys.self)
+         self.sequenceNum = try container.decode(UInt32.self, forKey: .sequenceNum)
+     }
     
     public func temperatureForChannelIndex(_ index: Int) -> Double? {
         // override in subclass
@@ -65,11 +93,36 @@ public class LoggedGaugeDataPoint: LoggedDeviceDataPoint {
     public let temperatures: GaugeTemperature
     public let sensorPresent: Bool
     
+    public override var deviceType: LoggedDeviceDataPointType {
+        return .gauge
+    }
+    
     public init(sequenceNum: UInt32, temperatures: GaugeTemperature, sensorPresent: Bool) {
         self.temperatures = temperatures
         self.sensorPresent = sensorPresent
         super.init(sequenceNum: sequenceNum)
     }
+    
+    // MARK: - Codable
+
+      private enum CodingKeys: String, CodingKey {
+          case temperatures
+          case sensorPresent
+      }
+
+      public override func encode(to encoder: Encoder) throws {
+          try super.encode(to: encoder)
+          var container = encoder.container(keyedBy: CodingKeys.self)
+          try container.encode(temperatures, forKey: .temperatures)
+          try container.encode(sensorPresent, forKey: .sensorPresent)
+      }
+
+      public required init(from decoder: Decoder) throws {
+          let container = try decoder.container(keyedBy: CodingKeys.self)
+          self.temperatures = try container.decode(GaugeTemperature.self, forKey: .temperatures)
+          self.sensorPresent = try container.decode(Bool.self, forKey: .sensorPresent)
+          try super.init(from: decoder)
+      }
     
     override public func temperatureForChannelIndex(_ index: Int) -> Double? {
         //gauge only has one temperature sensor, ignore other indexes

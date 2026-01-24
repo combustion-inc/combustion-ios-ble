@@ -416,6 +416,9 @@ class DFUManager {
             usleep(5000)
         }
         
+        // Delay again (25ms) before requesting checksum
+        usleep(25000)
+        
         // After sending all data in block, send request to calculate checksum
         bleManager.sendRequestToBootloader(device, request: .calculateChecksumCommand)
     }

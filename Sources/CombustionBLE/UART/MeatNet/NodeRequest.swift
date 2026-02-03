@@ -162,6 +162,8 @@ extension NodeRequest {
             return NodeProbeStatusRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
         case .gaugeStatus:
             return NodeGaugeStatusRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
+        case .engineStatus:
+            return NodeEngineStatusRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
         case .heartbeat:
             return NodeHeartbeatRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
         case .silenceAlarms:

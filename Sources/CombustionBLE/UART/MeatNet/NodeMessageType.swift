@@ -58,7 +58,11 @@ public enum NodeMessageType: Hashable, CaseIterable {
     case setHighLowAlarm
     case setProbeHighLowAlarm
     case silenceAlarms
-    
+
+    case engineStatus
+    case setEngineTargetTemperature
+    case setEngineControlDevice
+
     case custom(address: UInt8)
     
     public static var allCases: [NodeMessageType] {
@@ -89,7 +93,10 @@ public enum NodeMessageType: Hashable, CaseIterable {
             .gaugeStatus,
             .setHighLowAlarm,
             .setProbeHighLowAlarm,
-            .silenceAlarms]
+            .silenceAlarms,
+            .engineStatus,
+            .setEngineTargetTemperature,
+            .setEngineControlDevice]
     }
 }
 
@@ -125,6 +132,9 @@ extension NodeMessageType {
         case .setHighLowAlarm: 0x61
         case .setProbeHighLowAlarm: 0x0B
         case .silenceAlarms: 0x0C
+        case .engineStatus: 0x70
+        case .setEngineTargetTemperature: 0x71
+        case .setEngineControlDevice: 0x72
         case .custom(let value):
             value
         }

@@ -26,7 +26,7 @@ SOFTWARE.
 import Foundation
 
 /// Fan state for Engine
-public enum EngineFanState: UInt8 {
+public enum EngineFanState: UInt8, Codable {
     case powerDown = 0
     case paused = 1
     case lidOpen = 2
@@ -35,7 +35,7 @@ public enum EngineFanState: UInt8 {
 }
 
 /// Engine fan status parsed from 12 bytes
-public struct EngineFanStatus: Equatable {
+public struct EngineFanStatus: Equatable, Codable {
     /// Current fan state
     public let fanState: EngineFanState
     /// Duty cycle (0-100 percentage)

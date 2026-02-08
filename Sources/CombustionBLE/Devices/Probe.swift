@@ -91,7 +91,7 @@ open class Probe : Device {
     
     @Published public internal(set) var virtualTemperatures: VirtualTemperatures?
     
-    @Published public internal(set) var mostRecentStatus: ProbeStatus?
+    public var mostRecentStatus = CurrentValueSubject<DeviceStatus?, Never>(nil)
     
     public var hasActivePrediction: Bool {
         guard let info = predictionInfo else { return false }
@@ -397,13 +397,13 @@ extension Probe {
         setLastUpdateTime()
         
         // Publish most recent status
-        mostRecentStatus = deviceStatus
+        mostRecentStatus.value = deviceStatus
     }
     
     public func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
         if(sessionInformation?.sessionID != sessionInfo.sessionID) {
             // Recent probe status when session ID changes
-            mostRecentStatus = nil
+            mostRecentStatus.value = nil
             
             sessionInformation = sessionInfo
         }
@@ -594,6 +594,10 @@ extension Probe {
 
 extension Probe: Accessory {
     
+    public var sessionInformationPublisher: AnyPublisher<SessionInformation?, Never> {
+        $sessionInformation.eraseToAnyPublisher()
+    }
+    
     public var parentSubject: CurrentValueSubject<Device?, Never> {
         return CurrentValueSubject<Device?, Never>(nil)
     }
@@ -604,8 +608,13 @@ extension Probe: Accessory {
         return .probe
     }
     
-    public var deviceTemperatureLogs: [DeviceTemperatureLog] {
+    public var deviceDataLogs: [DeviceDataLog] {
         return []
+    }
+
+    @available(*, deprecated, renamed: "deviceDataLogs")
+    public var deviceTemperatureLogs: [DeviceDataLog] {
+        return deviceDataLogs
     }
     
     public var parent: Device? {

@@ -26,6 +26,7 @@ SOFTWARE.
 public enum LoggedDeviceDataPointType: String, Codable {
      case probe
      case gauge
+     case engine
 }
 
 public class LoggedDeviceDataPoint: Codable, Equatable {
@@ -71,6 +72,11 @@ extension LoggedDeviceDataPoint {
             return LoggedGaugeDataPoint(sequenceNum: deviceStatus.maxSequenceNumber,
                                         temperatures: deviceStatus.temperature,
                                         sensorPresent: deviceStatus.status.sensorPresent)
+        } else if let deviceStatus = deviceStatus as? EngineStatus {
+            return LoggedEngineDataPoint(sequenceNum: deviceStatus.maxSequenceNumber,
+                                         temperatureSetPoint: deviceStatus.temperatureSetPoint,
+                                         controlTemperature: deviceStatus.controlTemperature,
+                                         fanStatus: deviceStatus.fanStatus)
         }
         else {
             return LoggedDeviceDataPoint(sequenceNum: deviceStatus.maxSequenceNumber)

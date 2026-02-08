@@ -78,11 +78,11 @@ public class SimulatedGauge: MeatNetNode {
         guard let accessory = accessory as? GrillGauge else { return }
         guard connectionState == .connected else { return }
         
-        let firstSeq = accessory.deviceTemperatureLogs.first?.dataPoints.first?.sequenceNum ?? 0
+        let firstSeq = accessory.deviceDataLogs.first?.dataPoints.first?.sequenceNum ?? 0
 
         let lastSequence: UInt32
 
-        if let last = accessory.deviceTemperatureLogs.first?.dataPoints.last?.sequenceNum {
+        if let last = accessory.deviceDataLogs.first?.dataPoints.last?.sequenceNum {
             lastSequence = last + 1
         }
         else {
@@ -103,3 +103,105 @@ public class SimulatedGauge: MeatNetNode {
     }
 }
 
+public class SimulatedEngine: MeatNetNode {
+
+    private static let sampleData: [EngineSampleRecord] = EngineSampleData.load()
+    private var sampleIndex = 0
+    private let samplePeriodSeconds: TimeInterval
+    private let controlDeviceTypeOverride: ProductType?
+    private let controlDeviceSerialOverride: String?
+
+    public init(controlDeviceTypeOverride: ProductType? = nil,
+                controlDeviceSerialOverride: String? = nil) {
+        self.controlDeviceTypeOverride = controlDeviceTypeOverride
+        self.controlDeviceSerialOverride = controlDeviceSerialOverride
+        let initialRecord = SimulatedEngine.sampleData.first
+        let serialNumber = initialRecord?.serialNumber ?? "FAKEENGIN01"
+        let setPoint = initialRecord?.temperatureSetPoint ?? 225.0
+        self.samplePeriodSeconds = TimeInterval(initialRecord?.samplePeriodMs ?? 5000) / 1000.0
+
+        let advertising = EngineAdvertisingData(fakeSerial: serialNumber,
+                                                fakeTemperatureSetPoint: setPoint)
+        super.init(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())
+
+        self.accessory = Engine(parent: self, advertising: advertising)
+        self.dfuType = .engine
+
+        firmareVersion = "v1.0.0"
+        hardwareRevision = "v0.1-A1"
+
+        Timer.scheduledTimer(withTimeInterval: samplePeriodSeconds, repeats: true) { [weak self] _ in
+            self?.advanceSample()
+        }
+
+        self.connectionState = .connected
+
+        let sessionId = initialRecord?.sessionId ?? UInt32.random(in: 0..<UInt32.max)
+        let samplePeriod = initialRecord?.samplePeriodMs ?? 5000
+        let fakeSessionInfo = SessionInformation(sessionID: sessionId, samplePeriod: samplePeriod)
+        (accessory as? Engine)?.updateWithSessionInformation(fakeSessionInfo)
+    }
+
+    public override var name: String {
+        var nameStr = super.name
+        nameStr.removeLast(4)
+        return String(format: "SIM-\(nameStr)")
+    }
+
+    private func advanceSample() {
+        guard !SimulatedEngine.sampleData.isEmpty else { return }
+        guard let accessory = accessory as? Engine else { return }
+        guard connectionState == .connected else { return }
+
+        let record = SimulatedEngine.sampleData[sampleIndex]
+        sampleIndex = (sampleIndex + 1) % SimulatedEngine.sampleData.count
+
+        let advertising = EngineAdvertisingData(fakeSerial: record.serialNumber,
+                                                fakeTemperatureSetPoint: record.temperatureSetPoint)
+        updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI())
+        accessory.updateWithAdvertising(advertising)
+
+        let controlDeviceType = controlDeviceTypeOverride ?? record.controlDeviceType
+        let (probeSerialNumber, nodeSerialNumber) = resolveControlDeviceSerials(type: controlDeviceType,
+                                                                                 record: record)
+
+        let engineStatus = EngineStatus(serialNumber: record.serialNumber,
+                                        sessionID: record.sessionId,
+                                        samplePeriod: record.samplePeriodMs,
+                                        minSequenceNumber: record.minSequence,
+                                        maxSequenceNumber: record.maxSequence,
+                                        batteryStatus: record.batteryStatus,
+                                        temperatureSetPoint: record.temperatureSetPoint,
+                                        controlTemperature: record.controlTemperature,
+                                        controlDeviceType: controlDeviceType,
+                                        probeSerialNumber: probeSerialNumber,
+                                        nodeSerialNumber: nodeSerialNumber,
+                                        statusFlags: record.statusFlags,
+                                        fanStatus: record.fanStatus)
+
+        accessory.updateDeviceStatus(deviceStatus: engineStatus)
+    }
+
+    private func resolveControlDeviceSerials(type: ProductType,
+                                             record: EngineSampleRecord) -> (UInt32?, String?) {
+        switch type {
+        case .probe:
+            let probeSerial = controlDeviceSerialOverride.flatMap(Self.parseProbeSerialNumber) ??
+                              record.probeSerialNumber
+            return (probeSerial, nil)
+        case .gauge:
+            let nodeSerial = controlDeviceSerialOverride ?? record.nodeSerialNumber
+            return (nil, nodeSerial)
+        default:
+            return (nil, nil)
+        }
+    }
+
+    private static func parseProbeSerialNumber(_ serial: String) -> UInt32? {
+        let trimmed = serial.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let value = UInt32(trimmed) {
+            return value
+        }
+        return UInt32(trimmed, radix: 16)
+    }
+}

@@ -30,7 +30,7 @@ import Foundation
 public struct CSV {
     
     private static func gaugeDataToCsv(serialNumber: String,
-                                       temperatureLogs: [DeviceTemperatureLog],
+                                       temperatureLogs: [DeviceDataLog],
                                        firmwareVersion: String?,
                                        hardwareRevision: String?,
                                        appVersion: String,
@@ -96,6 +96,64 @@ public struct CSV {
 
         
         
+        return output.joined(separator: "\n")
+    }
+
+    private static func engineDataToCsv(serialNumber: String,
+                                        dataLogs: [DeviceDataLog],
+                                        firmwareVersion: String?,
+                                        hardwareRevision: String?,
+                                        appVersion: String,
+                                        date: Date) -> String {
+        var output = [String]()
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        let dateString = dateFormatter.string(from: date)
+
+        output.append("Combustion Inc. Engine Data")
+        output.append("App: iOS \(appVersion)")
+        output.append("CSV version: 4")
+        output.append("Engine S/N: \(serialNumber)")
+        output.append("Engine FW version: \(firmwareVersion ?? "??")")
+        output.append("Engine HW revision: \(hardwareRevision ?? "??")")
+        output.append("Framework: iOS")
+        output.append("Sample Period: \(dataLogs.first?.sessionInformation.samplePeriod ?? 0)")
+        output.append("Created: \(dateString)")
+        output.append("")
+
+        output.append("Timestamp,SessionID,SequenceNumber,TemperatureSetPoint,ControlTemperature,FanState,DutyCycle,CommandedSpeed,MeasuredSpeed,FanOffTimeMs,FanOnTimeMs")
+
+        if let firstSessionStart = dataLogs.first?.startTime?.timeIntervalSince1970 {
+            for session in dataLogs {
+                for dataPoint in session.dataPoints {
+                    guard let enginePoint = dataPoint as? LoggedEngineDataPoint else { continue }
+
+                    var timeStamp: TimeInterval = 0
+                    if let currentSessionStart = session.startTime?.timeIntervalSince1970 {
+                        let sessionStartTimeDiff = currentSessionStart - firstSessionStart
+                        let dataPointSeconds = Double(enginePoint.sequenceNum) * Double(session.sessionInformation.samplePeriod) / 1000.0
+                        timeStamp = dataPointSeconds + sessionStartTimeDiff
+                    }
+
+                    let fanStatus = enginePoint.fanStatus
+                    let values = String(format: "%.3f,%u,%d,%.2f,%.2f,%d,%d,%d,%d,%u,%u",
+                                        timeStamp,
+                                        session.id,
+                                        enginePoint.sequenceNum,
+                                        enginePoint.temperatureSetPoint,
+                                        enginePoint.controlTemperature,
+                                        fanStatus.fanState.rawValue,
+                                        fanStatus.dutyCycle,
+                                        fanStatus.commandedSpeed,
+                                        fanStatus.measuredSpeed,
+                                        fanStatus.fanOffTime,
+                                        fanStatus.fanOnTime)
+                    output.append(values)
+                }
+            }
+        }
+
         return output.joined(separator: "\n")
     }
     
@@ -181,7 +239,7 @@ public struct CSV {
     /// - param gauge: Gauge for which to create the file
     /// - returns: URL of file
     public static func createCSVFile(serialNumber: String,
-                                     gaugeLogs: [DeviceTemperatureLog],
+                                     gaugeLogs: [DeviceDataLog],
                                      firmwareVersion: String?,
                                      hardwareRevision: String?,
                                      appVersion: String) -> URL? {
@@ -212,6 +270,41 @@ public struct CSV {
             return nil
         }
         
+        return csvURL
+    }
+
+    /// Creates a CSV file for export.
+    /// - param engine: Engine for which to create the file
+    /// - returns: URL of file
+    public static func createEngineCSVFile(serialNumber: String,
+                                           dataLogs: [DeviceDataLog],
+                                           firmwareVersion: String?,
+                                           hardwareRevision: String?,
+                                           appVersion: String) -> URL? {
+        let date = Date()
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH_mm_ss"
+        let dateString = dateFormatter.string(from: date)
+
+        let filename = "EngineData_\(serialNumber)_\(dateString).csv"
+
+        let csv = engineDataToCsv(serialNumber: serialNumber,
+                                  dataLogs: dataLogs,
+                                  firmwareVersion: firmwareVersion,
+                                  hardwareRevision: hardwareRevision,
+                                  appVersion: appVersion,
+                                  date: date)
+
+        let filePath = NSTemporaryDirectory() + "/" + filename;
+
+        let csvURL = URL(fileURLWithPath: filePath)
+
+        do {
+            try csv.write(to: csvURL, atomically: true, encoding: String.Encoding.utf8)
+        } catch {
+            return nil
+        }
+
         return csvURL
     }
     

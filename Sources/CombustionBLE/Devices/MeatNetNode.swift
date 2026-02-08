@@ -69,6 +69,8 @@ public class MeatNetNode: Device {
         case .probe:
             // Node should not have a DFU type of probe
             return "Unknown \(serialNumber)"
+        case .engine:
+            return "Engine \(serialNumber)"
         }
         
     }
@@ -216,7 +218,7 @@ public class MeatNetNode: Device {
             version >= "2.1.0"
         case .charger:
             version >= "2.1.0"
-        case .gauge:
+        case .gauge, .engine:
             true
         case .probe, .unknown, .meatNetNode:
             false

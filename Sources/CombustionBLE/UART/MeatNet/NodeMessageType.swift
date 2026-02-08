@@ -39,6 +39,7 @@ public enum NodeMessageType: Hashable, CaseIterable {
     case resetFoodSafe
     case getFeatureFlags
     case gaugeLog
+    case engineLog
     
     case connected
     case disconnected
@@ -73,6 +74,7 @@ public enum NodeMessageType: Hashable, CaseIterable {
             .setPrediction,
             .setPowerMode,
             .gaugeLog,
+            .engineLog,
             .readOverTemperature,
             .configureFoodSafe,
             .resetFoodSafe,
@@ -114,6 +116,7 @@ extension NodeMessageType {
         case .resetFoodSafe: 0x08
         case .setPowerMode: 0x09
         case .gaugeLog: 0x62
+        case .engineLog: 0x63
         case .getFeatureFlags: 0x30
         case .connected: 0x40
         case .disconnected: 0x41

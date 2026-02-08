@@ -26,7 +26,7 @@ SOFTWARE.
 import Foundation
 
 /// Message containing Gauge status information.
-public struct GaugeStatus: DeviceStatus {
+public struct GaugeStatus: DeviceAccessoryStatus {
     
     /// gauge serial number
     public let serialNumber: String

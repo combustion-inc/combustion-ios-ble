@@ -26,7 +26,7 @@ SOFTWARE.
 import Foundation
 
 /// Message containing Engine status information.
-public struct EngineStatus: DeviceStatus {
+public struct EngineStatus: DeviceAccessoryStatus {
 
     /// Engine serial number
     public let serialNumber: String

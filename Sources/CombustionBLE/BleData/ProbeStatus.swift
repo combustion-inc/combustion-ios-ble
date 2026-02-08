@@ -27,7 +27,7 @@ SOFTWARE.
 import Foundation
 
 /// Message containing Probe status information.
-public struct ProbeStatus {
+public struct ProbeStatus: DeviceStatus {
     
     /// Minimum sequence number of records in Probe's memory.
     public let minSequenceNumber: UInt32

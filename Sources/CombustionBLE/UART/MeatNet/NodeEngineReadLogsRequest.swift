@@ -1,4 +1,4 @@
-//  DeviceStatus.swift
+//  NodeEngineReadLogsRequest.swift
 /*--
 MIT License
 
@@ -23,12 +23,25 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
-public protocol DeviceAccessoryStatus: DeviceStatus {
-    var sessionID: UInt32 { get }
-    var samplePeriod: UInt16 { get }
-}
+import Foundation
 
-public protocol DeviceStatus {
-    var minSequenceNumber: UInt32 { get }
-    var maxSequenceNumber: UInt32 { get }
+class NodeEngineReadLogsRequest: NodeRequest {
+
+    init?(serialNumber: String, minSequence: UInt32, maxSequence: UInt32) {
+        var payload = Data()
+
+        guard let serialNumberData = serialNumber.data(using: .utf8) else {
+            return nil
+        }
+
+        payload.append(serialNumberData)
+
+        var min = minSequence
+        payload.append(Data(bytes: &min, count: MemoryLayout.size(ofValue: min)))
+
+        var max = maxSequence
+        payload.append(Data(bytes: &max, count: MemoryLayout.size(ofValue: max)))
+
+        super.init(outgoingPayload: payload, type: .engineLog)
+    }
 }

@@ -91,6 +91,9 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     
     private var cancellables: Set<AnyCancellable> = []
     
+    // Per-probe cancellables to observe published changes like `id`
+    private var probeIdCancellables: [String: AnyCancellable] = [:]
+    
     /// Handler for messages from Probe
     private let messageHandlers = MessageHandlers()
     
@@ -174,6 +177,28 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// - parameter device: Add device to list of known devices.
     private func addDevice(device: Device) {
         devices[device.uniqueIdentifier] = device
+        
+        if let probe = device as? Probe {
+            // Start observing id changes for collision handling
+            observeProbeIdChanges(probe)
+        }
+    }
+    
+    /// Observe a probe's published `id` and trigger collision resolution when it changes.
+    private func observeProbeIdChanges(_ probe: Probe) {
+        // Cancel existing subscription for this probe if present
+        probeIdCancellables[probe.uniqueIdentifier]?.cancel()
+        
+        // Subscribe to id changes
+        let cancellable = probe.$id
+            .removeDuplicates()
+            .sink { [weak self, weak probe] newId in
+                guard let self = self, let probe = probe else { return }
+                // Run single-collision resolution for this probe
+                self.resolveProbeIdCollision(for: probe, incomingId: newId)
+            }
+        
+        probeIdCancellables[probe.uniqueIdentifier] = cancellable
     }
     
     /// Removes device from the list.
@@ -182,6 +207,12 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         
         if let device = device as? MeatNetNode, let accessory = device.accessory {
             clearAccessory(accessory: accessory)
+        }
+        
+        // Cancel id observation if this was a probe
+        if device is Probe {
+            probeIdCancellables[device.uniqueIdentifier]?.cancel()
+            probeIdCancellables.removeValue(forKey: device.uniqueIdentifier)
         }
     }
     
@@ -202,6 +233,58 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         return Array(devices.values).compactMap { device in
             return device as? Probe
         }
+    }
+
+    private func activeProbes() -> [Probe] {
+        return getProbes().filter { probe in
+            return probe.connectionState == .connected || isDeviceConnectedToMeatnet(probe)
+        }
+    }
+
+    private func lowestAvailableProbeId(excluding active: [Probe]) -> ProbeID? {
+        let usedIds = Set(active.map { $0.id })
+        return ProbeID.allCases.first { !usedIds.contains($0) }
+    }
+
+    /// Resolves incoming ID collisions by keeping the requested ID and reassigning
+    /// the highest-serial probe in the collision set to the lowest available ID.
+    private func resolveProbeIdCollision(for probe: Probe, incomingId: ProbeID) {
+        let active = activeProbes()
+
+        var hasCollision = false
+        var highest: Probe? = nil
+        var usedIds = Set<ProbeID>()
+        
+        // Single pass: build usedIds, detect collisions, and track highest-serial candidate among colliders.
+        for p in active {
+            usedIds.insert(p.id)
+            
+            guard p.id == incomingId else { continue }
+            
+            // A collision exists if another probe (different uniqueIdentifier) has the same ID.
+            if p.uniqueIdentifier != probe.uniqueIdentifier {
+                hasCollision = true
+            }
+            
+            if highest == nil || p.serialNumber > highest!.serialNumber {
+                highest = p
+            }
+        }
+        
+        // No other probe holds the same incoming ID; nothing to do.
+        guard hasCollision else { return }
+        
+        // Include the incoming probe in the candidate pool even if it wasn't in 'active'.
+        if highest == nil || probe.serialNumber > highest!.serialNumber {
+            highest = probe
+        }
+        guard let highestSerialProbe = highest else { return }
+        
+        // Find the lowest available ID using the usedIds
+        guard let lowestAvailableId = ProbeID.allCases.first(where: { !usedIds.contains($0) }) else { return }
+        guard highestSerialProbe.id != lowestAvailableId else { return }
+        
+        setProbeID(highestSerialProbe, id: lowestAvailableId) { _ in }
     }
     
     /// Returns list of gauges
@@ -373,16 +456,13 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// - parameter ProbeID: New Probe ID
     /// - parameter completionHandler: Completion handler to be called operation is complete
     public func setProbeID(_ device: Device, id: ProbeID, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        // TODO - Send request via Node.
-        
-        let request = SetIDRequest(id: id)
-        
-        // Store completion handler
-        messageHandlers.addSuccessCompletionHandler(device, request: request, completionHandler: completionHandler)
-        
-        // Send request to device
-        if let device = device as? Probe, let bleIdentifier = device.bleIdentifier {
-            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+        if let probe = device as? Probe, shouldSendMessageDirectlyTo(probe: probe) {
+            let request = SetIDRequest(id: id)
+            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+        }
+        else if let probe = device as? Probe {
+            let request = NodeSetIDRequest(serialNumber: probe.serialNumber, id: id)
+            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
         }
     }
     
@@ -393,16 +473,13 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     public func setProbeColor(_ device: Device,
                               color: ProbeColor,
                               completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        // TODO - Send request via Node.
-        
-        let request = SetColorRequest(color: color)
-        
-        // Store completion handler
-        messageHandlers.addSuccessCompletionHandler(device, request: request, completionHandler: completionHandler)
-
-        // Send request to device
-        if let device = device as? Probe, let bleIdentifier = device.bleIdentifier {
-            BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
+        if let probe = device as? Probe, shouldSendMessageDirectlyTo(probe: probe) {
+            let request = SetColorRequest(color: color)
+            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+        }
+        else if let probe = device as? Probe {
+            let request = NodeSetColorRequest(serialNumber: probe.serialNumber, color: color)
+            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
         }
     }
     
@@ -834,6 +911,10 @@ extension DeviceManager : BleManagerDelegate {
         guard let device = findDeviceByBleIdentifier(bleIdentifier: identifier) else { return }
         
         device.updateConnectionState(.connected)
+        
+        if let probe = device as? Probe {
+            observeProbeIdChanges(probe)
+        }
     }
     
     func didFailToConnectTo(identifier: UUID) {
@@ -894,15 +975,25 @@ extension DeviceManager : BleManagerDelegate {
     func updateDeviceWithStatus(identifier: UUID, status: ProbeStatus) {
         // Update Probe Device from direct status notification
         guard let probe = findDeviceByBleIdentifier(bleIdentifier: identifier) as? Probe else { return }
+        let previousId = probe.id
         probe.updateProbeStatus(deviceStatus: status)
+
+        if previousId != probe.id {
+            resolveProbeIdCollision(for: probe, incomingId: probe.id)
+        }
         
         connectionManager.receivedStatusFor(probe, node: nil)
     }
     
     private func updateDeviceWithNodeStatus(serialNumber: UInt32, status: ProbeStatus, hopCount: HopCount, node: MeatNetNode) {
         guard let probe = findProbeBySerialNumber(serialNumber: serialNumber) else { return }
-        
+
+        let previousId = probe.id
         probe.updateProbeStatus(deviceStatus: status, hopCount: hopCount)
+
+        if previousId != probe.id {
+            resolveProbeIdCollision(for: probe, incomingId: probe.id)
+        }
         
         connectionManager.receivedStatusFor(probe, node: node)
     }
@@ -982,11 +1073,19 @@ extension DeviceManager : BleManagerDelegate {
             if let probe = devices[uniqueIdentifier] as? Probe {
                 // If we already have an entry for this Probe, update its information.
                 probe.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi, bleIdentifier: identifier)
+                
+                // Ensure observing id changes for existing probe
+                observeProbeIdChanges(probe)
+                
                 foundProbe = probe
             } else {
                 // If we don't yet have an entry for this Probe, create one.
                 let device = Probe(advertising, isConnectable: isConnectable, RSSI: rssi, identifier: identifier)
                 addDevice(device: device)
+                
+                // Ensure observing id changes for new probe
+                observeProbeIdChanges(device)
+                
                 foundProbe = device
             }
         }

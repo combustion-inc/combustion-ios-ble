@@ -136,10 +136,10 @@ extension NodeResponse {
             return NodeGaugeReadLogsResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .engineLog:
             return NodeEngineReadLogsResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
-//        case .setID:
-//            return NodeSetIDResponse(success: success, payloadLength: Int(payloadLength))
-//        case .setColor:
-//            return NodeSetColorResponse(success: success, payloadLength: Int(payloadLength))
+        case .setID:
+            return NodeSetIDResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .setColor:
+            return NodeSetColorResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .sessionInfo:
             return NodeReadSessionInfoResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .setPrediction:
@@ -164,7 +164,7 @@ extension NodeResponse {
             return SetNodeHighLowAlarmResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .setProbeHighLowAlarm:
             return NodeSetProbeHighLowAlarmResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
-        case .setHighLowAlarm:
+        case .silenceAlarms:
             return NodeSilenceAlarmsResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .setEngineTargetTemperature:
             return NodeSetEngineTargetTemperatureResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))

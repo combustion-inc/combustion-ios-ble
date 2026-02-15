@@ -46,8 +46,15 @@ public class LoggedEngineDataPoint: LoggedDeviceDataPoint {
     }
 
     override public func temperatureForChannelIndex(_ index: Int) -> Double? {
-        guard index == 0 else { return nil }
-        return controlTemperature
+        if index == 0 {
+            return controlTemperature
+        }
+        else if index == 1 {
+            return temperatureSetPoint
+        }
+        else {
+            return nil
+        }
     }
 
     // MARK: - Codable

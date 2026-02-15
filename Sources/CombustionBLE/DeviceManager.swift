@@ -118,7 +118,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
             addAccessory(accessory: accessory)
         }
     }
-    
+
     public func initBluetooth() {
         BleManager.shared.initBluetooth()
     }
@@ -702,6 +702,55 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         }
        
         sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
+    }
+
+    /// Sends a request to set an engine's control device to a probe.
+    ///
+    /// - parameter device: the node advertising the engine accessory
+    /// - parameter probeSerialNumber: probe serial number to set as control device
+    /// - parameter completionHandler: completion handler to be called once operation is complete
+    public func setEngineControlDevice(_ device: MeatNetNode,
+                                       probeSerialNumber: UInt32,
+                                       completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        guard let serialNumberString = device.accessory?.serialNumberString,
+              let request = NodeSetEngineControlDeviceRequest(serialNumber: serialNumberString,
+                                                              probeSerialNumber: probeSerialNumber) else {
+            completionHandler(false)
+            return
+        }
+
+        if let simulatedEngine = device as? SimulatedEngine {
+            simulatedEngine.setSimulatedControlDevice(probeSerialNumber: probeSerialNumber)
+            completionHandler(true)
+        }
+        else {
+            sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
+        }
+        
+    }
+
+    /// Sends a request to set an engine's control device to a gauge.
+    ///
+    /// - parameter device: the node advertising the engine accessory
+    /// - parameter gaugeSerialNumber: gauge serial number to set as control device
+    /// - parameter completionHandler: completion handler to be called once operation is complete
+    public func setEngineControlDevice(_ device: MeatNetNode,
+                                       gaugeSerialNumber: String,
+                                       completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        guard let serialNumberString = device.accessory?.serialNumberString,
+              let request = NodeSetEngineControlDeviceRequest(serialNumber: serialNumberString,
+                                                              gaugeSerialNumber: gaugeSerialNumber) else {
+            completionHandler(false)
+            return
+        }
+
+        if let simulatedEngine = device as? SimulatedEngine {
+            simulatedEngine.setSimulatedControlDevice(gaugeSerialNumber: gaugeSerialNumber)
+            completionHandler(true)
+        }
+        else {
+            sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
+        }
     }
     
     /// Set the DFU file to be used on devices with failed software upgrade.

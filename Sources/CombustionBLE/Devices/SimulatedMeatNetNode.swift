@@ -114,6 +114,7 @@ public class SimulatedEngine: MeatNetNode {
     private let simulatedSessionId: UInt32
     private var controlDeviceTypeOverride: ProductType?
     private var controlDeviceSerialOverride: String?
+    private var temperatureSetPointOverride: Double?
     private let basicStatusOnly: Bool
 
     private enum Constants {
@@ -192,6 +193,14 @@ public class SimulatedEngine: MeatNetNode {
         }
     }
 
+    public func setSimulatedTargetTemperature(_ temperatureCelsius: Double) {
+        temperatureSetPointOverride = temperatureCelsius
+
+        if basicStatusOnly {
+            publishBasicStatus()
+        }
+    }
+
     private func advanceSample() {
         guard !SimulatedEngine.sampleData.isEmpty else { return }
         guard let accessory = accessory as? Engine else { return }
@@ -200,8 +209,9 @@ public class SimulatedEngine: MeatNetNode {
         let record = SimulatedEngine.sampleData[sampleIndex]
         sampleIndex = (sampleIndex + 1) % SimulatedEngine.sampleData.count
 
+        let temperatureSetPoint = temperatureSetPointOverride ?? record.temperatureSetPoint
         let advertising = EngineAdvertisingData(fakeSerial: record.serialNumber,
-                                                fakeTemperatureSetPoint: record.temperatureSetPoint)
+                                                fakeTemperatureSetPoint: temperatureSetPoint)
         updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI())
         accessory.updateWithAdvertising(advertising)
 
@@ -215,7 +225,7 @@ public class SimulatedEngine: MeatNetNode {
                                         minSequenceNumber: record.minSequence,
                                         maxSequenceNumber: record.maxSequence,
                                         batteryStatus: record.batteryStatus,
-                                        temperatureSetPoint: record.temperatureSetPoint,
+                                        temperatureSetPoint: temperatureSetPoint,
                                         controlTemperature: resolvedControlTemperature(controlDeviceType: controlDeviceType,
                                                                                       probeSerialNumber: probeSerialNumber,
                                                                                       nodeSerialNumber: nodeSerialNumber),
@@ -236,13 +246,14 @@ public class SimulatedEngine: MeatNetNode {
         basicSequenceNumber += 1
         let basicControlDevice = resolveBasicControlDevice()
 
+        let temperatureSetPoint = temperatureSetPointOverride ?? Constants.defaultTemperatureSetPoint
         let engineStatus = EngineStatus(serialNumber: accessory.serialNumber,
                                         sessionID: simulatedSessionId,
                                         samplePeriod: Constants.defaultSamplePeriodMs,
                                         minSequenceNumber: sequence,
                                         maxSequenceNumber: sequence,
                                         batteryStatus: EngineBatteryStatus.defaultValues(),
-                                        temperatureSetPoint: Constants.defaultTemperatureSetPoint,
+                                        temperatureSetPoint: temperatureSetPoint,
                                         controlTemperature: resolvedControlTemperature(controlDeviceType: basicControlDevice.type,
                                                                                       probeSerialNumber: basicControlDevice.probeSerialNumber,
                                                                                       nodeSerialNumber: basicControlDevice.nodeSerialNumber),

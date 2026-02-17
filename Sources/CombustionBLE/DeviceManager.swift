@@ -829,6 +829,30 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
             sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
         }
     }
+
+    /// Sends a request to set an engine's target temperature.
+    ///
+    /// - parameter device: the node advertising the engine accessory
+    /// - parameter temperatureCelsius: target temperature in Celsius
+    /// - parameter completionHandler: completion handler to be called once operation is complete
+    public func setEngineTargetTemperature(_ device: MeatNetNode,
+                                           temperatureCelsius: Double,
+                                           completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        guard let serialNumberString = device.accessory?.serialNumberString,
+              let request = NodeSetEngineTargetTemperatureRequest(serialNumber: serialNumberString,
+                                                                  temperatureCelsius: temperatureCelsius) else {
+            completionHandler(false)
+            return
+        }
+
+        if let simulatedEngine = device as? SimulatedEngine {
+            simulatedEngine.setSimulatedTargetTemperature(temperatureCelsius)
+            completionHandler(true)
+        }
+        else {
+            sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
+        }
+    }
     
     /// Set the DFU file to be used on devices with failed software upgrade.
     /// A failed upgrade will occur if the user kills the application in the middle of

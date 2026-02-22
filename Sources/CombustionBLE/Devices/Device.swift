@@ -78,6 +78,9 @@ open class Device : ObservableObject {
         }
     }
     
+    /// Whether device is transmitting at high radio power (+8 dBm)
+    @Published public internal(set) var highRadioPower: Bool = false
+
     /// Within Proximity Identification range
     @Published public internal(set) var withinProximityRange: Bool = false
     
@@ -202,13 +205,17 @@ extension Device {
     private enum Constants {
         /// Go stale after this many seconds of no Bluetooth activity
         static let STALE_TIMEOUT = 15.0
-        
+
         /// Minimum possible value for RSSI
         static internal let MIN_RSSI = -128
-        
-        // RSSI limits for proximity check
+
+        // RSSI limits for proximity check (normal power: +0 dBm)
         static let PROXIMITY_RSSI_MAX: Float = -48.0
         static let PROXIMITY_RSSI_MIN: Float = -55.0
+
+        // RSSI limits for proximity check (high power: +8 dBm)
+        static let PROXIMITY_RSSI_MAX_HIGH_POWER: Float = -40.0
+        static let PROXIMITY_RSSI_MIN_HIGH_POWER: Float = -47.0
     }
     
     /// Attempt to connect to the device.
@@ -246,7 +253,7 @@ extension Device {
         if(rssi > 0) {
             return
         }
-        
+
         if(rssi == Constants.MIN_RSSI) {
             // Reset values if RSSI is set to MIN
             rssiEWMA.reset()
@@ -255,12 +262,16 @@ extension Device {
         else {
             // Update RSSI EWMA
             rssiEWMA.put(value: Float(rssi))
-            
+
+            // Select thresholds based on radio power level
+            let rssiMax = highRadioPower ? Constants.PROXIMITY_RSSI_MAX_HIGH_POWER : Constants.PROXIMITY_RSSI_MAX
+            let rssiMin = highRadioPower ? Constants.PROXIMITY_RSSI_MIN_HIGH_POWER : Constants.PROXIMITY_RSSI_MIN
+
             // Check RSSI proximity
-            if(withinProximityRange && rssiEWMA.get() < Constants.PROXIMITY_RSSI_MIN) {
+            if(withinProximityRange && rssiEWMA.get() < rssiMin) {
                 withinProximityRange = false
             }
-            else if(!withinProximityRange && rssiEWMA.get() > Constants.PROXIMITY_RSSI_MAX) {
+            else if(!withinProximityRange && rssiEWMA.get() > rssiMax) {
                 withinProximityRange = true
             }
         }

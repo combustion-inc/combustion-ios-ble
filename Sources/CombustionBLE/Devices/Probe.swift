@@ -387,15 +387,18 @@ extension Probe {
             }
         }
 
+        // Update high radio power flag from thermometer preferences
+        highRadioPower = deviceStatus.thermometerPreferences.highRadioPower
+
         // Update most recent status notification time
         lastStatusNotificationTime = Date()
-        
+
         // Update whether status notifications are stale
         updateStatusNotificationsStale()
-        
+
         // Update time of most recent update of any type
         setLastUpdateTime()
-        
+
         // Publish most recent status
         mostRecentStatus = deviceStatus
     }

@@ -28,28 +28,31 @@ public enum ProbePowerMode: UInt8, CaseIterable, Codable {
 }
 
 public struct ThermometerPreferences {
-    
+
     public let powerMode: ProbePowerMode
-    
-    public init(powerMode: ProbePowerMode) {
+    public let highRadioPower: Bool
+
+    public init(powerMode: ProbePowerMode, highRadioPower: Bool = false) {
         self.powerMode = powerMode
+        self.highRadioPower = highRadioPower
     }
 }
 
 extension ThermometerPreferences {
-    
+
     private enum Constants {
         static let POWER_MODE_MASK: UInt8 = 0x3
     }
-    
+
     static func fromByte(_ byte: UInt8) -> ThermometerPreferences {
         let rawMode = byte & (Constants.POWER_MODE_MASK)
         let mode = ProbePowerMode(rawValue: rawMode) ?? .normal
-        
-        return ThermometerPreferences(powerMode: mode)
+        let highRadioPower = (byte >> 2) & 0x1 != 0
+
+        return ThermometerPreferences(powerMode: mode, highRadioPower: highRadioPower)
     }
-    
+
     static func defaultValues() -> ThermometerPreferences {
-        return ThermometerPreferences(powerMode: .normal)
+        return ThermometerPreferences(powerMode: .normal, highRadioPower: false)
     }
 }

@@ -27,8 +27,8 @@ import Foundation
 
 public class LoggedEngineDataPoint: LoggedDeviceDataPoint {
 
-    public let temperatureSetPoint: Double
-    public let controlTemperature: Double
+    public let temperatureSetPoint: Double?
+    public let controlTemperature: Double?
     public let fanStatus: EngineFanStatus
 
     public override var deviceType: LoggedDeviceDataPointType {
@@ -36,8 +36,8 @@ public class LoggedEngineDataPoint: LoggedDeviceDataPoint {
     }
 
     public init(sequenceNum: UInt32,
-                temperatureSetPoint: Double,
-                controlTemperature: Double,
+                temperatureSetPoint: Double?,
+                controlTemperature: Double?,
                 fanStatus: EngineFanStatus) {
         self.temperatureSetPoint = temperatureSetPoint
         self.controlTemperature = controlTemperature

@@ -30,19 +30,26 @@ import OrderedCollections
 public class ProbeTemperatureLog : ObservableObject {
     
     public let sessionInformation: SessionInformation
+    private let stateLock = NSRecursiveLock()
     
     /// Buffer of logged data points
-    public var dataPointsDict : OrderedDictionary<UInt32, LoggedProbeDataPoint>
+    public var dataPointsDict : OrderedDictionary<UInt32, LoggedProbeDataPoint> {
+        get { withLock { _dataPointsDict } }
+        set { withLock { _dataPointsDict = newValue } }
+    }
+    private var _dataPointsDict : OrderedDictionary<UInt32, LoggedProbeDataPoint>
     
     /// Ordered array of data points in the buffer
     public var dataPoints : [LoggedProbeDataPoint] {
-        get {
-            return Array(dataPointsDict.values)
-        }
+        get { withLock { Array(_dataPointsDict.values) } }
     }
     
     /// Approximate start time of the session
-    public var startTime: Date? = nil
+    public var startTime: Date? {
+        get { withLock { _startTime } }
+        set { withLock { _startTime = newValue } }
+    }
+    private var _startTime: Date? = nil
     
     /// Number of MS to wait for new log data to flow in before inserting it into the data buffer.
     private let ACCUMULATOR_STABILIIZATION_TIME = 0.2
@@ -59,7 +66,7 @@ public class ProbeTemperatureLog : ObservableObject {
     
     /// Initialize empty temperature log
     public init(sessionInfo: SessionInformation) {
-        dataPointsDict = OrderedDictionary<UInt32, LoggedProbeDataPoint>()
+        _dataPointsDict = OrderedDictionary<UInt32, LoggedProbeDataPoint>()
         sessionInformation = sessionInfo
     }
     
@@ -68,8 +75,8 @@ public class ProbeTemperatureLog : ObservableObject {
                 dataPointsDict: OrderedDictionary<UInt32, LoggedProbeDataPoint>, 
                 startTime: Date?) {
         self.sessionInformation = sessionInformation
-        self.dataPointsDict = dataPointsDict
-        self.startTime = startTime
+        self._dataPointsDict = dataPointsDict
+        self._startTime = startTime
     }
     
     /// Finds the missing sequence number range in the specified range of sequence numbers.
@@ -77,43 +84,45 @@ public class ProbeTemperatureLog : ObservableObject {
     /// - parameter sequenceRangeEnd: Last sequence number to search for
     /// - returns: Range of the lowest to highest missing sequence numbers.
     func missingRange(sequenceRangeStart: UInt32, sequenceRangeEnd: UInt32) -> ClosedRange<UInt32>? {
-        var missingRange : ClosedRange<UInt32>? = nil
-        
-        var lowerBound : UInt32? = nil
-        
-        // Find the lower bound
-        for search in sequenceRangeStart...sequenceRangeEnd {
-            if dataPointsDict[search] == nil {
-                // Record was missing so we're done searching
-                lowerBound = search
-                break
-            }
-        }
-        
-        if let lowerBound = lowerBound {
-            // If a lower bound was found, find the upper bound.
-            var upperBound : UInt32? = nil
+        withLock {
+            var missingRange : ClosedRange<UInt32>? = nil
             
-            if lowerBound < sequenceRangeEnd {
-                for search in (lowerBound+1...sequenceRangeEnd).reversed() {
-                    if dataPointsDict[search] == nil {
-                        // Record was missing so we're done searching
-                        upperBound = search
-                        break
-                    }
+            var lowerBound : UInt32? = nil
+            
+            // Find the lower bound
+            for search in sequenceRangeStart...sequenceRangeEnd {
+                if _dataPointsDict[search] == nil {
+                    // Record was missing so we're done searching
+                    lowerBound = search
+                    break
                 }
             }
             
-            if let upperBound = upperBound {
-                // If an upper bound was found, update the return range.
-                missingRange = lowerBound ... upperBound
-            } else {
-                // If not, grab everything from the lower bound on
-                missingRange = lowerBound ... sequenceRangeEnd
+            if let lowerBound = lowerBound {
+                // If a lower bound was found, find the upper bound.
+                var upperBound : UInt32? = nil
+                
+                if lowerBound < sequenceRangeEnd {
+                    for search in (lowerBound+1...sequenceRangeEnd).reversed() {
+                        if _dataPointsDict[search] == nil {
+                            // Record was missing so we're done searching
+                            upperBound = search
+                            break
+                        }
+                    }
+                }
+                
+                if let upperBound = upperBound {
+                    // If an upper bound was found, update the return range.
+                    missingRange = lowerBound ... upperBound
+                } else {
+                    // If not, grab everything from the lower bound on
+                    missingRange = lowerBound ... sequenceRangeEnd
+                }
             }
+            
+            return missingRange
         }
-        
-        return missingRange
     }
     
     
@@ -121,46 +130,49 @@ public class ProbeTemperatureLog : ObservableObject {
     /// - parameter range: Range of sequence numbers to check
     /// - returns number of log records received in that range.
     func logsInRange(sequenceNumbers: ClosedRange<UInt32>) -> Int {
-        var records = 0
-        
-        // Find index of lowest element >= min
-        if(!dataPointsDict.isEmpty) {
-            if let min = dataPointsDict.keys.firstIndex(where: { $0 >= sequenceNumbers.lowerBound } ) {
-                // Find index of highest element <= max
-                if let max = dataPointsDict.keys.lastIndex(where: { $0 <= sequenceNumbers.upperBound } ) {
-                    
-                    records = max-min+1
+        withLock {
+            var records = 0
+            
+            // Find index of lowest element >= min
+            if(!_dataPointsDict.isEmpty) {
+                if let min = _dataPointsDict.keys.firstIndex(where: { $0 >= sequenceNumbers.lowerBound } ) {
+                    // Find index of highest element <= max
+                    if let max = _dataPointsDict.keys.lastIndex(where: { $0 <= sequenceNumbers.upperBound } ) {
+                        records = max-min+1
+                    }
                 }
             }
+           
+            return records
         }
-       
-        return records
     }
     
     /// Inserts data points from the accumulator into the
     private func insertAccumulatedDataPoints() {
-        let maxIndex = dataPointAccumulator.count
-        var added : Bool = false
-        
-        if maxIndex > 0 {
-            // Add all the accumulated data points (if any) and sort the main list if any were added.
-            for idx in 0..<maxIndex {
-                let dp = dataPointAccumulator[idx]
-                if dataPointsDict[dp.sequenceNum] == nil  {
-                    // If the data point isn't already in our set, add it
-                    dataPointsDict[dp.sequenceNum] = dp
-                    added = true;
+        withLock {
+            let maxIndex = dataPointAccumulator.count
+            var added : Bool = false
+            
+            if maxIndex > 0 {
+                // Add all the accumulated data points (if any) and sort the main list if any were added.
+                for idx in 0..<maxIndex {
+                    let dp = dataPointAccumulator[idx]
+                    if _dataPointsDict[dp.sequenceNum] == nil  {
+                        // If the data point isn't already in our set, add it
+                        _dataPointsDict[dp.sequenceNum] = dp
+                        added = true;
+                    }
                 }
+                
+                // If any records were added to the buffer, sort it to ensure they appear in the correct
+                // order.
+                if(added) {
+                    _dataPointsDict.sort { $0.key < $1.key }
+                }
+                
+                // Delete the records in the accumulator that were processed
+                dataPointAccumulator.removeFirst(maxIndex)
             }
-            
-            // If any records were added to the buffer, sort it to ensure they appear in the correct
-            // order.
-            if(added) {
-                dataPointsDict.sort { $0.key < $1.key }
-            }
-            
-            // Delete the records in the accumulator that were processed
-            dataPointAccumulator.removeFirst(maxIndex)
         }
     }
     
@@ -168,24 +180,26 @@ public class ProbeTemperatureLog : ObservableObject {
     /// records coming in.
     /// - parameter newDataPoint: New data points to be added to the buffer
     private func insertDataPoint(newDataPoint: LoggedProbeDataPoint) {
-        // Add the incoming data point to the accumulator
-        let appendResult = dataPointAccumulator.append(newDataPoint)
-        if appendResult.inserted {
-            // If the data point was inserted (i.e. it wasn't already in the accumulator), process it.
-        
-            // Stop the accumulator timer if it's running
-            accumulatorTimer?.invalidate()
-            accumulatorTimer = nil
+        withLock {
+            // Add the incoming data point to the accumulator
+            let appendResult = dataPointAccumulator.append(newDataPoint)
+            if appendResult.inserted {
+                // If the data point was inserted (i.e. it wasn't already in the accumulator), process it.
             
-            // If more than the max number of data points have been accumuated, trigger an insert
-            if(dataPointAccumulator.count > ACCUMULATOR_MAX) {
-                insertAccumulatedDataPoints()
-            } else {
-                // Otherwise reset the accumulation timer to trigger after a short time if no
-                // new data points are added to the accumulator.
-                self.accumulatorTimer = Timer.scheduledTimer(withTimeInterval: ACCUMULATOR_STABILIIZATION_TIME,
-                                                             repeats: false) { _ in
-                    self.insertAccumulatedDataPoints()
+                // Stop the accumulator timer if it's running
+                accumulatorTimer?.invalidate()
+                accumulatorTimer = nil
+                
+                // If more than the max number of data points have been accumuated, trigger an insert
+                if(dataPointAccumulator.count > ACCUMULATOR_MAX) {
+                    insertAccumulatedDataPoints()
+                } else {
+                    // Otherwise reset the accumulation timer to trigger after a short time if no
+                    // new data points are added to the accumulator.
+                    self.accumulatorTimer = Timer.scheduledTimer(withTimeInterval: ACCUMULATOR_STABILIIZATION_TIME,
+                                                                 repeats: false) { _ in
+                        self.insertAccumulatedDataPoints()
+                    }
                 }
             }
         }
@@ -193,24 +207,26 @@ public class ProbeTemperatureLog : ObservableObject {
     
     /// Appends data point to the logged probe data.
     public func appendDataPoint(dataPoint: LoggedProbeDataPoint, sampledAt: Date? = nil) {
-        // Check if new point's sequence number belongs at the end
-        if let lastPoint = dataPointsDict.values.last {
-            if(dataPoint.sequenceNum == (lastPoint.sequenceNum + 1)) {
-                // If it does, simply add it and it will appear at the end of the ordered collection
-                dataPointsDict[dataPoint.sequenceNum] = dataPoint
-                
+        withLock {
+            // Check if new point's sequence number belongs at the end
+            if let lastPoint = _dataPointsDict.values.last {
+                if(dataPoint.sequenceNum == (lastPoint.sequenceNum + 1)) {
+                    // If it does, simply add it and it will appear at the end of the ordered collection
+                    _dataPointsDict[dataPoint.sequenceNum] = dataPoint
+                    
+                } else {
+                    // If not, insert it at its appropriate location
+                    insertDataPoint(newDataPoint: dataPoint)
+                }
             } else {
-                // If not, insert it at its appropriate location
-                insertDataPoint(newDataPoint: dataPoint)
+                // If the collection is empty, just add it
+                _dataPointsDict[dataPoint.sequenceNum] = dataPoint
             }
-        } else {
-            // If the collection is empty, just add it
-            dataPointsDict[dataPoint.sequenceNum] = dataPoint
-        }
-    
-        // Set the start time of this session
-        if let sampledAt = sampledAt {
-            setStartTime(dataPoint: dataPoint, sampledAt: sampledAt)
+        
+            // Set the start time of this session
+            if let sampledAt = sampledAt {
+                setStartTime(dataPoint: dataPoint, sampledAt: sampledAt)
+            }
         }
     }
     
@@ -218,11 +234,20 @@ public class ProbeTemperatureLog : ObservableObject {
     /// - parameter dataPoint: Data point to calculate session start time from
     /// - parameter sampledAt: Time when data point was sampled
     private func setStartTime(dataPoint: LoggedProbeDataPoint, sampledAt: Date) {
-        // Do not recalculate start time after it has been set
-        guard startTime == nil else { return }
- 
-        let secondDiff = Int(dataPoint.sequenceNum) * Int(sessionInformation.samplePeriod) / 1000
-        startTime = Calendar.current.date(byAdding: .second, value: -1 * secondDiff, to: sampledAt)
+        withLock {
+            // Do not recalculate start time after it has been set
+            guard _startTime == nil else { return }
+     
+            let secondDiff = Int(dataPoint.sequenceNum) * Int(sessionInformation.samplePeriod) / 1000
+            _startTime = Calendar.current.date(byAdding: .second, value: -1 * secondDiff, to: sampledAt)
+        }
+    }
+    
+    @inline(__always)
+    private func withLock<T>(_ body: () throws -> T) rethrows -> T {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return try body()
     }
 }
 

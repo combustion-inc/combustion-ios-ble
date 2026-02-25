@@ -27,7 +27,7 @@ SOFTWARE.
 
 import Foundation
 
-public enum SimplifiedModeProduct: UInt16, CaseIterable {
+public enum SimplifiedModeProduct: UInt16, CaseIterable, Codable {
     case _default = 0x0000
     case anyPoultry = 0x0001
     case beefCuts = 0x0002
@@ -82,7 +82,7 @@ extension SimplifiedModeProduct {
 }
 
 
-public enum IntegratedModeProduct: UInt16, CaseIterable {
+public enum IntegratedModeProduct: UInt16, CaseIterable, Codable {
     case poultry = 0x0000
     case meats = 0x0001
     case meatsGround = 0x0002

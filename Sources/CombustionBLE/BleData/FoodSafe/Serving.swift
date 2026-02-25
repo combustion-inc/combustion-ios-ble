@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-public enum Serving: UInt8 {
+public enum Serving: UInt8, Codable {
     case servedImmediately = 0x00
     case cookedAndChilled = 0x01
     

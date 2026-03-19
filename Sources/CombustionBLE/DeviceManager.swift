@@ -29,6 +29,11 @@ import SwiftUI
 import CoreBluetooth
 import Combine
 
+public enum BluetoothScanOwnership {
+    case `internal`
+    case external
+}
+
 // Device Manager protocol to support unit testing
 public protocol DeviceManagerProtocol {
     func cancelPrediction(_ probe: Probe,
@@ -102,6 +107,10 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     
     public weak var deviceResponseHandler: DeviceResponseHandlerProtocol?
     public weak var meatNetActionDelegate: MeatNetActionDelegate?
+
+    public var bluetoothDelegate: any NSObjectProtocol & CBCentralManagerDelegate {
+        BleManager.shared
+    }
     
     public func addSimulatedProbe() {
         addDevice(device: SimulatedProbe())
@@ -124,6 +133,14 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
 
     public func initBluetooth() {
         BleManager.shared.initBluetooth()
+    }
+
+    public func initBluetooth(centralManager: CBCentralManager,
+                              queue: DispatchQueue,
+                              scanOwnership: BluetoothScanOwnership) {
+        BleManager.shared.initBluetooth(centralManager: centralManager,
+                                        queue: queue,
+                                        scanOwnership: scanOwnership)
     }
     
     /// Enables MeatNet repeater network.

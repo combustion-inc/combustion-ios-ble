@@ -56,6 +56,7 @@ class BleManager : NSObject {
     private var peripherals = [String: CombustionPeripheral]()
     
     private var manager: CBCentralManager?
+    private var scanOwnership: BluetoothScanOwnership = .internal
     
     /// Private initializer to enforce singleton
     private override init() {
@@ -63,8 +64,27 @@ class BleManager : NSObject {
     }
     
     func initBluetooth() {
-        if(manager == nil) {
-            manager = CBCentralManager(delegate: self, queue: nil)
+        if manager == nil {
+            let centralManager = CBCentralManager(delegate: self, queue: nil)
+            manager = centralManager
+            scanOwnership = .internal
+        } else if scanOwnership == .internal {
+            manager?.delegate = self
+        }
+    }
+
+    func initBluetooth(centralManager: CBCentralManager,
+                       queue: DispatchQueue,
+                       scanOwnership: BluetoothScanOwnership) {
+        if let manager, manager !== centralManager {
+            return
+        }
+
+        manager = centralManager
+        self.scanOwnership = scanOwnership
+
+        if scanOwnership == .internal {
+            centralManager.delegate = self
         }
     }
     
@@ -206,10 +226,29 @@ class BleManager : NSObject {
     private func combustionPeripheralFor(_ peripheral: CBPeripheral) -> CombustionPeripheral? {
         return peripherals[peripheral.identifier.uuidString]
     }
+
+    private func managesConnectionLifecycle(for peripheral: CBPeripheral) -> Bool {
+        combustionPeripheralFor(peripheral) != nil
+    }
     
     private func getCharacteristicFor(_ peripheralIdentifier: String, type: BleCharacteristic) -> CBCharacteristic? {
         guard let peripheral = peripherals[peripheralIdentifier] else { return nil }
         return peripheral.characteristics[type]
+    }
+
+    var configuredCentralManager: CBCentralManager? {
+        manager
+    }
+
+    var configuredScanOwnership: BluetoothScanOwnership {
+        scanOwnership
+    }
+
+    func resetForTests() {
+        manager?.delegate = nil
+        manager = nil
+        peripherals.removeAll()
+        scanOwnership = .internal
     }
 }
 
@@ -223,10 +262,10 @@ extension BleManager: CBCentralManagerDelegate{
         
         switch central.state {
         case .poweredOn:
-            // print("\(#function): poweredOn")
-            startScanning()
+            if scanOwnership == .internal {
+                startScanning()
+            }
         default:
-            // print("\(#function): default")
             break
         }
     }
@@ -282,7 +321,7 @@ extension BleManager: CBCentralManagerDelegate{
     }
     
     public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        // print("\(#function)")
+        guard managesConnectionLifecycle(for: peripheral) else { return }
 
         peripheral.delegate = self
         peripheral.discoverServices(nil)
@@ -292,13 +331,13 @@ extension BleManager: CBCentralManagerDelegate{
     
     
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
-        // print("\(#function)")
+        guard managesConnectionLifecycle(for: peripheral) else { return }
         
         delegate?.didFailToConnectTo(identifier: peripheral.identifier)
     }
     
     public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
-        // print("\(#function)")
+        guard managesConnectionLifecycle(for: peripheral) else { return }
         
         delegate?.didDisconnectFrom(identifier: peripheral.identifier)
     }

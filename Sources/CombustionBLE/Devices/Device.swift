@@ -29,7 +29,6 @@ import Foundation
 
 /// Struct containing info about a thermometer device.
 open class Device : ObservableObject {
-    
     /// Enumeration representing the various connection states of the device
     public enum ConnectionState : CaseIterable {
         /// App is currently disconnected from device
@@ -277,4 +276,3 @@ extension Device: Hashable {
         hasher.combine(uniqueIdentifier)
     }
 }
-

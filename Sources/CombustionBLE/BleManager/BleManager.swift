@@ -74,7 +74,6 @@ class BleManager : NSObject {
     }
 
     func initBluetooth(centralManager: CBCentralManager,
-                       queue: DispatchQueue,
                        scanOwnership: BluetoothScanOwnership) {
         if let manager, manager !== centralManager {
             return

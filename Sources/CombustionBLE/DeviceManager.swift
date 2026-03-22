@@ -136,10 +136,8 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     }
 
     public func initBluetooth(centralManager: CBCentralManager,
-                              queue: DispatchQueue,
                               scanOwnership: BluetoothScanOwnership) {
         BleManager.shared.initBluetooth(centralManager: centralManager,
-                                        queue: queue,
                                         scanOwnership: scanOwnership)
     }
     

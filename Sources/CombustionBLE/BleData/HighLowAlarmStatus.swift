@@ -25,7 +25,7 @@ SOFTWARE.
 
 import Foundation
 
-public struct HighLowAlarmStatus: Equatable {
+public struct HighLowAlarmStatus: Equatable, Codable {
     public let highAlarmStatus: AlarmStatus
     public let lowAlarmStatus: AlarmStatus
     
@@ -56,7 +56,7 @@ extension HighLowAlarmStatus {
     }
 }
 
-public struct AlarmStatus: Equatable, Hashable {
+public struct AlarmStatus: Equatable, Hashable, Codable {
     
     public let set: Bool
     public let tripped: Bool

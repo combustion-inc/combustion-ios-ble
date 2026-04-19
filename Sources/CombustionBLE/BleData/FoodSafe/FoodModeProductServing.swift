@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-public enum FoodModeProductServing: Equatable {
+public enum FoodModeProductServing: Codable, Equatable {
     case simplified(product: SimplifiedModeProduct, serving: Serving)
     case integrated(product: IntegratedModeProduct, serving: Serving)
 }

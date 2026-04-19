@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-public struct FoodSafeStatus: Equatable {
+public struct FoodSafeStatus: Equatable, Codable {
     public let state: FoodSafeState
     public let logReduction: Double
     public let secondsAboveThreshold: UInt

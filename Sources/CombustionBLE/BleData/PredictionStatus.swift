@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-public struct PredictionStatus: Equatable {
+public struct PredictionStatus: Codable, Equatable {
     public let predictionState: PredictionState
     public let predictionMode: PredictionMode
     public let predictionType: PredictionType

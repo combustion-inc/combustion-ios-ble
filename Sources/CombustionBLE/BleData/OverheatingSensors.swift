@@ -24,7 +24,7 @@ SOFTWARE.
 
 import Foundation
 
-public struct OverheatingSensors: Equatable {
+public struct OverheatingSensors: Codable, Equatable {
     public let sensorIndexes: [Int]
     
     public init(sensorIndexes: [Int]) {

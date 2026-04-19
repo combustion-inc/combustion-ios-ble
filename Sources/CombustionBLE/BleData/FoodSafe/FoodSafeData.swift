@@ -26,7 +26,7 @@ SOFTWARE.
 
 import Foundation
 
-public struct FoodSafeData: Equatable {
+public struct FoodSafeData: Codable, Equatable {
     public let mode: FoodModeProductServing
     
     public let selectedThresholdReferenceTemperature: Double

@@ -233,7 +233,11 @@ public class SimulatedEngine: MeatNetNode {
                                         probeSerialNumber: probeSerialNumber,
                                         nodeSerialNumber: nodeSerialNumber,
                                         statusFlags: record.statusFlags,
-                                        fanStatus: record.fanStatus)
+                                        fanStatus: record.fanStatus,
+                                        controllerStatus: record.controllerStatus,
+                                        hopCount: record.hopCount ?? .hop1,
+                                        knobVoltage: record.knobVoltage,
+                                        knobAngle: record.knobAngle)
 
         accessory.updateDeviceStatus(deviceStatus: engineStatus)
     }
@@ -252,7 +256,7 @@ public class SimulatedEngine: MeatNetNode {
                                         samplePeriod: Constants.defaultSamplePeriodMs,
                                         minSequenceNumber: sequence,
                                         maxSequenceNumber: sequence,
-                                        batteryStatus: EngineBatteryStatus.defaultValues(),
+                                        batteryStatus: .init(level: .ok, state: .notCharging, voltage: 12.0),
                                         temperatureSetPoint: temperatureSetPoint,
                                         controlTemperature: resolvedControlTemperature(controlDeviceType: basicControlDevice.type,
                                                                                       probeSerialNumber: basicControlDevice.probeSerialNumber,
@@ -264,7 +268,11 @@ public class SimulatedEngine: MeatNetNode {
                                                                        controlDeviceConnected: basicControlDevice.type != .unknown,
                                                                        lidOpen: false,
                                                                        fixedSpeed: false),
-                                        fanStatus: resolveBasicFanStatus(controlDeviceConnected: basicControlDevice.type != .unknown))
+                                        fanStatus: resolveBasicFanStatus(controlDeviceConnected: basicControlDevice.type != .unknown),
+                                        controllerStatus: resolveBasicControllerStatus(),
+                                        hopCount: .hop1,
+                                        knobVoltage: resolveBasicKnobVoltage(),
+                                        knobAngle: resolveBasicKnobAngle())
 
         accessory.updateDeviceStatus(deviceStatus: engineStatus)
     }
@@ -395,5 +403,27 @@ public class SimulatedEngine: MeatNetNode {
             return value
         }
         return UInt32(trimmed, radix: 16)
+    }
+
+    private func resolveBasicControllerStatus() -> EngineControllerStatus {
+        let state: EngineControllerState = basicFanDutyCycle > 0 ? .observe : .idle
+
+        return EngineControllerStatus(state: state,
+                                      responseCoefficient: basicFanDutyCycle > 0 ? 0.18 : 0.0,
+                                      cyclesCompleted: UInt8(basicSequenceNumber % 255),
+                                      flags: .init(reachedSetpoint: basicFanDutyCycle == 0,
+                                                   maintenanceMode: false),
+                                      smoothedTemperature: temperatureSetPointOverride ?? Constants.defaultTemperatureSetPoint,
+                                      timeToPeakSeconds: basicFanDutyCycle > 0 ? 90 : 0,
+                                      driftRate: basicFanDutyCycle > 0 ? 0.012 : 0.0)
+    }
+
+    private func resolveBasicKnobVoltage() -> Double {
+        1.65
+    }
+
+    private func resolveBasicKnobAngle() -> Double {
+        let setPoint = temperatureSetPointOverride ?? Constants.defaultTemperatureSetPoint
+        return min(359.9, max(0.0, (setPoint / 575.0) * 359.9))
     }
 }

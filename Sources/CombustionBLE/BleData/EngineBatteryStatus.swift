@@ -39,32 +39,35 @@ public enum EngineBatteryState: UInt8 {
     case fullyCharged = 2
 }
 
-/// Engine battery status parsed from 2 bytes
+/// Engine battery status parsed from 3 bytes.
 public struct EngineBatteryStatus: Equatable {
     public let level: EngineBatteryLevel
     public let state: EngineBatteryState
+    public let voltage: Double
 
-    public init(level: EngineBatteryLevel, state: EngineBatteryState) {
+    public init(level: EngineBatteryLevel, state: EngineBatteryState, voltage: Double = 0.0) {
         self.level = level
         self.state = state
+        self.voltage = voltage
     }
 }
 
 extension EngineBatteryStatus {
 
     static func fromData(_ data: Data) -> EngineBatteryStatus {
-        guard data.count >= 2 else { return defaultValues() }
+        guard data.count >= 3 else { return defaultValues() }
 
         let levelByte = data[data.startIndex]
         let stateByte = data[data.startIndex + 1]
 
         let level = EngineBatteryLevel(rawValue: levelByte) ?? .ok
         let state = EngineBatteryState(rawValue: stateByte) ?? .notCharging
+        let voltage = Double(data[data.startIndex + 2]) / 10.0
 
-        return .init(level: level, state: state)
+        return .init(level: level, state: state, voltage: voltage)
     }
 
     static func defaultValues() -> EngineBatteryStatus {
-        return .init(level: .ok, state: .notCharging)
+        return .init(level: .ok, state: .notCharging, voltage: 0.0)
     }
 }

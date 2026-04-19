@@ -39,7 +39,10 @@ struct EngineSampleRecord {
     let nodeSerialNumber: String?
     let statusFlags: EngineStatusFlags
     let fanStatus: EngineFanStatus
+    let controllerStatus: EngineControllerStatus
     let hopCount: HopCount?
+    let knobVoltage: Double
+    let knobAngle: Double
 }
 
 enum EngineSampleData {
@@ -76,8 +79,10 @@ enum EngineSampleData {
 
             let batteryLevelRaw = value(parts, "battery_level") ?? ""
             let batteryStateRaw = value(parts, "battery_state") ?? ""
+            let batteryVoltage = Double(value(parts, "battery_voltage") ?? "") ?? 0.0
             let batteryStatus = EngineBatteryStatus(level: parseBatteryLevel(batteryLevelRaw),
-                                                    state: parseBatteryState(batteryStateRaw))
+                                                    state: parseBatteryState(batteryStateRaw),
+                                                    voltage: batteryVoltage)
 
             let temperatureSetPoint = Double(value(parts, "temperature_setpoint") ?? "") ?? 0.0
             let controlTemperature = Double(value(parts, "control_temperature") ?? "") ?? 0.0
@@ -101,8 +106,19 @@ enum EngineSampleData {
                                             fanOffTime: UInt32(value(parts, "fan_off_time") ?? "") ?? 0,
                                             fanOnTime: UInt32(value(parts, "fan_on_time") ?? "") ?? 0)
 
+            let controllerStatus = EngineControllerStatus(state: parseControllerState(value(parts, "controller_state") ?? ""),
+                                                          responseCoefficient: Double(value(parts, "controller_response_coefficient") ?? "") ?? 0.0,
+                                                          cyclesCompleted: UInt8(value(parts, "controller_cycles_completed") ?? "") ?? 0,
+                                                          flags: .init(reachedSetpoint: parseBool(value(parts, "controller_reached_setpoint")),
+                                                                       maintenanceMode: parseBool(value(parts, "controller_maintenance_mode"))),
+                                                          smoothedTemperature: Double(value(parts, "controller_smoothed_temperature") ?? "") ?? 0.0,
+                                                          timeToPeakSeconds: UInt8(value(parts, "controller_time_to_peak_seconds") ?? "") ?? 0,
+                                                          driftRate: Double(value(parts, "controller_drift_rate") ?? "") ?? 0.0)
+
             let hopCountRaw = value(parts, "hop_count")
             let hopCount = hopCountRaw.flatMap { UInt8($0) }.flatMap { HopCount(rawValue: $0) }
+            let knobVoltage = Double(value(parts, "knob_voltage") ?? "") ?? 0.0
+            let knobAngle = Double(value(parts, "knob_angle") ?? "") ?? 0.0
 
             let probeSerialNumber: UInt32?
             let nodeSerialNumber: String?
@@ -130,7 +146,10 @@ enum EngineSampleData {
                                  nodeSerialNumber: nodeSerialNumber,
                                  statusFlags: statusFlags,
                                  fanStatus: fanStatus,
-                                 hopCount: hopCount))
+                                 controllerStatus: controllerStatus,
+                                 hopCount: hopCount,
+                                 knobVoltage: knobVoltage,
+                                 knobAngle: knobAngle))
         }
 
         return records
@@ -193,6 +212,26 @@ enum EngineSampleData {
                 return state
             }
             return .powerDown
+        }
+    }
+
+    private static func parseControllerState(_ raw: String) -> EngineControllerState {
+        switch raw.uppercased() {
+        case "STARTUP":
+            return .startup
+        case "PROBE":
+            return .probe
+        case "OBSERVE":
+            return .observe
+        case "REST":
+            return .rest
+        case "IDLE":
+            fallthrough
+        default:
+            if let value = UInt8(raw), let state = EngineControllerState(rawValue: value) {
+                return state
+            }
+            return .idle
         }
     }
 

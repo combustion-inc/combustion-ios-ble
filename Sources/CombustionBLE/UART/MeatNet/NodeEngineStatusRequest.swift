@@ -35,7 +35,6 @@ class NodeEngineStatusRequest: NodeRequest {
     private enum Constants {
         static let MINIMUM_PAYLOAD_LENGTH = 59
         static let SERIAL_NUMBER_LENGTH = 10
-        static let HOP_COUNT_OFFSET = 68
     }
 
     init?(data: Data, requestId: UInt32, payloadLength: Int) {
@@ -48,12 +47,7 @@ class NodeEngineStatusRequest: NodeRequest {
         // Parse Engine Status
         if let status = EngineStatus(fromData: data) {
             self.engineStatus = status
-        }
-
-        // Hop Count
-        if data.count > Constants.HOP_COUNT_OFFSET {
-            let hopCountRaw = data[Constants.HOP_COUNT_OFFSET]
-            self.hopCount = HopCount.from(networkInfoByte: hopCountRaw)
+            self.hopCount = status.hopCount
         }
 
         super.init(requestId: requestId, payloadLength: payloadLength, type: .engineStatus)

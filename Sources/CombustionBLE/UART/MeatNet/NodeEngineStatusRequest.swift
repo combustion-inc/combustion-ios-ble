@@ -53,9 +53,7 @@ class NodeEngineStatusRequest: NodeRequest {
         // Hop Count
         if data.count > Constants.HOP_COUNT_OFFSET {
             let hopCountRaw = data[Constants.HOP_COUNT_OFFSET]
-            if let hc = HopCount(rawValue: hopCountRaw) {
-                self.hopCount = hc
-            }
+            self.hopCount = HopCount.from(networkInfoByte: hopCountRaw)
         }
 
         super.init(requestId: requestId, payloadLength: payloadLength, type: .engineStatus)

@@ -29,8 +29,9 @@ import Foundation
 class NodeSetEngineControlDeviceRequest: NodeRequest {
 
     private enum Constants {
-        static let NODE_SERIAL_NUM_LENGTH = 10
+        static let SERIAL_NUM_LENGTH = 10
         static let PROBE_SERIAL_NUM_LENGTH = 4
+        static let PRODUCT_SERIAL_NUM_LENGTH = 10
     }
 
     /// Creates a request to set the Engine's control device to a probe
@@ -38,19 +39,23 @@ class NodeSetEngineControlDeviceRequest: NodeRequest {
     ///   - serialNumber: Engine serial number (10 characters)
     ///   - probeSerialNumber: Probe serial number (UInt32)
     init?(serialNumber: String, probeSerialNumber: UInt32) {
-        var payload = Data(capacity: Constants.NODE_SERIAL_NUM_LENGTH + 1 + Constants.PROBE_SERIAL_NUM_LENGTH)
+        var payload = Data(capacity: Constants.SERIAL_NUM_LENGTH + 1 + Constants.PRODUCT_SERIAL_NUM_LENGTH)
 
         // Engine Serial Number (10 bytes, padded with nulls if needed)
-        var serialBytes = Array(serialNumber.utf8.prefix(Constants.NODE_SERIAL_NUM_LENGTH))
-        serialBytes += Array(repeating: 0, count: Constants.NODE_SERIAL_NUM_LENGTH - serialBytes.count)
+        var serialBytes = Array(serialNumber.utf8.prefix(Constants.SERIAL_NUM_LENGTH))
+        serialBytes += Array(repeating: 0, count: Constants.SERIAL_NUM_LENGTH - serialBytes.count)
         payload.append(contentsOf: serialBytes)
 
         // Control Device Type (1 byte)
         payload.append(ProductType.probe.rawValue)
 
-        // Probe Serial Number (4 bytes)
-        var probeSerial = probeSerialNumber
-        payload.append(Data(bytes: &probeSerial, count: MemoryLayout.size(ofValue: probeSerial)))
+        // Product Serial Number (10 bytes): the first 4 bytes contain the probe serial.
+        var productSerialBytes = Data(count: Constants.PRODUCT_SERIAL_NUM_LENGTH)
+        var probeSerial = probeSerialNumber.littleEndian
+        withUnsafeBytes(of: &probeSerial) { buffer in
+            productSerialBytes.replaceSubrange(0..<Constants.PROBE_SERIAL_NUM_LENGTH, with: buffer)
+        }
+        payload.append(productSerialBytes)
 
         super.init(outgoingPayload: payload, type: .setEngineControlDevice)
     }
@@ -60,19 +65,19 @@ class NodeSetEngineControlDeviceRequest: NodeRequest {
     ///   - serialNumber: Engine serial number (10 characters)
     ///   - gaugeSerialNumber: Gauge serial number (10 characters)
     init?(serialNumber: String, gaugeSerialNumber: String) {
-        var payload = Data(capacity: Constants.NODE_SERIAL_NUM_LENGTH + 1 + Constants.NODE_SERIAL_NUM_LENGTH)
+        var payload = Data(capacity: Constants.SERIAL_NUM_LENGTH + 1 + Constants.PRODUCT_SERIAL_NUM_LENGTH)
 
         // Engine Serial Number (10 bytes, padded with nulls if needed)
-        var serialBytes = Array(serialNumber.utf8.prefix(Constants.NODE_SERIAL_NUM_LENGTH))
-        serialBytes += Array(repeating: 0, count: Constants.NODE_SERIAL_NUM_LENGTH - serialBytes.count)
+        var serialBytes = Array(serialNumber.utf8.prefix(Constants.SERIAL_NUM_LENGTH))
+        serialBytes += Array(repeating: 0, count: Constants.SERIAL_NUM_LENGTH - serialBytes.count)
         payload.append(contentsOf: serialBytes)
 
         // Control Device Type (1 byte)
         payload.append(ProductType.gauge.rawValue)
 
-        // Gauge Serial Number (10 bytes, padded with nulls if needed)
-        var gaugeSerialBytes = Array(gaugeSerialNumber.utf8.prefix(Constants.NODE_SERIAL_NUM_LENGTH))
-        gaugeSerialBytes += Array(repeating: 0, count: Constants.NODE_SERIAL_NUM_LENGTH - gaugeSerialBytes.count)
+        // Product Serial Number (10 bytes, padded with nulls if needed)
+        var gaugeSerialBytes = Array(gaugeSerialNumber.utf8.prefix(Constants.PRODUCT_SERIAL_NUM_LENGTH))
+        gaugeSerialBytes += Array(repeating: 0, count: Constants.PRODUCT_SERIAL_NUM_LENGTH - gaugeSerialBytes.count)
         payload.append(contentsOf: gaugeSerialBytes)
 
         super.init(outgoingPayload: payload, type: .setEngineControlDevice)

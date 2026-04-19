@@ -56,6 +56,10 @@ public class Engine: Accessory {
     @Published public internal(set) var fanStatus: EngineFanStatus = .defaultValues()
 
     @Published public internal(set) var controlDeviceType: ProductType = .unknown
+
+    @Published public internal(set) var knobVoltage: Double = 0.0
+
+    @Published public internal(set) var knobAngle: Double = 0.0
     
     /// Sequence number range of records on the engine
     @Published public internal(set) var sequenceNumberRange: ClosedRange<UInt32>?
@@ -159,6 +163,8 @@ public class Engine: Accessory {
             updateControlTemperature(deviceStatus.controlTemperature)
             updateFanStatus(deviceStatus.fanStatus)
             updateControlDeviceType(deviceStatus.controlDeviceType)
+            updateKnobVoltage(deviceStatus.knobVoltage)
+            updateKnobAngle(deviceStatus.knobAngle)
             updateWithSessionInformation(.init(sessionID: deviceStatus.sessionID,
                                                samplePeriod: deviceStatus.samplePeriod))
             
@@ -313,6 +319,14 @@ extension Engine {
 
     private func updateControlDeviceType(_ controlDeviceType: ProductType) {
         self.controlDeviceType = controlDeviceType
+    }
+
+    private func updateKnobVoltage(_ knobVoltage: Double) {
+        self.knobVoltage = knobVoltage
+    }
+
+    private func updateKnobAngle(_ knobAngle: Double) {
+        self.knobAngle = knobAngle
     }
     
     private func updateLogPercent() {

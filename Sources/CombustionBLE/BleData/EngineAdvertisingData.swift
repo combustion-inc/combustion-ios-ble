@@ -34,28 +34,33 @@ class EngineAdvertisingData: NodeAdvertisingData {
         static let SERIAL_RANGE = 3..<13
         static let TEMPERATURE_SET_POINT_RANGE = 13..<15
         static let STATUS_FLAGS_RANGE = 15..<16
+        static let PREFERENCES_RANGE = 16..<17
 
         static let COMBUSTION_VENDOR_ID: UInt16 = 0x09C7
-        static let MINIMUM_DATA_LENGTH = 16
+        static let MINIMUM_REQUIRED_FIELDS_LENGTH = 17
     }
 
     /// Current temperature set point (in Celsius)
     var temperatureSetPoint: Double
     /// Engine status flags
     var statusFlags: EngineStatusFlags
+    /// Engine advertising preferences.
+    var preferences: EnginePreferences
 
     init(type: ProductType,
          serialNumber: String,
          temperatureSetPoint: Double,
-         statusFlags: EngineStatusFlags) {
+         statusFlags: EngineStatusFlags,
+         preferences: EnginePreferences = .defaultValues()) {
         self.temperatureSetPoint = temperatureSetPoint
         self.statusFlags = statusFlags
+        self.preferences = preferences
         super.init(type: type, serialNumber: serialNumber)
     }
 
     static func populate(fromData data: Data?) -> (any AdvertisingData)? {
         guard let data = data else { return nil }
-        guard data.count >= Constants.MINIMUM_DATA_LENGTH else { return nil }
+        guard data.count >= Constants.MINIMUM_REQUIRED_FIELDS_LENGTH else { return nil }
 
         // Vendor ID
         let rawVendorId = data.subdata(in: Constants.VENDOR_ID_RANGE)
@@ -79,10 +84,15 @@ class EngineAdvertisingData: NodeAdvertisingData {
         let statusFlagsByte = data[Constants.STATUS_FLAGS_RANGE.lowerBound]
         let statusFlags = EngineStatusFlags.fromByte(statusFlagsByte)
 
+        // Preferences
+        let preferencesByte = data[Constants.PREFERENCES_RANGE.lowerBound]
+        let preferences = EnginePreferences.fromByte(preferencesByte)
+
         return EngineAdvertisingData(type: .engine,
                                      serialNumber: serialNumberString,
                                      temperatureSetPoint: temperatureSetPoint,
-                                     statusFlags: statusFlags)
+                                     statusFlags: statusFlags,
+                                     preferences: preferences)
     }
 }
 
@@ -92,7 +102,8 @@ extension EngineAdvertisingData {
         self.init(type: .engine,
                   serialNumber: fakeSerial,
                   temperatureSetPoint: 225.0,
-                  statusFlags: EngineStatusFlags.defaultValues())
+                  statusFlags: EngineStatusFlags.defaultValues(),
+                  preferences: EnginePreferences.defaultValues())
     }
 
     // Fake data initializer for Simulated Engine
@@ -100,6 +111,7 @@ extension EngineAdvertisingData {
         self.init(type: .engine,
                   serialNumber: fakeSerial,
                   temperatureSetPoint: fakeTemperatureSetPoint,
-                  statusFlags: EngineStatusFlags.defaultValues())
+                  statusFlags: EngineStatusFlags.defaultValues(),
+                  preferences: EnginePreferences.defaultValues())
     }
 }

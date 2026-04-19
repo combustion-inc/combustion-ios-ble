@@ -67,6 +67,15 @@ public struct EngineStatus: DeviceAccessoryStatus {
     /// Fan status
     public let fanStatus: EngineFanStatus
 
+    /// Hop count decoded from the network information byte.
+    public let hopCount: HopCount
+
+    /// Raw knob voltage converted to volts.
+    public let knobVoltage: Double
+
+    /// Raw knob angle converted to degrees.
+    public let knobAngle: Double
+
     public init(serialNumber: String,
                 sessionID: UInt32,
                 samplePeriod: UInt16,
@@ -79,7 +88,10 @@ public struct EngineStatus: DeviceAccessoryStatus {
                 probeSerialNumber: UInt32?,
                 nodeSerialNumber: String?,
                 statusFlags: EngineStatusFlags,
-                fanStatus: EngineFanStatus) {
+                fanStatus: EngineFanStatus,
+                hopCount: HopCount = .hop1,
+                knobVoltage: Double = 0.0,
+                knobAngle: Double = 0.0) {
         self.serialNumber = serialNumber
         self.sessionID = sessionID
         self.samplePeriod = samplePeriod
@@ -93,6 +105,9 @@ public struct EngineStatus: DeviceAccessoryStatus {
         self.nodeSerialNumber = nodeSerialNumber
         self.statusFlags = statusFlags
         self.fanStatus = fanStatus
+        self.hopCount = hopCount
+        self.knobVoltage = knobVoltage
+        self.knobAngle = knobAngle
     }
 }
 
@@ -112,6 +127,8 @@ extension EngineStatus {
         static let STATUS_FLAGS_RANGE = 55..<56
         static let FAN_STATUS_RANGE = 56..<68
         static let NETWORK_INFO_RANGE = 68..<69
+        static let KNOB_VOLTAGE_RANGE = 69..<71
+        static let KNOB_ANGLE_RANGE = 71..<73
 
         static let MINIMUM_DATA_LENGTH = 69
     }
@@ -178,6 +195,25 @@ extension EngineStatus {
         // Fan Status
         let fanStatusData = data.subdata(in: Constants.FAN_STATUS_RANGE)
         self.fanStatus = EngineFanStatus.fromData(fanStatusData)
+
+        // Network Information
+        let networkInfoByte = data[Constants.NETWORK_INFO_RANGE.lowerBound]
+        self.hopCount = HopCount.from(networkInfoByte: networkInfoByte)
+
+        if data.count >= Constants.KNOB_ANGLE_RANGE.upperBound {
+            // Knob Voltage (millivolts encoded as UInt16)
+            let knobVoltageData = data.subdata(in: Constants.KNOB_VOLTAGE_RANGE)
+            let knobVoltageRaw = knobVoltageData.withUnsafeBytes { $0.load(as: UInt16.self) }
+            self.knobVoltage = Double(knobVoltageRaw) / 1000.0
+
+            // Knob Angle (tenths of degrees encoded as UInt16)
+            let knobAngleData = data.subdata(in: Constants.KNOB_ANGLE_RANGE)
+            let knobAngleRaw = knobAngleData.withUnsafeBytes { $0.load(as: UInt16.self) }
+            self.knobAngle = Double(knobAngleRaw) / 10.0
+        } else {
+            self.knobVoltage = 0.0
+            self.knobAngle = 0.0
+        }
     }
 }
 

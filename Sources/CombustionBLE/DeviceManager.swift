@@ -1447,7 +1447,7 @@ extension DeviceManager : BleManagerDelegate {
                let device = findDeviceBySerialNumber(serialNumber: featureFlagsResponse.nodeSerialNumber) as? MeatNetNode {
                 device.updateFeatureFlags(featureFlagsResponse.flags)
             }
-        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm, .setProbeHighLowAlarm, .silenceAlarms:
+        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm, .setProbeHighLowAlarm, .silenceAlarms, .setEngineControlDevice, .setEngineTargetTemperature:
             messageHandlers.callNodeSuccessCompletionHandler(response: response)
         case .custom(_):
             deviceResponseHandler?.handleResponse(identifier: identifier, response: response)

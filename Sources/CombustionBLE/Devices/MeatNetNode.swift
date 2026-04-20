@@ -197,6 +197,9 @@ public class MeatNetNode: Device {
         else if modelInfo.contains("Gauge") {
             dfuType = .gauge
         }
+        else if modelInfo.contains("Engine") {
+            dfuType = .engine
+        }
     }
     
     func updateFeatureFlags(_ flags: FeatureFlags) {

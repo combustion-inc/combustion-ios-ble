@@ -127,15 +127,15 @@ extension EngineStatus {
         static let CONTROL_TEMPERATURE_RANGE = 39..<41
         static let CONTROL_DEVICE_TYPE_RANGE = 41..<42
         static let PROBE_SERIAL_RANGE = 42..<46
-        static let NODE_SERIAL_RANGE = 46..<56
-        static let STATUS_FLAGS_RANGE = 56..<57
-        static let FAN_STATUS_RANGE = 57..<69
-        static let CONTROLLER_STATUS_RANGE = 69..<77
-        static let NETWORK_INFO_RANGE = 77..<78
-        static let KNOB_VOLTAGE_RANGE = 78..<80
-        static let KNOB_ANGLE_RANGE = 80..<82
+        static let NODE_SERIAL_RANGE = 42..<52
+        static let STATUS_FLAGS_RANGE = 52..<53
+        static let FAN_STATUS_RANGE = 53..<65
+        static let CONTROLLER_STATUS_RANGE = 65..<73
+        static let NETWORK_INFO_RANGE = 73..<74
+        static let KNOB_VOLTAGE_RANGE = 74..<76
+        static let KNOB_ANGLE_RANGE = 76..<78
 
-        static let MINIMUM_DATA_LENGTH = 82
+        static let MINIMUM_DATA_LENGTH = 78
     }
 
     init?(fromData data: Data) {

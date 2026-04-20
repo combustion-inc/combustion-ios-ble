@@ -29,6 +29,7 @@ public class LoggedEngineDataPoint: LoggedDeviceDataPoint {
 
     public let temperatureSetPoint: Double?
     public let controlTemperature: Double?
+    public let statusFlags: EngineStatusFlags
     public let fanStatus: EngineFanStatus
 
     public override var deviceType: LoggedDeviceDataPointType {
@@ -38,11 +39,24 @@ public class LoggedEngineDataPoint: LoggedDeviceDataPoint {
     public init(sequenceNum: UInt32,
                 temperatureSetPoint: Double?,
                 controlTemperature: Double?,
+                statusFlags: EngineStatusFlags,
                 fanStatus: EngineFanStatus) {
         self.temperatureSetPoint = temperatureSetPoint
         self.controlTemperature = controlTemperature
+        self.statusFlags = statusFlags
         self.fanStatus = fanStatus
         super.init(sequenceNum: sequenceNum)
+    }
+
+    public convenience init(sequenceNum: UInt32,
+                            temperatureSetPoint: Double?,
+                            controlTemperature: Double?,
+                            fanStatus: EngineFanStatus) {
+        self.init(sequenceNum: sequenceNum,
+                  temperatureSetPoint: temperatureSetPoint,
+                  controlTemperature: controlTemperature,
+                  statusFlags: .defaultValues(),
+                  fanStatus: fanStatus)
     }
 
     override public func temperatureForChannelIndex(_ index: Int) -> Double? {
@@ -50,7 +64,7 @@ public class LoggedEngineDataPoint: LoggedDeviceDataPoint {
             return controlTemperature
         }
         else if index == 1 {
-            return temperatureSetPoint
+            return statusFlags.fixedSpeed ? nil : temperatureSetPoint
         }
         else {
             return nil
@@ -62,6 +76,7 @@ public class LoggedEngineDataPoint: LoggedDeviceDataPoint {
     private enum CodingKeys: String, CodingKey {
         case temperatureSetPoint
         case controlTemperature
+        case statusFlags
         case fanStatus
     }
 
@@ -70,13 +85,15 @@ public class LoggedEngineDataPoint: LoggedDeviceDataPoint {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(temperatureSetPoint, forKey: .temperatureSetPoint)
         try container.encode(controlTemperature, forKey: .controlTemperature)
+        try container.encode(statusFlags, forKey: .statusFlags)
         try container.encode(fanStatus, forKey: .fanStatus)
     }
 
     public required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.temperatureSetPoint = try container.decode(Double.self, forKey: .temperatureSetPoint)
-        self.controlTemperature = try container.decode(Double.self, forKey: .controlTemperature)
+        self.temperatureSetPoint = try container.decodeIfPresent(Double.self, forKey: .temperatureSetPoint)
+        self.controlTemperature = try container.decodeIfPresent(Double.self, forKey: .controlTemperature)
+        self.statusFlags = try container.decodeIfPresent(EngineStatusFlags.self, forKey: .statusFlags) ?? .defaultValues()
         self.fanStatus = try container.decode(EngineFanStatus.self, forKey: .fanStatus)
         try super.init(from: decoder)
     }
@@ -88,17 +105,20 @@ extension LoggedEngineDataPoint {
         return LoggedEngineDataPoint(sequenceNum: deviceStatus.maxSequenceNumber,
                                      temperatureSetPoint: deviceStatus.temperatureSetPoint,
                                      controlTemperature: deviceStatus.controlTemperature,
+                                     statusFlags: deviceStatus.statusFlags,
                                      fanStatus: deviceStatus.fanStatus)
     }
 
     static func fromLogResponse(logResponse: NodeGaugeReadLogsResponse, status: EngineStatus?) -> LoggedEngineDataPoint {
         let temperatureSetPoint = status?.temperatureSetPoint ?? 0.0
         let controlTemperature = status?.controlTemperature ?? 0.0
+        let statusFlags = status?.statusFlags ?? .defaultValues()
         let fanStatus = status?.fanStatus ?? EngineFanStatus.defaultValues()
 
         return LoggedEngineDataPoint(sequenceNum: logResponse.sequenceNumber,
                                      temperatureSetPoint: temperatureSetPoint,
                                      controlTemperature: controlTemperature,
+                                     statusFlags: statusFlags,
                                      fanStatus: fanStatus)
     }
 
@@ -106,6 +126,7 @@ extension LoggedEngineDataPoint {
         return LoggedEngineDataPoint(sequenceNum: logResponse.sequenceNumber,
                                      temperatureSetPoint: logResponse.temperatureSetPoint,
                                      controlTemperature: logResponse.controlTemperature,
+                                     statusFlags: logResponse.statusFlags,
                                      fanStatus: logResponse.fanStatus)
     }
 }

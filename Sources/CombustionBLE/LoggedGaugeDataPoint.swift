@@ -76,6 +76,7 @@ extension LoggedDeviceDataPoint {
             return LoggedEngineDataPoint(sequenceNum: deviceStatus.maxSequenceNumber,
                                          temperatureSetPoint: deviceStatus.temperatureSetPoint,
                                          controlTemperature: deviceStatus.controlTemperature,
+                                         statusFlags: deviceStatus.statusFlags,
                                          fanStatus: deviceStatus.fanStatus)
         }
         else {

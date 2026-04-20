@@ -26,7 +26,7 @@ SOFTWARE.
 import Foundation
 
 /// Engine status flags parsed from a single byte
-public struct EngineStatusFlags: Equatable {
+public struct EngineStatusFlags: Codable, Equatable {
     /// True if temperature set point is controlled by app, false if by dial
     public let appMode: Bool
     /// True if Engine can see its control device (probe or gauge)

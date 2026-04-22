@@ -175,7 +175,7 @@ extension EngineStatus {
         let controlTempRaw = controlTempData.withUnsafeBytes { $0.load(as: UInt16.self) }
         let controlTempValue = controlTempRaw & 0x1FFF
         self.controlTemperature = Double(controlTempValue) * 0.1 - 20.0
-
+        
         // Control Device Type
         let controlDeviceTypeByte = data[Constants.CONTROL_DEVICE_TYPE_RANGE.lowerBound]
         self.controlDeviceType = ProductType(rawValue: controlDeviceTypeByte) ?? .unknown

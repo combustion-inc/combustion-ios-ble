@@ -55,7 +55,7 @@ public class Engine: Accessory {
 
     @Published public internal(set) var fanStatus: EngineFanStatus = .defaultValues()
 
-    @Published public internal(set) var controlDeviceType: ProductType = .unknown
+    @Published public internal(set) var controlDeviceType: ProductType = .probe
 
     @Published public internal(set) var knobVoltage: Double = 0.0
 

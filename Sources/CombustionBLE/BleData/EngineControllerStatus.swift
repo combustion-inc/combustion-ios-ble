@@ -55,6 +55,7 @@ extension EngineControllerFlags {
 }
 
 public struct EngineControllerStatus: Equatable, Codable {
+    
     public let state: EngineControllerState
     public let responseCoefficient: Double
     public let cyclesCompleted: UInt8

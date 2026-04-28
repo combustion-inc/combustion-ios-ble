@@ -128,7 +128,7 @@ extension EngineStatus {
         static let CONTROL_DEVICE_TYPE_RANGE = 41..<42
         static let PROBE_SERIAL_RANGE = 42..<46
         static let NODE_SERIAL_RANGE = 42..<52
-        // Note - 2 bytes of padding are here intionally
+        // Note - 2 bytes of padding are here intentionally
         static let STATUS_FLAGS_RANGE = 54..<55
         static let FAN_STATUS_RANGE = 55..<67
         static let CONTROLLER_STATUS_RANGE = 67..<75

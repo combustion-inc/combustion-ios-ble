@@ -26,10 +26,7 @@ let package = Package(
                 .product(name: "Collections", package: "swift-collections"),
                 "ZIPFoundation"
             ],
-            path: "Sources/CombustionBLE",
-            resources: [
-                .process("Resources")
-            ]),
+            path: "Sources/CombustionBLE"),
         /*
         .testTarget(
             name: "combustion-ios-bleTests",

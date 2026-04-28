@@ -105,17 +105,8 @@ public class SimulatedGauge: MeatNetNode {
 
 public class SimulatedEngine: MeatNetNode {
 
-    private static let sampleData: [EngineSampleRecord] = EngineSampleData.load()
-    private var sampleIndex = 0
-    private var basicSequenceNumber: UInt32 = 0
-    private var basicFanDutyCycle: UInt8 = 0
-    private var basicFanTicksRemaining = 0
-    private let samplePeriodSeconds: TimeInterval
+    private var sequenceNumber: UInt32 = 0
     private let simulatedSessionId: UInt32
-    private var controlDeviceTypeOverride: ProductType?
-    private var controlDeviceSerialOverride: String?
-    private var temperatureSetPointOverride: Double?
-    private let basicStatusOnly: Bool
 
     private enum Constants {
         static let defaultSerialNumber = "FAKEENGIN01"
@@ -123,25 +114,11 @@ public class SimulatedEngine: MeatNetNode {
         static let defaultSamplePeriodMs: UInt16 = 5000
     }
 
-    private struct BasicFanPhase {
-        let dutyCycle: UInt8
-        let durationRange: ClosedRange<Int>
-    }
-
-    public init(controlDeviceTypeOverride: ProductType? = nil,
-                controlDeviceSerialOverride: String? = nil) {
-        self.controlDeviceTypeOverride = controlDeviceTypeOverride
-        self.controlDeviceSerialOverride = controlDeviceSerialOverride
-        self.basicStatusOnly = controlDeviceTypeOverride == nil
-        let initialRecord = basicStatusOnly ? nil : SimulatedEngine.sampleData.first
+    public init() {
         self.simulatedSessionId = UInt32.random(in: 0..<UInt32.max)
-        let serialNumber = Constants.defaultSerialNumber
-        let setPoint = initialRecord?.temperatureSetPoint ?? Constants.defaultTemperatureSetPoint
-        let samplePeriodMs = basicStatusOnly ? Constants.defaultSamplePeriodMs : (initialRecord?.samplePeriodMs ?? Constants.defaultSamplePeriodMs)
-        self.samplePeriodSeconds = TimeInterval(samplePeriodMs) / 1000.0
 
-        let advertising = EngineAdvertisingData(fakeSerial: serialNumber,
-                                                fakeTemperatureSetPoint: setPoint)
+        let advertising = EngineAdvertisingData(fakeSerial: Constants.defaultSerialNumber,
+                                                fakeTemperatureSetPoint: Constants.defaultTemperatureSetPoint)
         super.init(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())
 
         self.accessory = Engine(parent: self, advertising: advertising)
@@ -150,20 +127,17 @@ public class SimulatedEngine: MeatNetNode {
         firmareVersion = "v1.0.0"
         hardwareRevision = "v0.1-A1"
 
-        Timer.scheduledTimer(withTimeInterval: samplePeriodSeconds, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            if self.basicStatusOnly {
-                self.publishBasicStatus()
-            }
-            else {
-                self.advanceSample()
-            }
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.updateFakeAdvertising()
+        }
+
+        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            self?.updateFakeStatus()
         }
 
         self.connectionState = .connected
 
-        let samplePeriod = initialRecord?.samplePeriodMs ?? Constants.defaultSamplePeriodMs
-        let fakeSessionInfo = SessionInformation(sessionID: simulatedSessionId, samplePeriod: samplePeriod)
+        let fakeSessionInfo = SessionInformation(sessionID: simulatedSessionId, samplePeriod: Constants.defaultSamplePeriodMs)
         (accessory as? Engine)?.updateWithSessionInformation(fakeSessionInfo)
     }
 
@@ -173,257 +147,53 @@ public class SimulatedEngine: MeatNetNode {
         return String(format: "SIM-\(nameStr)")
     }
 
-    public func setSimulatedControlDevice(probeSerialNumber: UInt32) {
-        controlDeviceTypeOverride = .probe
-        controlDeviceSerialOverride = "\(probeSerialNumber)"
-        basicFanTicksRemaining = 0
-
-        if basicStatusOnly {
-            publishBasicStatus()
-        }
-    }
-
-    public func setSimulatedControlDevice(gaugeSerialNumber: String) {
-        controlDeviceTypeOverride = .gauge
-        controlDeviceSerialOverride = gaugeSerialNumber.trimmingCharacters(in: .whitespacesAndNewlines)
-        basicFanTicksRemaining = 0
-
-        if basicStatusOnly {
-            publishBasicStatus()
-        }
-    }
-
-    public func setSimulatedTargetTemperature(_ temperatureCelsius: Double) {
-        temperatureSetPointOverride = temperatureCelsius
-
-        if basicStatusOnly {
-            publishBasicStatus()
-        }
-    }
-
-    private func advanceSample() {
-        guard !SimulatedEngine.sampleData.isEmpty else { return }
-        guard let accessory = accessory as? Engine else { return }
-        guard connectionState == .connected else { return }
-
-        let record = SimulatedEngine.sampleData[sampleIndex]
-        sampleIndex = (sampleIndex + 1) % SimulatedEngine.sampleData.count
-
-        let temperatureSetPoint = temperatureSetPointOverride ?? record.temperatureSetPoint
-        let advertising = EngineAdvertisingData(fakeSerial: record.serialNumber,
-                                                fakeTemperatureSetPoint: temperatureSetPoint)
+    private func updateFakeAdvertising() {
+        let advertising = EngineAdvertisingData(fakeSerial: Constants.defaultSerialNumber,
+                                                fakeTemperatureSetPoint: Constants.defaultTemperatureSetPoint)
         updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI())
-        accessory.updateWithAdvertising(advertising)
-
-        let controlDeviceType = controlDeviceTypeOverride ?? record.controlDeviceType
-        let (probeSerialNumber, nodeSerialNumber) = resolveControlDeviceSerials(type: controlDeviceType,
-                                                                                 record: record)
-
-        let engineStatus = EngineStatus(serialNumber: accessory.serialNumber,
-                                        sessionID: simulatedSessionId,
-                                        samplePeriod: record.samplePeriodMs,
-                                        minSequenceNumber: record.minSequence,
-                                        maxSequenceNumber: record.maxSequence,
-                                        batteryStatus: record.batteryStatus,
-                                        temperatureSetPoint: temperatureSetPoint,
-                                        controlTemperature: resolvedControlTemperature(controlDeviceType: controlDeviceType,
-                                                                                      probeSerialNumber: probeSerialNumber,
-                                                                                      nodeSerialNumber: nodeSerialNumber),
-                                        controlDeviceType: controlDeviceType,
-                                        probeSerialNumber: probeSerialNumber,
-                                        nodeSerialNumber: nodeSerialNumber,
-                                        statusFlags: record.statusFlags,
-                                        fanStatus: record.fanStatus,
-                                        controllerStatus: record.controllerStatus,
-                                        hopCount: record.hopCount ?? .hop1,
-                                        knobVoltage: record.knobVoltage,
-                                        knobAngle: record.knobAngle)
-
-        accessory.updateDeviceStatus(deviceStatus: engineStatus)
+        accessory?.updateWithAdvertising(advertising)
     }
 
-    private func publishBasicStatus() {
+    private func updateFakeStatus() {
         guard let accessory = accessory as? Engine else { return }
         guard connectionState == .connected else { return }
 
-        let sequence = basicSequenceNumber
-        basicSequenceNumber += 1
-        let basicControlDevice = resolveBasicControlDevice()
+        let sequence = sequenceNumber
+        sequenceNumber += 1
 
-        let temperatureSetPoint = temperatureSetPointOverride ?? Constants.defaultTemperatureSetPoint
         let engineStatus = EngineStatus(serialNumber: accessory.serialNumber,
                                         sessionID: simulatedSessionId,
                                         samplePeriod: Constants.defaultSamplePeriodMs,
                                         minSequenceNumber: sequence,
                                         maxSequenceNumber: sequence,
                                         batteryStatus: .init(level: .ok, state: .notCharging, voltage: 12.0),
-                                        temperatureSetPoint: temperatureSetPoint,
-                                        controlTemperature: resolvedControlTemperature(controlDeviceType: basicControlDevice.type,
-                                                                                      probeSerialNumber: basicControlDevice.probeSerialNumber,
-                                                                                      nodeSerialNumber: basicControlDevice.nodeSerialNumber),
-                                        controlDeviceType: basicControlDevice.type,
-                                        probeSerialNumber: basicControlDevice.probeSerialNumber,
-                                        nodeSerialNumber: basicControlDevice.nodeSerialNumber,
+                                        temperatureSetPoint: Constants.defaultTemperatureSetPoint,
+                                        controlTemperature: -20,
+                                        controlDeviceType: .unknown,
+                                        probeSerialNumber: nil,
+                                        nodeSerialNumber: nil,
                                         statusFlags: EngineStatusFlags(appMode: false,
-                                                                       controlDeviceConnected: basicControlDevice.type != .unknown,
+                                                                       controlDeviceConnected: false,
                                                                        lidOpen: false,
                                                                        fixedSpeed: false),
-                                        fanStatus: resolveBasicFanStatus(controlDeviceConnected: basicControlDevice.type != .unknown),
-                                        controllerStatus: resolveBasicControllerStatus(),
+                                        fanStatus: EngineFanStatus(fanState: .fanOff,
+                                                                   dutyCycle: 0,
+                                                                   commandedSpeed: 0,
+                                                                   measuredSpeed: 0,
+                                                                   fanOffTime: UInt32(Constants.defaultSamplePeriodMs),
+                                                                   fanOnTime: 0),
+                                        controllerStatus: EngineControllerStatus(state: .idle,
+                                                                                 responseCoefficient: 0.0,
+                                                                                 cyclesCompleted: UInt8(sequence % 255),
+                                                                                 flags: .init(reachedSetpoint: true,
+                                                                                              maintenanceMode: false),
+                                                                                 smoothedTemperature: Constants.defaultTemperatureSetPoint,
+                                                                                 timeToPeakSeconds: 0,
+                                                                                 driftRate: 0.0),
                                         hopCount: .hop1,
-                                        knobVoltage: resolveBasicKnobVoltage(),
-                                        knobAngle: resolveBasicKnobAngle())
+                                        knobVoltage: 1.65,
+                                        knobAngle: min(359.9, max(0.0, (Constants.defaultTemperatureSetPoint / 575.0) * 359.9)))
 
         accessory.updateDeviceStatus(deviceStatus: engineStatus)
-    }
-
-    private func resolvedControlTemperature(controlDeviceType: ProductType,
-                                            probeSerialNumber: UInt32?,
-                                            nodeSerialNumber: String?) -> Double {
-        guard probeSerialNumber != nil || (nodeSerialNumber?.isEmpty == false) else {
-            return -20
-        }
-
-        return ambientTemperatureForControlDevice(type: controlDeviceType,
-                                                  probeSerialNumber: probeSerialNumber,
-                                                  nodeSerialNumber: nodeSerialNumber) ?? -20
-    }
-
-    private func ambientTemperatureForControlDevice(type: ProductType,
-                                                    probeSerialNumber: UInt32?,
-                                                    nodeSerialNumber: String?) -> Double? {
-        let deviceManager = DeviceManager.shared
-
-        switch type {
-        case .probe:
-            guard let probeSerialNumber,
-                  let probe = deviceManager.devices[Probe.serialNumberToString(probeSerialNumber)] as? Probe else {
-                return nil
-            }
-            return probe.virtualTemperatures?.ambientTemperature
-        case .gauge:
-            guard let nodeSerialNumber,
-                  let gauge = deviceManager.accessories[nodeSerialNumber] as? GrillGauge else {
-                return nil
-            }
-            return gauge.currentTemperature?.value
-        default:
-            return nil
-        }
-    }
-
-    private func resolveBasicFanStatus(controlDeviceConnected: Bool) -> EngineFanStatus {
-        guard controlDeviceConnected else {
-            basicFanDutyCycle = 0
-            basicFanTicksRemaining = 0
-            return EngineFanStatus(fanState: .fanOff,
-                                   dutyCycle: 0,
-                                   commandedSpeed: 0,
-                                   measuredSpeed: 0,
-                                   fanOffTime: UInt32(Constants.defaultSamplePeriodMs),
-                                   fanOnTime: 0)
-        }
-
-        if basicFanTicksRemaining <= 0 {
-            let phases: [BasicFanPhase] = [
-                .init(dutyCycle: 0, durationRange: 2...6),
-                .init(dutyCycle: 35, durationRange: 3...7),
-                .init(dutyCycle: 98, durationRange: 2...5)
-            ]
-
-            var selected = phases.randomElement() ?? phases[0]
-            if selected.dutyCycle == basicFanDutyCycle,
-               let alternative = phases.filter({ $0.dutyCycle != basicFanDutyCycle }).randomElement() {
-                selected = alternative
-            }
-
-            basicFanDutyCycle = selected.dutyCycle
-            basicFanTicksRemaining = Int.random(in: selected.durationRange)
-        }
-
-        basicFanTicksRemaining = max(0, basicFanTicksRemaining - 1)
-
-        if basicFanDutyCycle == 0 {
-            return EngineFanStatus(fanState: .fanOff,
-                                   dutyCycle: 0,
-                                   commandedSpeed: 0,
-                                   measuredSpeed: 0,
-                                   fanOffTime: UInt32(Constants.defaultSamplePeriodMs),
-                                   fanOnTime: 0)
-        }
-
-        let commandedSpeed = basicFanDutyCycle
-        let measuredSpeed = UInt8(max(0, min(100, Int(commandedSpeed) + Int.random(in: -4...4))))
-
-        return EngineFanStatus(fanState: .fanOn,
-                               dutyCycle: basicFanDutyCycle,
-                               commandedSpeed: commandedSpeed,
-                               measuredSpeed: measuredSpeed,
-                               fanOffTime: 0,
-                               fanOnTime: UInt32(Constants.defaultSamplePeriodMs))
-    }
-
-    private func resolveBasicControlDevice() -> (type: ProductType, probeSerialNumber: UInt32?, nodeSerialNumber: String?) {
-        switch controlDeviceTypeOverride {
-        case .probe:
-            guard let serial = controlDeviceSerialOverride,
-                  let probeSerial = Self.parseProbeSerialNumber(serial) else {
-                return (.unknown, nil, nil)
-            }
-            return (.probe, probeSerial, nil)
-        case .gauge:
-            guard let serial = controlDeviceSerialOverride,
-                  !serial.isEmpty else {
-                return (.unknown, nil, nil)
-            }
-            return (.gauge, nil, serial)
-        default:
-            return (.unknown, nil, nil)
-        }
-    }
-
-    private func resolveControlDeviceSerials(type: ProductType,
-                                             record: EngineSampleRecord) -> (UInt32?, String?) {
-        switch type {
-        case .probe:
-            let probeSerial = controlDeviceSerialOverride.flatMap(Self.parseProbeSerialNumber) ??
-                              record.probeSerialNumber
-            return (probeSerial, nil)
-        case .gauge:
-            let nodeSerial = controlDeviceSerialOverride ?? record.nodeSerialNumber
-            return (nil, nodeSerial)
-        default:
-            return (nil, nil)
-        }
-    }
-
-    private static func parseProbeSerialNumber(_ serial: String) -> UInt32? {
-        let trimmed = serial.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let value = UInt32(trimmed) {
-            return value
-        }
-        return UInt32(trimmed, radix: 16)
-    }
-
-    private func resolveBasicControllerStatus() -> EngineControllerStatus {
-        let state: EngineControllerState = basicFanDutyCycle > 0 ? .observe : .idle
-
-        return EngineControllerStatus(state: state,
-                                      responseCoefficient: basicFanDutyCycle > 0 ? 0.18 : 0.0,
-                                      cyclesCompleted: UInt8(basicSequenceNumber % 255),
-                                      flags: .init(reachedSetpoint: basicFanDutyCycle == 0,
-                                                   maintenanceMode: false),
-                                      smoothedTemperature: temperatureSetPointOverride ?? Constants.defaultTemperatureSetPoint,
-                                      timeToPeakSeconds: basicFanDutyCycle > 0 ? 90 : 0,
-                                      driftRate: basicFanDutyCycle > 0 ? 0.012 : 0.0)
-    }
-
-    private func resolveBasicKnobVoltage() -> Double {
-        1.65
-    }
-
-    private func resolveBasicKnobAngle() -> Double {
-        let setPoint = temperatureSetPointOverride ?? Constants.defaultTemperatureSetPoint
-        return min(359.9, max(0.0, (setPoint / 575.0) * 359.9))
     }
 }

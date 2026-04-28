@@ -111,10 +111,8 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         addDevice(device: SimulatedGauge())
     }
 
-    public func addSimulatedEngine(controlDeviceTypeOverride: ProductType? = nil,
-                                   controlDeviceSerialOverride: String? = nil) {
-        let engine = SimulatedEngine(controlDeviceTypeOverride: controlDeviceTypeOverride,
-                                     controlDeviceSerialOverride: controlDeviceSerialOverride)
+    public func addSimulatedEngine() {
+        let engine = SimulatedEngine()
         addDevice(device: engine)
         
         if let accessory = engine.accessory {
@@ -796,13 +794,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
             return
         }
 
-        if let simulatedEngine = device as? SimulatedEngine {
-            simulatedEngine.setSimulatedControlDevice(probeSerialNumber: probeSerialNumber)
-            completionHandler(true)
-        }
-        else {
-            sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
-        }
+        sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
         
     }
 
@@ -821,13 +813,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
             return
         }
 
-        if let simulatedEngine = device as? SimulatedEngine {
-            simulatedEngine.setSimulatedControlDevice(gaugeSerialNumber: gaugeSerialNumber)
-            completionHandler(true)
-        }
-        else {
-            sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
-        }
+        sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
     }
 
     /// Sends a request to set an engine's target temperature.
@@ -845,13 +831,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
             return
         }
 
-        if let simulatedEngine = device as? SimulatedEngine {
-            simulatedEngine.setSimulatedTargetTemperature(temperatureCelsius)
-            completionHandler(true)
-        }
-        else {
-            sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
-        }
+        sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
     }
     
     /// Set the DFU file to be used on devices with failed software upgrade.

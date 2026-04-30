@@ -28,21 +28,16 @@ SOFTWARE.
 import Foundation
 
 public struct CSVNote: Hashable {
-    public let timestamp: Date
+    public let sequenceNumber: UInt32
     public let text: String
 
-    public init(timestamp: Date, text: String) {
-        self.timestamp = timestamp
+    public init(sequenceNumber: UInt32, text: String) {
+        self.sequenceNumber = sequenceNumber
         self.text = text
     }
 }
 
 public struct CSV {
-
-    private struct DataPointNoteMatch {
-        let csvTimestamp: String
-        let absoluteTimestamp: Date
-    }
     
     private static func gaugeDataToCsv(serialNumber: String,
                                        temperatureLogs: [DeviceTemperatureLog],
@@ -52,8 +47,7 @@ public struct CSV {
                                        date: Date,
                                        notes: [CSVNote]) -> String {
         var output = [String]()
-        let notesByTimestamp = notesByCSVTimestamp(notes: notes,
-                                                   dataPointMatches: dataPointMatches(from: temperatureLogs))
+        let notesBySequenceNumber = notesBySequenceNumber(notes: notes)
         let includesNotes = !notes.isEmpty
         
         let dateFormatter = DateFormatter()
@@ -100,8 +94,8 @@ public struct CSV {
                                           dataPoint.sequenceNum,
                                             temp)
                         appendNote(to: &values,
-                                   csvTimestamp: csvTimestamp,
-                                   notesByTimestamp: notesByTimestamp,
+                                   sequenceNumber: dataPoint.sequenceNum,
+                                   notesBySequenceNumber: notesBySequenceNumber,
                                    includesNotes: includesNotes)
                         output.append(values)
                     }
@@ -114,8 +108,8 @@ public struct CSV {
                         
                         values += "-"
                         appendNote(to: &values,
-                                   csvTimestamp: csvTimestamp,
-                                   notesByTimestamp: notesByTimestamp,
+                                   sequenceNumber: dataPoint.sequenceNum,
+                                   notesBySequenceNumber: notesBySequenceNumber,
                                    includesNotes: includesNotes)
                         output.append(values)
                     }
@@ -138,8 +132,7 @@ public struct CSV {
                                        date: Date,
                                        notes: [CSVNote]) -> String {
         var output = [String]()
-        let notesByTimestamp = notesByCSVTimestamp(notes: notes,
-                                                   dataPointMatches: dataPointMatches(from: temperatureLogs))
+        let notesBySequenceNumber = notesBySequenceNumber(notes: notes)
         let includesNotes = !notes.isEmpty
         
         let dateFormatter = DateFormatter()
@@ -201,8 +194,8 @@ public struct CSV {
                     values += "\(dataPoint.predictionType.toString()),"
                     values += "\(dataPoint.predictionValueSeconds)"
                     appendNote(to: &values,
-                               csvTimestamp: csvTimestamp,
-                               notesByTimestamp: notesByTimestamp,
+                               sequenceNumber: dataPoint.sequenceNum,
+                               notesBySequenceNumber: notesBySequenceNumber,
                                includesNotes: includesNotes)
                     
                     output.append(values)
@@ -296,117 +289,20 @@ public struct CSV {
     }
 
     private static func appendNote(to values: inout String,
-                                   csvTimestamp: String,
-                                   notesByTimestamp: [String: String],
+                                   sequenceNumber: UInt32,
+                                   notesBySequenceNumber: [UInt32: String],
                                    includesNotes: Bool) {
         guard includesNotes else { return }
-        values += ",\(csvEscaped(notesByTimestamp[csvTimestamp] ?? ""))"
+        values += ",\(csvEscaped(notesBySequenceNumber[sequenceNumber] ?? ""))"
     }
 
-    private static func notesByCSVTimestamp(notes: [CSVNote],
-                                            dataPointMatches: [DataPointNoteMatch]) -> [String: String] {
-        guard !notes.isEmpty, !dataPointMatches.isEmpty else {
-            return [:]
-        }
-
-        var matchedNotes: [String: [String]] = [:]
-        let sortedDataPointMatches = dataPointMatches.sorted {
-            $0.absoluteTimestamp < $1.absoluteTimestamp
-        }
-
+    private static func notesBySequenceNumber(notes: [CSVNote]) -> [UInt32: String] {
+        var notesBySequenceNumber: [UInt32: [String]] = [:]
         for note in notes {
-            guard let match = nearestMatch(to: note.timestamp, in: sortedDataPointMatches) else {
-                continue
-            }
-            matchedNotes[match.csvTimestamp, default: []].append(note.text)
+            notesBySequenceNumber[note.sequenceNumber, default: []].append(note.text)
         }
 
-        return matchedNotes.mapValues { $0.joined(separator: " | ") }
-    }
-
-    private static func nearestMatch(to timestamp: Date,
-                                     in dataPointMatches: [DataPointNoteMatch]) -> DataPointNoteMatch? {
-        guard !dataPointMatches.isEmpty else {
-            return nil
-        }
-
-        var lowerBound = 0
-        var upperBound = dataPointMatches.count
-
-        while lowerBound < upperBound {
-            let midpoint = lowerBound + (upperBound - lowerBound) / 2
-
-            if dataPointMatches[midpoint].absoluteTimestamp < timestamp {
-                lowerBound = midpoint + 1
-            } else {
-                upperBound = midpoint
-            }
-        }
-
-        if lowerBound == 0 {
-            return dataPointMatches[0]
-        }
-
-        if lowerBound == dataPointMatches.count {
-            return dataPointMatches[dataPointMatches.count - 1]
-        }
-
-        let previous = dataPointMatches[lowerBound - 1]
-        let next = dataPointMatches[lowerBound]
-        let previousDistance = abs(previous.absoluteTimestamp.timeIntervalSince(timestamp))
-        let nextDistance = abs(next.absoluteTimestamp.timeIntervalSince(timestamp))
-
-        return previousDistance <= nextDistance ? previous : next
-    }
-
-    private static func dataPointMatches(from logs: [ProbeTemperatureLog]) -> [DataPointNoteMatch] {
-        guard let firstSessionStart = logs.first?.startTime else {
-            return []
-        }
-
-        return logs.flatMap { log -> [DataPointNoteMatch] in
-            guard let sessionStart = log.startTime else {
-                return []
-            }
-
-            return log.dataPoints.map { dataPoint in
-                makeDataPointMatch(firstSessionStart: firstSessionStart,
-                                   sessionStart: sessionStart,
-                                   samplePeriod: log.sessionInformation.samplePeriod,
-                                   sequenceNumber: dataPoint.sequenceNum)
-            }
-        }
-    }
-
-    private static func dataPointMatches(from logs: [DeviceTemperatureLog]) -> [DataPointNoteMatch] {
-        guard let firstSessionStart = logs.first?.startTime else {
-            return []
-        }
-
-        return logs.flatMap { log -> [DataPointNoteMatch] in
-            guard let sessionStart = log.startTime else {
-                return []
-            }
-
-            return log.dataPoints.map { dataPoint in
-                makeDataPointMatch(firstSessionStart: firstSessionStart,
-                                   sessionStart: sessionStart,
-                                   samplePeriod: log.sessionInformation.samplePeriod,
-                                   sequenceNumber: dataPoint.sequenceNum)
-            }
-        }
-    }
-
-    private static func makeDataPointMatch(firstSessionStart: Date,
-                                           sessionStart: Date,
-                                           samplePeriod: UInt16,
-                                           sequenceNumber: UInt32) -> DataPointNoteMatch {
-        let dataPointSeconds = Double(sequenceNumber) * Double(samplePeriod) / 1000.0
-        let relativeTimestamp = sessionStart.timeIntervalSince(firstSessionStart) + dataPointSeconds
-        let absoluteTimestamp = sessionStart.addingTimeInterval(dataPointSeconds)
-
-        return DataPointNoteMatch(csvTimestamp: String(format: "%.3f", relativeTimestamp),
-                                  absoluteTimestamp: absoluteTimestamp)
+        return notesBySequenceNumber.mapValues { $0.joined(separator: " | ") }
     }
 
     private static func csvEscaped(_ value: String) -> String {

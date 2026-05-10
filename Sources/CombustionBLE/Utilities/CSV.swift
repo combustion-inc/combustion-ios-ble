@@ -27,6 +27,16 @@ SOFTWARE.
 
 import Foundation
 
+public struct CSVNote: Hashable {
+    public let sequenceNumber: UInt32
+    public let text: String
+
+    public init(sequenceNumber: UInt32, text: String) {
+        self.sequenceNumber = sequenceNumber
+        self.text = text
+    }
+}
+
 public struct CSV {
     
     private static func gaugeDataToCsv(serialNumber: String,
@@ -34,8 +44,11 @@ public struct CSV {
                                        firmwareVersion: String?,
                                        hardwareRevision: String?,
                                        appVersion: String,
-                                       date: Date) -> String {
+                                       date: Date,
+                                       notes: [CSVNote]) -> String {
         var output = [String]()
+        let notesBySequenceNumber = notesBySequenceNumber(notes: notes)
+        let includesNotes = !notes.isEmpty
         
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
@@ -43,7 +56,7 @@ public struct CSV {
         
         output.append("Combustion Inc. Gauge Data")
         output.append("App: iOS \(appVersion)")
-        output.append("CSV version: 4")
+        output.append("CSV version: 5")
         output.append("Gauge S/N: \(serialNumber)")
         output.append("Gauge FW version: \(firmwareVersion ?? "??")")
         output.append("Gauge HW revision: \(hardwareRevision ?? "??")")
@@ -53,7 +66,7 @@ public struct CSV {
         output.append("")
         
         // Header
-        output.append("Timestamp,SessionID,SequenceNumber,Temperature")
+        output.append("Timestamp,SessionID,SequenceNumber,Temperature\(includesNotes ? ",Notes" : "")")
         
         // Add temperature data points
         if let firstSessionStart = temperatureLogs.first?.startTime?.timeIntervalSince1970 {
@@ -74,20 +87,30 @@ public struct CSV {
                     }
                     
                     if let temp = dataPoint.temperatureForChannelIndex(0) {
-                        var values = String(format: "%.3f,%u,%d,%.2f",
-                                          timeStamp,
+                        let csvTimestamp = String(format: "%.3f", timeStamp)
+                        var values = String(format: "%@,%u,%d,%.2f",
+                                          csvTimestamp,
                                           session.id,
                                           dataPoint.sequenceNum,
                                             temp)
+                        appendNote(to: &values,
+                                   sequenceNumber: dataPoint.sequenceNum,
+                                   notesBySequenceNumber: notesBySequenceNumber,
+                                   includesNotes: includesNotes)
                         output.append(values)
                     }
                     else {
-                        var values = String(format: "%.3f,%u,%d,",
-                                          timeStamp,
+                        let csvTimestamp = String(format: "%.3f", timeStamp)
+                        var values = String(format: "%@,%u,%d,",
+                                          csvTimestamp,
                                           session.id,
                                           dataPoint.sequenceNum)
                         
                         values += "-"
+                        appendNote(to: &values,
+                                   sequenceNumber: dataPoint.sequenceNum,
+                                   notesBySequenceNumber: notesBySequenceNumber,
+                                   includesNotes: includesNotes)
                         output.append(values)
                     }
                 }
@@ -164,8 +187,11 @@ public struct CSV {
                                        firmwareVersion: String?,
                                        hardwareRevision: String?,
                                        appVersion: String,
-                                       date: Date) -> String {
+                                       date: Date,
+                                       notes: [CSVNote]) -> String {
         var output = [String]()
+        let notesBySequenceNumber = notesBySequenceNumber(notes: notes)
+        let includesNotes = !notes.isEmpty
         
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
@@ -173,7 +199,7 @@ public struct CSV {
         
         output.append("Combustion Inc. Probe Data")
         output.append("App: iOS \(appVersion)")
-        output.append("CSV version: 4")
+        output.append("CSV version: 5")
         output.append("Probe S/N: \(serialNumber)")
         output.append("Probe FW version: \(firmwareVersion ?? "??")")
         output.append("Probe HW revision: \(hardwareRevision ?? "??")")
@@ -183,7 +209,7 @@ public struct CSV {
         output.append("")
         
         // Header
-        output.append("Timestamp,SessionID,SequenceNumber,T1,T2,T3,T4,T5,T6,T7,T8,VirtualCoreTemperature,VirtualSurfaceTemperature,VirtualAmbientTemperature,EstimatedCoreTemperature,PredictionSetPoint,VirtualCoreSensor,VirtualSurfaceSensor,VirtualAmbientSensor,PredictionState,PredictionMode,PredictionType,PredictionValueSeconds")
+        output.append("Timestamp,SessionID,SequenceNumber,T1,T2,T3,T4,T5,T6,T7,T8,VirtualCoreTemperature,VirtualSurfaceTemperature,VirtualAmbientTemperature,EstimatedCoreTemperature,PredictionSetPoint,VirtualCoreSensor,VirtualSurfaceSensor,VirtualAmbientSensor,PredictionState,PredictionMode,PredictionType,PredictionValueSeconds\(includesNotes ? ",Notes" : "")")
         
         // Add temperature data points
         if let firstSessionStart = temperatureLogs.first?.startTime?.timeIntervalSince1970 {
@@ -203,8 +229,9 @@ public struct CSV {
                         timeStamp = dataPointSeconds + sessionStartTimeDiff
                     }
                     
-                    var values = String(format: "%.3f,%u,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,",
-                                      timeStamp,
+                    let csvTimestamp = String(format: "%.3f", timeStamp)
+                    var values = String(format: "%@,%u,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,",
+                                      csvTimestamp,
                                       session.id,
                                       dataPoint.sequenceNum,
                                       dataPoint.temperatures.values[0], dataPoint.temperatures.values[1],
@@ -224,6 +251,10 @@ public struct CSV {
                     values += "\(dataPoint.predictionMode.toString()),"
                     values += "\(dataPoint.predictionType.toString()),"
                     values += "\(dataPoint.predictionValueSeconds)"
+                    appendNote(to: &values,
+                               sequenceNumber: dataPoint.sequenceNum,
+                               notesBySequenceNumber: notesBySequenceNumber,
+                               includesNotes: includesNotes)
                     
                     output.append(values)
                 }
@@ -242,7 +273,8 @@ public struct CSV {
                                      gaugeLogs: [DeviceDataLog],
                                      firmwareVersion: String?,
                                      hardwareRevision: String?,
-                                     appVersion: String) -> URL? {
+                                     appVersion: String,
+                                     notes: [CSVNote] = []) -> URL? {
         let date = Date()
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH_mm_ss"
@@ -256,7 +288,8 @@ public struct CSV {
                                  firmwareVersion: firmwareVersion,
                                  hardwareRevision: hardwareRevision,
                                  appVersion: appVersion,
-                                 date: date)
+                                 date: date,
+                                 notes: notes)
         
         // Create the temporary file
         let filePath = NSTemporaryDirectory() + "/" + filename;
@@ -315,7 +348,8 @@ public struct CSV {
                                      temperatureLogs: [ProbeTemperatureLog],
                                      firmwareVersion: String?,
                                      hardwareRevision: String?,
-                                     appVersion: String) -> URL? {
+                                     appVersion: String,
+                                     notes: [CSVNote] = []) -> URL? {
         let date = Date()
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH_mm_ss"
@@ -329,7 +363,8 @@ public struct CSV {
                                  firmwareVersion: firmwareVersion,
                                  hardwareRevision: hardwareRevision,
                                  appVersion: appVersion,
-                                 date: date)
+                                 date: date,
+                                 notes: notes)
         
         // Create the temporary file
         let filePath = NSTemporaryDirectory() + "/" + filename;
@@ -344,6 +379,37 @@ public struct CSV {
         }
         
         return csvURL
+    }
+
+    private static func appendNote(to values: inout String,
+                                   sequenceNumber: UInt32,
+                                   notesBySequenceNumber: [UInt32: String],
+                                   includesNotes: Bool) {
+        guard includesNotes else { return }
+        values += ",\(csvEscaped(notesBySequenceNumber[sequenceNumber] ?? ""))"
+    }
+
+    private static func notesBySequenceNumber(notes: [CSVNote]) -> [UInt32: String] {
+        var notesBySequenceNumber: [UInt32: [String]] = [:]
+        for note in notes {
+            notesBySequenceNumber[note.sequenceNumber, default: []].append(note.text)
+        }
+
+        return notesBySequenceNumber.mapValues {
+            $0.map(noteSeparatorEscaped).joined(separator: " | ")
+        }
+    }
+
+    private static func noteSeparatorEscaped(_ value: String) -> String {
+        value.replacingOccurrences(of: "|", with: "\\|")
+    }
+
+    private static func csvEscaped(_ value: String) -> String {
+        guard value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r") else {
+            return value
+        }
+
+        return "\"\(value.replacingOccurrences(of: "\"", with: "\"\""))\""
     }
     
     

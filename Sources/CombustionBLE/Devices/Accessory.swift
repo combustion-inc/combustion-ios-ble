@@ -42,7 +42,7 @@ public protocol Accessory {
     /// Tracks whether status notification data has become stale.
     var statusNotificationsStale: Bool { get }
     
-    var deviceTemperatureLogs: [DeviceTemperatureLog] { get }
+    var deviceDataLogs: [DeviceDataLog] { get }
         
     func updateDeviceStatus(deviceStatus: DeviceStatus, hopCount: HopCount?)
     
@@ -59,7 +59,10 @@ public protocol Accessory {
     var hardwareRevisionPublisher: AnyPublisher<String?, Never> { get }
     var skuPublisher: AnyPublisher<String?, Never> { get }
     var manufacturingLotPublisher: AnyPublisher<String?, Never> { get }
+    var sessionInformationPublisher: AnyPublisher<SessionInformation?, Never> { get }
     var parentSubject: CurrentValueSubject<Device?, Never> { get }
+    var mostRecentStatus: CurrentValueSubject<DeviceStatus?, Never> { get }
+    
 }
 
 public extension Accessory {
@@ -94,6 +97,11 @@ public extension Accessory {
                 parent?.$manufacturingLot.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
             }
             .eraseToAnyPublisher()
+    }
+
+    @available(*, deprecated, renamed: "deviceDataLogs")
+    var deviceTemperatureLogs: [DeviceDataLog] {
+        return deviceDataLogs
     }
 }
 

@@ -1,4 +1,4 @@
-//  GaugeTemperatureLog.swift
+//  DeviceDataLog.swift
 /*--
 MIT License
 
@@ -26,7 +26,7 @@ SOFTWARE.
 import Foundation
 import OrderedCollections
 
-public class DeviceTemperatureLog : ObservableObject {
+public class DeviceDataLog : ObservableObject {
     
     public let sessionInformation: SessionInformation
     private let stateLock = NSRecursiveLock()
@@ -250,10 +250,13 @@ public class DeviceTemperatureLog : ObservableObject {
     }
 }
 
-extension DeviceTemperatureLog: Identifiable {
+extension DeviceDataLog: Identifiable {
     
     // Use the Session ID for `Identifiable` protocol
     public var id: UInt32 {
         return sessionInformation.sessionID
     }
 }
+
+@available(*, deprecated, renamed: "DeviceDataLog")
+public typealias DeviceTemperatureLog = DeviceDataLog

@@ -134,6 +134,8 @@ extension NodeResponse {
             return NodeReadLogsResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .gaugeLog:
             return NodeGaugeReadLogsResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .engineLog:
+            return NodeEngineReadLogsResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .setID:
             return NodeSetIDResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .setColor:
@@ -164,6 +166,10 @@ extension NodeResponse {
             return NodeSetProbeHighLowAlarmResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .silenceAlarms:
             return NodeSilenceAlarmsResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .setEngineTargetTemperature:
+            return NodeSetEngineTargetTemperatureResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .setEngineControlDevice:
+            return NodeSetEngineControlDeviceResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .custom(let address):
             return NodeCustomResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength), messageType: messageType)
 //        case .readOverTemperature:

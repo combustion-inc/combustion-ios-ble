@@ -1,9 +1,8 @@
-//  ProductType.swift
-
+//  EnginePreferences.swift
 /*--
 MIT License
 
-Copyright (c) 2025 Combustion Inc.
+Copyright (c) 2026 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,15 +23,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
-@available(*, unavailable, renamed: "ProductType")
-public enum DFUDeviceType {}
+import Foundation
 
-public enum ProductType: UInt8, Codable {
-    case unknown = 0x00
-    case probe = 0x01
-    case meatNetNode = 0x02
-    case gauge = 0x03
-    case display = 0x04
-    case charger = 0x05
-    case engine = 0x06
+/// Engine preferences parsed from the advertising preferences byte.
+public struct EnginePreferences: Equatable {
+    /// True when the Engine is configured to advertise at high radio power (+8 dBm).
+    public let highRadioPower: Bool
+
+    public init(highRadioPower: Bool) {
+        self.highRadioPower = highRadioPower
+    }
+}
+
+extension EnginePreferences {
+    static func fromByte(_ byte: UInt8) -> EnginePreferences {
+        .init(highRadioPower: (byte & 0x01) != 0)
+    }
+
+    static func defaultValues() -> EnginePreferences {
+        .init(highRadioPower: false)
+    }
 }

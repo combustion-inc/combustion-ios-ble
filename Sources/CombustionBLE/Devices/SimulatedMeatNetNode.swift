@@ -78,11 +78,11 @@ public class SimulatedGauge: MeatNetNode {
         guard let accessory = accessory as? GrillGauge else { return }
         guard connectionState == .connected else { return }
         
-        let firstSeq = accessory.deviceTemperatureLogs.first?.dataPoints.first?.sequenceNum ?? 0
+        let firstSeq = accessory.deviceDataLogs.first?.dataPoints.first?.sequenceNum ?? 0
 
         let lastSequence: UInt32
 
-        if let last = accessory.deviceTemperatureLogs.first?.dataPoints.last?.sequenceNum {
+        if let last = accessory.deviceDataLogs.first?.dataPoints.last?.sequenceNum {
             lastSequence = last + 1
         }
         else {
@@ -103,3 +103,97 @@ public class SimulatedGauge: MeatNetNode {
     }
 }
 
+public class SimulatedEngine: MeatNetNode {
+
+    private var sequenceNumber: UInt32 = 0
+    private let simulatedSessionId: UInt32
+
+    private enum Constants {
+        static let defaultSerialNumber = "FAKEENGIN01"
+        static let defaultTemperatureSetPoint = 225.0
+        static let defaultSamplePeriodMs: UInt16 = 5000
+    }
+
+    public init() {
+        self.simulatedSessionId = UInt32.random(in: 0..<UInt32.max)
+
+        let advertising = EngineAdvertisingData(fakeSerial: Constants.defaultSerialNumber,
+                                                fakeTemperatureSetPoint: Constants.defaultTemperatureSetPoint)
+        super.init(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI(), identifier: UUID())
+
+        self.accessory = Engine(parent: self, advertising: advertising)
+        self.dfuType = .engine
+
+        firmareVersion = "v1.0.0"
+        hardwareRevision = "v0.1-A1"
+
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.updateFakeAdvertising()
+        }
+
+        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            self?.updateFakeStatus()
+        }
+
+        self.connectionState = .connected
+
+        let fakeSessionInfo = SessionInformation(sessionID: simulatedSessionId, samplePeriod: Constants.defaultSamplePeriodMs)
+        (accessory as? Engine)?.updateWithSessionInformation(fakeSessionInfo)
+    }
+
+    public override var name: String {
+        var nameStr = super.name
+        nameStr.removeLast(4)
+        return String(format: "SIM-\(nameStr)")
+    }
+
+    private func updateFakeAdvertising() {
+        let advertising = EngineAdvertisingData(fakeSerial: Constants.defaultSerialNumber,
+                                                fakeTemperatureSetPoint: Constants.defaultTemperatureSetPoint)
+        updateWithAdvertising(advertising, isConnectable: true, RSSI: SimulatedProbe.randomeRSSI())
+        accessory?.updateWithAdvertising(advertising)
+    }
+
+    private func updateFakeStatus() {
+        guard let accessory = accessory as? Engine else { return }
+        guard connectionState == .connected else { return }
+
+        let sequence = sequenceNumber
+        sequenceNumber += 1
+
+        let engineStatus = EngineStatus(serialNumber: accessory.serialNumber,
+                                        sessionID: simulatedSessionId,
+                                        samplePeriod: Constants.defaultSamplePeriodMs,
+                                        minSequenceNumber: sequence,
+                                        maxSequenceNumber: sequence,
+                                        batteryStatus: .init(level: .ok, state: .notCharging, voltage: 12.0),
+                                        temperatureSetPoint: Constants.defaultTemperatureSetPoint,
+                                        controlTemperature: -20,
+                                        controlDeviceType: .unknown,
+                                        probeSerialNumber: nil,
+                                        nodeSerialNumber: nil,
+                                        statusFlags: EngineStatusFlags(appMode: false,
+                                                                       controlDeviceConnected: false,
+                                                                       lidOpen: false,
+                                                                       fixedSpeed: false),
+                                        fanStatus: EngineFanStatus(fanState: .fanOff,
+                                                                   dutyCycle: 0,
+                                                                   commandedSpeed: 0,
+                                                                   measuredSpeed: 0,
+                                                                   fanOffTime: UInt32(Constants.defaultSamplePeriodMs),
+                                                                   fanOnTime: 0),
+                                        controllerStatus: EngineControllerStatus(state: .idle,
+                                                                                 responseCoefficient: 0.0,
+                                                                                 cyclesCompleted: UInt8(sequence % 255),
+                                                                                 flags: .init(reachedSetpoint: true,
+                                                                                              maintenanceMode: false),
+                                                                                 smoothedTemperature: Constants.defaultTemperatureSetPoint,
+                                                                                 timeToPeakSeconds: 0,
+                                                                                 driftRate: 0.0),
+                                        hopCount: .hop1,
+                                        knobVoltage: 1.65,
+                                        knobAngle: min(359.9, max(0.0, (Constants.defaultTemperatureSetPoint / 575.0) * 359.9)))
+
+        accessory.updateDeviceStatus(deviceStatus: engineStatus)
+    }
+}

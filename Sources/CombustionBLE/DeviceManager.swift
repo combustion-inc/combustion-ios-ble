@@ -110,7 +110,16 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     public func addSimulatedGauge() {
         addDevice(device: SimulatedGauge())
     }
-    
+
+    public func addSimulatedEngine() {
+        let engine = SimulatedEngine()
+        addDevice(device: engine)
+        
+        if let accessory = engine.accessory {
+            addAccessory(accessory: accessory)
+        }
+    }
+
     public func initBluetooth() {
         BleManager.shared.initBluetooth()
     }
@@ -279,8 +288,16 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// Returns list of gauges
     /// - returns: List of all known gauges.
     public func getGauges() -> [GrillGauge] {
-        return Array(devices.values).compactMap { device in
-            return device as? GrillGauge
+        return Array(accessories.values).compactMap { accessory in
+            return accessory as? GrillGauge
+        }
+    }
+
+    /// Returns list of engines
+    /// - returns: List of all known engines.
+    public func getEngines() -> [Engine] {
+        return Array(accessories.values).compactMap { accessory in
+            return accessory as? Engine
         }
     }
     
@@ -377,20 +394,34 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         
         if shouldSendMessageDirectlyTo(device: device) {
             // Request logs directly from Device.
-            guard let request = NodeGaugeReadLogsRequest(serialNumber: accessory.serialNumberString,
-                                          minSequence: minSequence,
-                                                    maxSequence: maxSequence) else {
-                return
+            let request: NodeRequest?
+            if accessory is Engine {
+                request = NodeEngineReadLogsRequest(serialNumber: accessory.serialNumberString,
+                                                    minSequence: minSequence,
+                                                    maxSequence: maxSequence)
+            } else {
+                request = NodeGaugeReadLogsRequest(serialNumber: accessory.serialNumberString,
+                                                   minSequence: minSequence,
+                                                   maxSequence: maxSequence)
             }
+            guard let request = request else { return }
             
             BleManager.shared.sendRequest(identifier: device.bleIdentifier, request: request)
         }
         else {
             // Send message to all nodes that have a route to the device
             let nodesConnectedToDevice = getNodesConnectedToDevice(identifier: accessory.serialNumberString)
-            guard let request = NodeGaugeReadLogsRequest(serialNumber: accessory.serialNumberString,
-                                              minSequence: minSequence,
-                                                         maxSequence: maxSequence) else { return }
+            let request: NodeRequest?
+            if accessory is Engine {
+                request = NodeEngineReadLogsRequest(serialNumber: accessory.serialNumberString,
+                                                    minSequence: minSequence,
+                                                    maxSequence: maxSequence)
+            } else {
+                request = NodeGaugeReadLogsRequest(serialNumber: accessory.serialNumberString,
+                                                   minSequence: minSequence,
+                                                   maxSequence: maxSequence)
+            }
+            guard let request = request else { return }
             BleManager.shared.sendRequestToNodes(nodesConnectedToDevice, request: request)
         }
     }
@@ -747,6 +778,61 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
        
         sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
     }
+
+    /// Sends a request to set an engine's control device to a probe.
+    ///
+    /// - parameter device: the node advertising the engine accessory
+    /// - parameter probeSerialNumber: probe serial number to set as control device
+    /// - parameter completionHandler: completion handler to be called once operation is complete
+    public func setEngineControlDevice(_ device: MeatNetNode,
+                                       probeSerialNumber: UInt32,
+                                       completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        guard let serialNumberString = device.accessory?.serialNumberString,
+              let request = NodeSetEngineControlDeviceRequest(serialNumber: serialNumberString,
+                                                              probeSerialNumber: probeSerialNumber) else {
+            completionHandler(false)
+            return
+        }
+
+        sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
+        
+    }
+
+    /// Sends a request to set an engine's control device to a gauge.
+    ///
+    /// - parameter device: the node advertising the engine accessory
+    /// - parameter gaugeSerialNumber: gauge serial number to set as control device
+    /// - parameter completionHandler: completion handler to be called once operation is complete
+    public func setEngineControlDevice(_ device: MeatNetNode,
+                                       gaugeSerialNumber: String,
+                                       completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        guard let serialNumberString = device.accessory?.serialNumberString,
+              let request = NodeSetEngineControlDeviceRequest(serialNumber: serialNumberString,
+                                                              gaugeSerialNumber: gaugeSerialNumber) else {
+            completionHandler(false)
+            return
+        }
+
+        sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
+    }
+
+    /// Sends a request to set an engine's target temperature.
+    ///
+    /// - parameter device: the node advertising the engine accessory
+    /// - parameter temperatureCelsius: target temperature in Celsius
+    /// - parameter completionHandler: completion handler to be called once operation is complete
+    public func setEngineTargetTemperature(_ device: MeatNetNode,
+                                           temperatureCelsius: Double,
+                                           completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+        guard let serialNumberString = device.accessory?.serialNumberString,
+              let request = NodeSetEngineTargetTemperatureRequest(serialNumber: serialNumberString,
+                                                                  temperatureCelsius: temperatureCelsius) else {
+            completionHandler(false)
+            return
+        }
+
+        sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
+    }
     
     /// Set the DFU file to be used on devices with failed software upgrade.
     /// A failed upgrade will occur if the user kills the application in the middle of
@@ -939,6 +1025,13 @@ extension DeviceManager : BleManagerDelegate {
             
             connectionManager.receivedStatusFor(gauge, node: node)
         }
+        else if let status = status as? EngineStatus {
+            let engine = Engine(status: status,
+                                hopCount: hopCount)
+            addAccessory(accessory: engine)
+
+            connectionManager.receivedStatusFor(engine, node: node)
+        }
     }
     
     func handleDFUData(identifier: UUID, characteristic: BleCharacteristic, data: Data) {
@@ -1051,7 +1144,7 @@ extension DeviceManager : BleManagerDelegate {
                 // Track that data was recieved for probe on node
                 meatnetNode.dataReceivedFromDevice(probe)
             }
-        case .gauge:
+        case .gauge, .engine:
             let meatNetNode: MeatNetNode
             
             // Update gauge if it is in device list
@@ -1066,20 +1159,41 @@ extension DeviceManager : BleManagerDelegate {
                 addDevice(device: meatNetNode)
             }
             
-            if let existingGauge = meatNetNode.accessory as? GrillGauge {
-                existingGauge.updateWithAdvertising(advertising)
+            switch advertising.type {
+            case .gauge:
+                if let existingGauge = meatNetNode.accessory as? GrillGauge {
+                    existingGauge.updateWithAdvertising(advertising)
+                }
+                else if let accessory = self.accessories[advertising.serialNumberString] as? GrillGauge {
+                    meatNetNode.accessory = accessory
+                    accessory.setParent(meatNetNode)
+                    accessory.updateWithAdvertising(advertising)
+                }
+                else {
+                    let gauge = GrillGauge(parent: meatNetNode, advertising: advertising)
+                    meatNetNode.accessory = gauge
+                    
+                    addAccessory(accessory: gauge)
+                }
+            case .engine:
+                if let existingEngine = meatNetNode.accessory as? Engine {
+                    existingEngine.updateWithAdvertising(advertising)
+                }
+                else if let accessory = self.accessories[advertising.serialNumberString] as? Engine {
+                    meatNetNode.accessory = accessory
+                    accessory.setParent(meatNetNode)
+                    accessory.updateWithAdvertising(advertising)
+                }
+                else {
+                    let engine = Engine(parent: meatNetNode, advertising: advertising)
+                    meatNetNode.accessory = engine
+                    
+                    addAccessory(accessory: engine)
+                }
+            default:
+                print("unhandled accessory")
             }
-            else if let accessory = self.accessories[advertising.serialNumberString] as? GrillGauge {
-                meatNetNode.accessory = accessory
-                accessory.setParent(meatNetNode)
-                accessory.updateWithAdvertising(advertising)
-            }
-            else {
-                let gauge = GrillGauge(parent: meatNetNode, advertising: advertising)
-                meatNetNode.accessory = gauge
-                
-                addAccessory(accessory: gauge)
-            }
+            
             
             connectionManager.receivedDeviceAdvertising(meatNetNode)
         case .unknown, .charger, .display:
@@ -1252,19 +1366,11 @@ extension DeviceManager : BleManagerDelegate {
         }
     }
     
-    private func updateDeviceWithLogResponse(identifier: UUID, logResponse: NodeGaugeReadLogsResponse) {
-        guard logResponse.success else { return }
-        
-        if let gauge = findDeviceByBleIdentifier(bleIdentifier: identifier) as? GrillGauge {
-            gauge.processLogResponse(logResponse: logResponse)
-        }
-    }
-    
     private func updateDeviceWithSessionInformation(identifier: UUID, sessionInformation: SessionInformation) {
         if let probe = findDeviceByBleIdentifier(bleIdentifier: identifier) as? Probe {
             probe.updateWithSessionInformation(sessionInformation)
         }
-        else if let gaugeParent = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode, let accessory = gaugeParent.accessory {
+        else if let deviceParent = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode, let accessory = deviceParent.accessory {
             accessory.updateWithSessionInformation(sessionInformation)
         }
     }
@@ -1307,15 +1413,21 @@ extension DeviceManager : BleManagerDelegate {
                     probe.processLogResponse(logResponse: readLogsResponse)
                 }
         case .gaugeLog:
-            if let readGaugeLogsResponse = response as? NodeGaugeReadLogsResponse, let gauge = findAccesoryBySerialNumber(serialNumber: readGaugeLogsResponse.gaugeSerialNumber) as? GrillGauge {
-                gauge.processLogResponse(logResponse: readGaugeLogsResponse)
+            if let readGaugeLogsResponse = response as? NodeGaugeReadLogsResponse,
+               let accessory = findAccesoryBySerialNumber(serialNumber: readGaugeLogsResponse.gaugeSerialNumber) as? GrillGauge {
+                accessory.processLogResponse(logResponse: readGaugeLogsResponse)
+            }
+        case .engineLog:
+            if let readEngineLogsResponse = response as? NodeEngineReadLogsResponse,
+               let accessory = findAccesoryBySerialNumber(serialNumber: readEngineLogsResponse.engineSerialNumber) as? Engine {
+                accessory.processLogResponse(logResponse: readEngineLogsResponse)
             }
         case .getFeatureFlags:
             if let featureFlagsResponse = response as? NodeReadFeatureFlagsResponse,
                let device = findDeviceBySerialNumber(serialNumber: featureFlagsResponse.nodeSerialNumber) as? MeatNetNode {
                 device.updateFeatureFlags(featureFlagsResponse.flags)
             }
-        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm, .setProbeHighLowAlarm, .silenceAlarms:
+        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm, .setProbeHighLowAlarm, .silenceAlarms, .setEngineControlDevice, .setEngineTargetTemperature:
             messageHandlers.callNodeSuccessCompletionHandler(response: response)
         case .custom(_):
             deviceResponseHandler?.handleResponse(identifier: identifier, response: response)
@@ -1362,6 +1474,29 @@ extension DeviceManager : BleManagerDelegate {
                                            status: gaugeStatus,
                                            hopCount: statusRequest.hopCount)
                     addAccessory(accessory: gauge)
+                }
+            }
+        }
+        else if let statusRequest = request as? NodeEngineStatusRequest {
+            if let engineStatus = statusRequest.engineStatus {
+                if let node = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode,
+                   let hopCount = statusRequest.hopCount {
+                    updateDeviceWithNodeStatus(serialNumber: statusRequest.serialNumber,
+                                               status: engineStatus,
+                                               hopCount: hopCount,
+                                               node: node)
+                }
+                else {
+                    let meatNetNode = MeatNetNode(isConnectable: false,
+                                                  RSSI: 0,
+                                                  identifier: UUID())
+
+                    self.addDevice(device: meatNetNode)
+
+                    let engine = Engine(parent: meatNetNode,
+                                        status: engineStatus,
+                                        hopCount: statusRequest.hopCount)
+                    addAccessory(accessory: engine)
                 }
             }
         }

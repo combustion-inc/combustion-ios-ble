@@ -1,9 +1,8 @@
-//  ProductType.swift
-
+//  NodeSetEngineControlDeviceResponse.swift
 /*--
 MIT License
 
-Copyright (c) 2025 Combustion Inc.
+Copyright (c) 2021 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,15 +23,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
-@available(*, unavailable, renamed: "ProductType")
-public enum DFUDeviceType {}
+import Foundation
 
-public enum ProductType: UInt8, Codable {
-    case unknown = 0x00
-    case probe = 0x01
-    case meatNetNode = 0x02
-    case gauge = 0x03
-    case display = 0x04
-    case charger = 0x05
-    case engine = 0x06
+/// Response to Set Engine Control Device request (0x72)
+class NodeSetEngineControlDeviceResponse: NodeResponse {
+    init(success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
+        super.init(success: success,
+                   requestId: requestId,
+                   responseId: responseId,
+                   payloadLength: payloadLength,
+                   messageType: .setEngineControlDevice)
+    }
 }

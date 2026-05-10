@@ -1,4 +1,4 @@
-//  Gauge.swift
+//  Engine.swift
 /*--
 MIT License
 
@@ -26,12 +26,12 @@ SOFTWARE.
 import Foundation
 import Combine
 
-public class GrillGauge: Accessory {
+public class Engine: Accessory {
     
     public typealias SerialNumberType = String
     
     public var type: ProductType {
-        return .gauge
+        return .engine
     }
     
     public private(set) var parent: Device?
@@ -43,19 +43,25 @@ public class GrillGauge: Accessory {
         return serialNumber
     }
     
-    @Published public internal(set) var currentTemperature: GaugeTemperature?
     
     /// Current session information
     @Published public internal(set) var sessionInformation: SessionInformation?
     
-    @Published public internal(set) var mostRecentHighLowAlarm: HighLowAlarmStatus?
+    public var mostRecentStatus = CurrentValueSubject<DeviceStatus?, Never>(nil)
+
+    @Published public internal(set) var temperatureSetPoint: Double = 0.0
+
+    @Published public internal(set) var controlTemperature: Double = 0.0
+
+    @Published public internal(set) var fanStatus: EngineFanStatus = .defaultValues()
+
+    @Published public internal(set) var controlDeviceType: ProductType = .probe
+
+    @Published public internal(set) var knobVoltage: Double = 0.0
+
+    @Published public internal(set) var knobAngle: Double = 0.0
     
-    @Published public internal(set) var isSensorAttached: Bool?
-    
-    /// Whether or not gauge is overheating
-    @Published public internal(set) var overheating: Bool = false
-    
-    /// Sequence number range of records on the gauge
+    /// Sequence number range of records on the engine
     @Published public internal(set) var sequenceNumberRange: ClosedRange<UInt32>?
     
     /// Tracks the most recent time a status notification was received.
@@ -64,10 +70,10 @@ public class GrillGauge: Accessory {
     /// Tracks whether status notification data has become stale.
     @Published public internal(set) var statusNotificationsStale = false
     
-    /// Time at which gauge 'normal mode' info (raw temperatures etc.) was last updated
+    /// Time at which engine 'normal mode' info (raw temperatures etc.) was last updated
     internal var lastNormalMode: Date?
    
-    /// Last hop count that updated 'normal mode' info (nil = direct from Gauge)
+    /// Last hop count that updated 'normal mode' info (nil = direct from Engine)
     @Published public internal(set) var lastNormalModeHopCount : HopCount? = nil
     
     /// Stores historical values of temperatures
@@ -85,8 +91,6 @@ public class GrillGauge: Accessory {
     @Published public internal(set) var lastUpdateTime: Date = Date()
     
     public var parentSubject = CurrentValueSubject<Device?, Never>(nil)
-    
-    public var mostRecentStatus = CurrentValueSubject<DeviceStatus?, Never>(nil)
     
     private var deviceManager = DeviceManager.shared
     
@@ -109,7 +113,7 @@ public class GrillGauge: Accessory {
         updateWithAdvertising(advertising)
     }
     
-    init(parent: MeatNetNode? = nil, status: GaugeStatus, hopCount: HopCount?) {
+    init(parent: MeatNetNode? = nil, status: EngineStatus, hopCount: HopCount?) {
         self.serialNumber = status.serialNumber
         
         setParent(parent)
@@ -132,20 +136,18 @@ public class GrillGauge: Accessory {
     }
     
     public func updateWithAdvertising(_ advertising: any AdvertisingData) {
-        guard let advertisingData = advertising as? GaugeAdvertisingData else { return }
+        guard let advertisingData = advertising as? EngineAdvertisingData else { return }
         
         updateLastUpdateTime()
         
         if let parent = parent, parent.connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(parent) {
-            updateTemperatures(temperature: advertisingData.temperatures)
-            updateHighLowAlarms(advertisingData.highLowAlarmStatus)
-            updateIsSensorAttached(advertisingData.status.sensorPresent)
+            updateTemperatureSetPoint(advertisingData.temperatureSetPoint)
         }
     }
     
-    /// Updates the Device based on newly-received GaugeStatus message. Requests missing records.
+    /// Updates the Device based on newly-received EngineStatus message. Requests missing records.
     public func updateDeviceStatus(deviceStatus: DeviceStatus, hopCount: HopCount?) {
-        guard let deviceStatus = deviceStatus as? GaugeStatus else { return }
+        guard let deviceStatus = deviceStatus as? EngineStatus else { return }
         
         // Ignore status messages that have a sequence count lower than any previously
         // received status messages
@@ -157,20 +159,17 @@ public class GrillGauge: Accessory {
             // Update sequence number range
             sequenceNumberRange = deviceStatus.minSequenceNumber...deviceStatus.maxSequenceNumber
             
-            updateTemperatures(temperature: deviceStatus.temperature)
-            
-            updateHighLowAlarms(deviceStatus.highLowAlarmStatus)
-            
-            updateIsSensorAttached(deviceStatus.status.sensorPresent)
-            
+            updateTemperatureSetPoint(deviceStatus.temperatureSetPoint)
+            updateControlTemperature(deviceStatus.controlTemperature)
+            updateFanStatus(deviceStatus.fanStatus)
+            updateControlDeviceType(deviceStatus.controlDeviceType)
+            updateKnobVoltage(deviceStatus.knobVoltage)
+            updateKnobAngle(deviceStatus.knobAngle)
             updateWithSessionInformation(.init(sessionID: deviceStatus.sessionID,
                                                samplePeriod: deviceStatus.samplePeriod))
             
-            // Overheating
-            overheating = deviceStatus.status.sensoryOverheating
-            
             // Log the temperature data point for "Normal" status updates
-            addDataToLog(LoggedGaugeDataPoint.fromDeviceStatus(deviceStatus: deviceStatus),
+            addDataToLog(LoggedEngineDataPoint.fromDeviceStatus(deviceStatus: deviceStatus),
                          sampledAt: Date())
             
             // Update normal mode update info for hop count lockout
@@ -213,15 +212,15 @@ public class GrillGauge: Accessory {
     }
     
     /// Determines whether to update Normal Mode info based on the hop count of the data.
-    /// - param hopCount: Hop Count of information source (nil = direct from Gauge)
+    /// - param hopCount: Hop Count of information source (nil = direct from Engine)
     private func shouldUpdateNormalMode(hopCount: HopCount?) -> Bool {
-        // If hopCount is nil, this is direct from a Gauge and we should always update.
+        // If hopCount is nil, this is direct from a Engine and we should always update.
         guard let hopCount = hopCount else { return true }
         
         // If we haven't received Normal Mode data for more than the lockout period, we should always update.
         guard let lastNormalMode = lastNormalMode, (Date().timeIntervalSince(lastNormalMode) < Constants.NORMAL_MODE_LOCK_TIMEOUT) else { return true }
         
-        // If we're in the lockout period and the last hop count was nil (i.e. direct from a Gauge),
+        // If we're in the lockout period and the last hop count was nil (i.e. direct from an Engine),
         // we should NOT update.
         guard let lastNormalModeHopCount = lastNormalModeHopCount else { return false }
         
@@ -237,8 +236,10 @@ public class GrillGauge: Accessory {
     
     /// Determins whether the device status has sequence number less than current maximum
     /// - param deviceStatus: Device status to check
-    private func isOldStatusUpdate(_ deviceStatus: GaugeStatus) -> Bool {
-        if let currentTemperatureLog = getCurrentTemperatureLog(), deviceStatus.sessionID == currentTemperatureLog.sessionInformation.sessionID, let max = currentTemperatureLog.dataPoints.last {
+    private func isOldStatusUpdate(_ deviceStatus: EngineStatus) -> Bool {
+        if let currentTemperatureLog = getCurrentTemperatureLog(),
+            deviceStatus.sessionID == currentTemperatureLog.sessionInformation.sessionID,
+            let max = currentTemperatureLog.dataPoints.last {
             return deviceStatus.maxSequenceNumber < max.sequenceNum
         }
         else {
@@ -248,14 +249,14 @@ public class GrillGauge: Accessory {
     }
     
     /// Processes an incoming log response (response to a manual request for prior messages)
-    func processLogResponse(logResponse: NodeGaugeReadLogsResponse) {
-        addDataToLog(LoggedGaugeDataPoint.fromLogResponse(logResponse: logResponse))
+    func processLogResponse(logResponse: NodeEngineReadLogsResponse) {
+        addDataToLog(LoggedEngineDataPoint.fromLogResponse(logResponse: logResponse))
     }
     
-    private func addDataToLog(_ dataPoint: LoggedGaugeDataPoint, sampledAt: Date? = nil) {
+    private func addDataToLog(_ dataPoint: LoggedEngineDataPoint, sampledAt: Date? = nil) {
         // Do not store the dataPoint if its sequence number is greater
-        // than the gauges's max sequence number. This is a safety check
-        // for the gauge/node sending a record with invalid sequence number
+        // than the engine's max sequence number. This is a safety check
+        // for the engine/node sending a record with invalid sequence number
         if let sequenceNumberRange = sequenceNumberRange,
            dataPoint.sequenceNum > sequenceNumberRange.upperBound {
             return
@@ -273,7 +274,7 @@ public class GrillGauge: Accessory {
         }
     }
     
-    // Find the GaugeTemperatureLog that matches current session ID
+    // Find the EngineDeviceLog that matches current session ID
     private func getCurrentTemperatureLog() -> DeviceDataLog? {
         return deviceDataLogs.first(where: { $0.sessionInformation.sessionID == sessionInformation?.sessionID } )
     }
@@ -290,7 +291,7 @@ public class GrillGauge: Accessory {
     }
 }
 
-extension GrillGauge {
+extension Engine {
     
     private enum Constants {
         
@@ -304,16 +305,28 @@ extension GrillGauge {
         static let MINIMUM_LAST_UPDATE_CHANGE = 1.0
     }
     
-    private func updateTemperatures(temperature: GaugeTemperature) {
-        self.currentTemperature = temperature
+    private func updateTemperatureSetPoint(_ temperatureSetPoint: Double) {
+        self.temperatureSetPoint = temperatureSetPoint
     }
-    
-    private func updateHighLowAlarms(_ highLowAlarmStatus: HighLowAlarmStatus) {
-        self.mostRecentHighLowAlarm = highLowAlarmStatus
+
+    private func updateControlTemperature(_ controlTemperature: Double) {
+        self.controlTemperature = controlTemperature
     }
-    
-    private func updateIsSensorAttached(_ isSensorAttached: Bool) {
-        self.isSensorAttached = isSensorAttached
+
+    private func updateFanStatus(_ fanStatus: EngineFanStatus) {
+        self.fanStatus = fanStatus
+    }
+
+    private func updateControlDeviceType(_ controlDeviceType: ProductType) {
+        self.controlDeviceType = controlDeviceType
+    }
+
+    private func updateKnobVoltage(_ knobVoltage: Double) {
+        self.knobVoltage = knobVoltage
+    }
+
+    private func updateKnobAngle(_ knobAngle: Double) {
+        self.knobAngle = knobAngle
     }
     
     private func updateLogPercent() {

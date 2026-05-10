@@ -23,6 +23,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --*/
 
+public protocol DeviceAccessoryStatus: DeviceStatus {
+    var sessionID: UInt32 { get }
+    var samplePeriod: UInt16 { get }
+}
+
 public protocol DeviceStatus {
     var minSequenceNumber: UInt32 { get }
     var maxSequenceNumber: UInt32 { get }

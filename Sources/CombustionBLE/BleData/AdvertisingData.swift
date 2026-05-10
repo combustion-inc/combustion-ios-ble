@@ -71,6 +71,8 @@ class NodeAdvertisingData: AdvertisingData {
         switch type {
         case .gauge:
             return GaugeAdvertisingData.populate(fromData: data)
+        case .engine:
+            return EngineAdvertisingData.populate(fromData: data)
         case nil, .probe, .display, .charger, .meatNetNode, .some(.unknown):
             return nil
         }

@@ -60,6 +60,7 @@ class DFUManager {
         static let DISPLAY_DFU_NAME = "Display_DFU_"
         static let CHARGER_DFU_NAME = "Charger_DFU_"
         static let GAUGE_DFU_NAME = "Gauge_DFU_"
+        static let ENGINE_DFU_NAME = "Engine_DFU_"
         
         static let THERMOMETER_DEFAULT_BOOTLOADER = "CI Probe BL"
         
@@ -106,6 +107,9 @@ class DFUManager {
         }
         else if advertisingName.contains(Constants.GAUGE_DFU_NAME) {
             return .gauge
+        }
+        else if advertisingName.contains(Constants.ENGINE_DFU_NAME) {
+            return .engine
         }
         
         return .unknown
@@ -480,6 +484,9 @@ class DFUManager {
             }
             else if node.dfuType == .gauge {
                 return Constants.GAUGE_DFU_NAME
+            }
+            else if node.dfuType == .engine {
+                return Constants.ENGINE_DFU_NAME
             }
         }
         

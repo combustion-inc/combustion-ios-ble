@@ -109,7 +109,7 @@ extension LoggedEngineDataPoint {
                                      fanStatus: deviceStatus.fanStatus)
     }
 
-    static func fromLogResponse(logResponse: NodeGaugeReadLogsResponse, status: EngineStatus?) -> LoggedEngineDataPoint {
+    static func fromLogResponse(logResponse: NodeEngineReadLogsResponse, status: EngineStatus?) -> LoggedEngineDataPoint {
         let temperatureSetPoint = status?.temperatureSetPoint ?? 0.0
         let controlTemperature = status?.controlTemperature ?? 0.0
         let statusFlags = status?.statusFlags ?? .defaultValues()

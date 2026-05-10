@@ -56,7 +56,7 @@ public struct CSV {
         
         output.append("Combustion Inc. Gauge Data")
         output.append("App: iOS \(appVersion)")
-        output.append("CSV version: 4")
+        output.append("CSV version: 5")
         output.append("Gauge S/N: \(serialNumber)")
         output.append("Gauge FW version: \(firmwareVersion ?? "??")")
         output.append("Gauge HW revision: \(hardwareRevision ?? "??")")
@@ -141,7 +141,7 @@ public struct CSV {
         
         output.append("Combustion Inc. Probe Data")
         output.append("App: iOS \(appVersion)")
-        output.append("CSV version: 4")
+        output.append("CSV version: 5")
         output.append("Probe S/N: \(serialNumber)")
         output.append("Probe FW version: \(firmwareVersion ?? "??")")
         output.append("Probe HW revision: \(hardwareRevision ?? "??")")
@@ -302,7 +302,13 @@ public struct CSV {
             notesBySequenceNumber[note.sequenceNumber, default: []].append(note.text)
         }
 
-        return notesBySequenceNumber.mapValues { $0.joined(separator: " | ") }
+        return notesBySequenceNumber.mapValues {
+            $0.map(noteSeparatorEscaped).joined(separator: " | ")
+        }
+    }
+
+    private static func noteSeparatorEscaped(_ value: String) -> String {
+        value.replacingOccurrences(of: "|", with: "\\|")
     }
 
     private static func csvEscaped(_ value: String) -> String {

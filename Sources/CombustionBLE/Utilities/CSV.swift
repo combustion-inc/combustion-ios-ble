@@ -127,8 +127,11 @@ public struct CSV {
                                         firmwareVersion: String?,
                                         hardwareRevision: String?,
                                         appVersion: String,
-                                        date: Date) -> String {
+                                        date: Date,
+                                        notes: [CSVNote]) -> String {
         var output = [String]()
+        let notesBySequenceNumber = notesBySequenceNumber(notes: notes)
+        let includesNotes = !notes.isEmpty
 
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
@@ -145,7 +148,7 @@ public struct CSV {
         output.append("Created: \(dateString)")
         output.append("")
 
-        output.append("Timestamp,SessionID,SequenceNumber,TemperatureSetPoint,ControlTemperature,FanState,DutyCycle,CommandedSpeed,MeasuredSpeed,FanOffTimeMs,FanOnTimeMs")
+        output.append("Timestamp,SessionID,SequenceNumber,TemperatureSetPoint,ControlTemperature,FanState,DutyCycle,CommandedSpeed,MeasuredSpeed,FanOffTimeMs,FanOnTimeMs\(includesNotes ? ",Notes" : "")")
 
         if let firstSessionStart = dataLogs.first?.startTime?.timeIntervalSince1970 {
             for session in dataLogs {
@@ -160,7 +163,7 @@ public struct CSV {
                     }
 
                     let fanStatus = enginePoint.fanStatus
-                    let values = String(format: "%.3f,%u,%d,%.2f,%.2f,%d,%d,%d,%d,%u,%u",
+                    var values = String(format: "%.3f,%u,%d,%.2f,%.2f,%d,%d,%d,%d,%u,%u",
                                         timeStamp,
                                         session.id,
                                         enginePoint.sequenceNum,
@@ -172,6 +175,10 @@ public struct CSV {
                                         fanStatus.measuredSpeed,
                                         fanStatus.fanOffTime,
                                         fanStatus.fanOnTime)
+                    appendNote(to: &values,
+                               sequenceNumber: enginePoint.sequenceNum,
+                               notesBySequenceNumber: notesBySequenceNumber,
+                               includesNotes: includesNotes)
                     output.append(values)
                 }
             }
@@ -313,7 +320,8 @@ public struct CSV {
                                            dataLogs: [DeviceDataLog],
                                            firmwareVersion: String?,
                                            hardwareRevision: String?,
-                                           appVersion: String) -> URL? {
+                                           appVersion: String,
+                                           notes: [CSVNote] = []) -> URL? {
         let date = Date()
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH_mm_ss"
@@ -326,7 +334,8 @@ public struct CSV {
                                   firmwareVersion: firmwareVersion,
                                   hardwareRevision: hardwareRevision,
                                   appVersion: appVersion,
-                                  date: date)
+                                  date: date,
+                                  notes: notes)
 
         let filePath = NSTemporaryDirectory() + "/" + filename;
 

@@ -38,9 +38,8 @@ private typealias CommandCompletionAction = (completion: CommandCompletionHandle
 
 public final class CommandCoordinator {
     private enum Constants {
-        static let directConnectionTimeOutSeconds: TimeInterval = 10
-        static let meatnetTimeOutSeconds: TimeInterval = 30
-        static let commandRetryInterval: TimeInterval = 5
+        static let requestTimeoutSeconds: TimeInterval = 30
+        static let commandRetryIntervalSeconds: TimeInterval = 5
         static let readOverTemperatureTimeoutSeconds: TimeInterval = 5
     }
 
@@ -58,30 +57,40 @@ public final class CommandCoordinator {
         let requestId: UInt32
     }
 
-    private final class DirectCommandOperation {
-        let key: DirectCommandKey
-        let request: Request
-        let completion: CommandCompletionHandler
-        let timeSent: Date
-
-        init(identifier: String,
-             request: Request,
-             completion: @escaping CommandCompletionHandler,
-             timeSent: Date) {
-            self.key = DirectCommandKey(messageType: request.messageType, identifier: identifier)
-            self.request = request
-            self.completion = completion
-            self.timeSent = timeSent
-        }
-    }
-
-    private final class NodeCommandOperation {
-        let key: NodeCommandKey
-        let request: NodeRequest
+    private class CommandOperation {
         let send: SendAction
         let completion: CommandCompletionHandler
         let timeSent: Date
         var nextRetryTime: Date
+
+        init(send: @escaping SendAction,
+             completion: @escaping CommandCompletionHandler,
+             timeSent: Date) {
+            self.send = send
+            self.completion = completion
+            self.timeSent = timeSent
+            self.nextRetryTime = timeSent.addingTimeInterval(Constants.commandRetryIntervalSeconds)
+        }
+    }
+
+    private final class DirectCommandOperation: CommandOperation {
+        let key: DirectCommandKey
+        let request: Request
+
+        init(identifier: String,
+             request: Request,
+             send: @escaping SendAction,
+             completion: @escaping CommandCompletionHandler,
+             timeSent: Date) {
+            self.key = DirectCommandKey(messageType: request.messageType, identifier: identifier)
+            self.request = request
+            super.init(send: send, completion: completion, timeSent: timeSent)
+        }
+    }
+
+    private final class NodeCommandOperation: CommandOperation {
+        let key: NodeCommandKey
+        let request: NodeRequest
 
         init(request: NodeRequest,
              send: @escaping SendAction,
@@ -89,10 +98,7 @@ public final class CommandCoordinator {
              timeSent: Date) {
             self.key = NodeCommandKey(messageType: request.messageType, requestId: request.requestId)
             self.request = request
-            self.send = send
-            self.completion = completion
-            self.timeSent = timeSent
-            self.nextRetryTime = timeSent.addingTimeInterval(Constants.commandRetryInterval)
+            super.init(send: send, completion: completion, timeSent: timeSent)
         }
     }
 
@@ -149,10 +155,20 @@ public final class CommandCoordinator {
             var retries: [SendAction] = []
             var readOverTemperatures: [ReadOverTemperatureCompletionHandler] = []
 
-            checkDirectCommandTimeout(now: now, commandCompletions: &completions)
-            checkNodeCommandProgress(now: now,
-                                     commandCompletions: &completions,
-                                     commandRetries: &retries)
+            checkCommandProgress(operations: Array(directCommandOperations.values),
+                                 now: now,
+                                 commandCompletions: &completions,
+                                 commandRetries: &retries,
+                                 removeOperation: { operation in
+                                     directCommandOperations.removeValue(forKey: operation.key)
+                                 })
+            checkCommandProgress(operations: Array(nodeCommandOperations.values),
+                                 now: now,
+                                 commandCompletions: &completions,
+                                 commandRetries: &retries,
+                                 removeOperation: { operation in
+                                     nodeCommandOperations.removeValue(forKey: operation.key)
+                                 })
             checkReadOverTemperatureTimeout(now: now,
                                             readOverTemperatureCompletions: &readOverTemperatures)
 
@@ -189,6 +205,7 @@ public final class CommandCoordinator {
                                  completionHandler: @escaping CommandCompletionHandler) -> CommandHandle {
         let operation = DirectCommandOperation(identifier: identifier,
                                                request: request,
+                                               send: send,
                                                completion: completionHandler,
                                                timeSent: dateProvider())
         queue.sync {
@@ -274,25 +291,14 @@ public final class CommandCoordinator {
         }
     }
 
-    private func checkDirectCommandTimeout(now: Date, commandCompletions: inout [CommandCompletionAction]) {
-        for operation in Array(directCommandOperations.values) {
-            guard directCommandOperations[operation.key] != nil else { continue }
-
-            if now.timeIntervalSince(operation.timeSent) >= Constants.directConnectionTimeOutSeconds,
-               let operation = directCommandOperations.removeValue(forKey: operation.key) {
-                commandCompletions.append((operation.completion, .failure))
-            }
-        }
-    }
-
-    private func checkNodeCommandProgress(now: Date,
-                                          commandCompletions: inout [CommandCompletionAction],
-                                          commandRetries: inout [SendAction]) {
-        for operation in Array(nodeCommandOperations.values) {
-            guard nodeCommandOperations[operation.key] != nil else { continue }
-
-            if now.timeIntervalSince(operation.timeSent) >= Constants.meatnetTimeOutSeconds {
-                if let operation = nodeCommandOperations.removeValue(forKey: operation.key) {
+    private func checkCommandProgress<Operation: CommandOperation>(operations: [Operation],
+                                                                   now: Date,
+                                                                   commandCompletions: inout [CommandCompletionAction],
+                                                                   commandRetries: inout [SendAction],
+                                                                   removeOperation: (Operation) -> Operation?) {
+        for operation in operations {
+            if now.timeIntervalSince(operation.timeSent) >= Constants.requestTimeoutSeconds {
+                if let operation = removeOperation(operation) {
                     commandCompletions.append((operation.completion, .failure))
                 }
                 continue
@@ -300,7 +306,7 @@ public final class CommandCoordinator {
 
             if now >= operation.nextRetryTime {
                 commandRetries.append(operation.send)
-                operation.nextRetryTime = operation.nextRetryTime.addingTimeInterval(Constants.commandRetryInterval)
+                operation.nextRetryTime = operation.nextRetryTime.addingTimeInterval(Constants.commandRetryIntervalSeconds)
             }
         }
     }

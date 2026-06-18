@@ -27,6 +27,10 @@ import Foundation
 
 /// Outgoing request to set Engine's control device (0x72)
 class NodeSetEngineControlDeviceRequest: NodeRequest {
+    let serialNumber: String
+    let controlDeviceType: ProductType
+    let probeSerialNumber: UInt32?
+    let gaugeSerialNumber: String?
 
     private enum Constants {
         static let SERIAL_NUM_LENGTH = 10
@@ -39,6 +43,11 @@ class NodeSetEngineControlDeviceRequest: NodeRequest {
     ///   - serialNumber: Engine serial number (10 characters)
     ///   - probeSerialNumber: Probe serial number (UInt32)
     init?(serialNumber: String, probeSerialNumber: UInt32) {
+        self.serialNumber = serialNumber
+        self.controlDeviceType = .probe
+        self.probeSerialNumber = probeSerialNumber
+        self.gaugeSerialNumber = nil
+
         var payload = Data(capacity: Constants.SERIAL_NUM_LENGTH + 1 + Constants.PRODUCT_SERIAL_NUM_LENGTH)
 
         // Engine Serial Number (10 bytes, padded with nulls if needed)
@@ -65,6 +74,11 @@ class NodeSetEngineControlDeviceRequest: NodeRequest {
     ///   - serialNumber: Engine serial number (10 characters)
     ///   - gaugeSerialNumber: Gauge serial number (10 characters)
     init?(serialNumber: String, gaugeSerialNumber: String) {
+        self.serialNumber = serialNumber
+        self.controlDeviceType = .gauge
+        self.probeSerialNumber = nil
+        self.gaugeSerialNumber = gaugeSerialNumber
+
         var payload = Data(capacity: Constants.SERIAL_NUM_LENGTH + 1 + Constants.PRODUCT_SERIAL_NUM_LENGTH)
 
         // Engine Serial Number (10 bytes, padded with nulls if needed)
@@ -81,5 +95,30 @@ class NodeSetEngineControlDeviceRequest: NodeRequest {
         payload.append(contentsOf: gaugeSerialBytes)
 
         super.init(outgoingPayload: payload, type: .setEngineControlDevice)
+    }
+}
+
+extension NodeSetEngineControlDeviceRequest: DeviceStatusConfirmingRequest {
+    var confirmationSerialNumber: String {
+        serialNumber
+    }
+
+    func isConfirmed(by status: DeviceStatus) -> Bool {
+        guard let status = status as? EngineStatus else {
+            return false
+        }
+
+        guard status.controlDeviceType == controlDeviceType else {
+            return false
+        }
+
+        switch controlDeviceType {
+        case .probe:
+            return status.probeSerialNumber == probeSerialNumber
+        case .gauge:
+            return status.nodeSerialNumber == gaugeSerialNumber
+        default:
+            return false
+        }
     }
 }

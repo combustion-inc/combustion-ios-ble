@@ -1,9 +1,7 @@
-//  ResetFoodSafe.swift
-
 /*--
 MIT License
 
-Copyright (c) 2023 Combustion Inc.
+Copyright (c) 2021 Combustion Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,35 +24,14 @@ SOFTWARE.
 
 import Foundation
 
-class ResetFoodSafeRequest: Request {
-    let serialNumber: UInt32
-
-    init(serialNumber: UInt32) {
-        self.serialNumber = serialNumber
-
-        super.init(payload: Data(), type: .resetFoodSafe)
-    }
+public enum CommandResult {
+    case success
+    case failure
+    case cancelled
 }
 
-extension ResetFoodSafeRequest: DeviceStatusConfirmingRequest {
-    var confirmationSerialNumber: String {
-        String(serialNumber)
-    }
+public typealias CommandCompletionHandler = (_ result: CommandResult) -> Void
 
-    func isConfirmed(by status: DeviceStatus) -> Bool {
-        guard let status = status as? ProbeStatus,
-              let foodSafeStatus = status.foodSafeStatus else {
-            return false
-        }
-
-        return foodSafeStatus.logReduction == 0 && foodSafeStatus.secondsAboveThreshold == 0
-    }
-}
-
-class ResetFoodSafeResponse : Response {
-    init(success: Bool, payloadLength: Int) {
-        super.init(success:success,
-                   payloadLength: payloadLength,
-                   messageType: .resetFoodSafe)
-    }
+public protocol CommandHandle: AnyObject {
+    func cancel()
 }

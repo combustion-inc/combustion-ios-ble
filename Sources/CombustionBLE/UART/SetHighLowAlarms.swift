@@ -27,7 +27,15 @@ SOFTWARE.
 import Foundation
 
 class SetHighLowAlarmsRequest: Request {
-    init(highAlarms: [AlarmStatus], lowAlarms: [AlarmStatus]) {
+    let serialNumber: UInt32
+    let highAlarms: [AlarmStatus]
+    let lowAlarms: [AlarmStatus]
+
+    init(serialNumber: UInt32, highAlarms: [AlarmStatus], lowAlarms: [AlarmStatus]) {
+        self.serialNumber = serialNumber
+        self.highAlarms = highAlarms
+        self.lowAlarms = lowAlarms
+
         var payload = Data()
         
         for status in highAlarms {
@@ -39,6 +47,25 @@ class SetHighLowAlarmsRequest: Request {
         }
         
         super.init(payload: payload, type: .setHighLowAlarms)
+    }
+}
+
+extension SetHighLowAlarmsRequest: DeviceStatusConfirmingRequest {
+    var confirmationSerialNumber: String {
+        String(serialNumber)
+    }
+
+    func isConfirmed(by status: DeviceStatus) -> Bool {
+        guard let status = status as? ProbeStatus,
+              let statusHighAlarms = status.highAlarms,
+              let statusLowAlarms = status.lowAlarms,
+              statusHighAlarms.count == highAlarms.count,
+              statusLowAlarms.count == lowAlarms.count else {
+            return false
+        }
+
+        return zip(statusHighAlarms, highAlarms).allSatisfy { $0.matchesCommandedConfiguration($1) }
+        && zip(statusLowAlarms, lowAlarms).allSatisfy { $0.matchesCommandedConfiguration($1) }
     }
 }
 

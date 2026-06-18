@@ -27,7 +27,15 @@ SOFTWARE.
 import Foundation
 
 class NodeSetPredictionRequest: NodeRequest {
+    let serialNumber: UInt32
+    let setPointCelsius: Double
+    let mode: PredictionMode
+
     init(serialNumber: UInt32, setPointCelsius: Double, mode: PredictionMode) {
+        self.serialNumber = serialNumber
+        self.setPointCelsius = setPointCelsius
+        self.mode = mode
+
         var serialNumberBytes = serialNumber
         var payload = Data()
         payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
@@ -38,6 +46,28 @@ class NodeSetPredictionRequest: NodeRequest {
         payload.append(Data(bytes: &rawPayload, count: MemoryLayout.size(ofValue: rawPayload)))
         
         super.init(outgoingPayload: payload, type: .setPrediction)
+    }
+}
+
+extension NodeSetPredictionRequest: DeviceStatusConfirmingRequest {
+    var confirmationSerialNumber: String {
+        String(serialNumber)
+    }
+
+    func isConfirmed(by status: DeviceStatus) -> Bool {
+        guard let status = status as? ProbeStatus else {
+            return false
+        }
+
+        guard status.predictionStatus.predictionMode == mode else {
+            return false
+        }
+
+        guard mode != .none else {
+            return true
+        }
+
+        return abs(status.predictionStatus.predictionSetPointTemperature - setPointCelsius) <= 0.05
     }
 }
 

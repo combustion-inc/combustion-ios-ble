@@ -27,6 +27,8 @@ import Foundation
 
 /// Outgoing request to set Engine's target temperature (0x71)
 class NodeSetEngineTargetTemperatureRequest: NodeRequest {
+    let serialNumber: String
+    let temperatureCelsius: Double
 
     private enum Constants {
         static let NODE_SERIAL_NUM_LENGTH = 10
@@ -37,6 +39,9 @@ class NodeSetEngineTargetTemperatureRequest: NodeRequest {
     ///   - serialNumber: Engine serial number (10 characters)
     ///   - temperatureCelsius: Target temperature in Celsius (-20 to 799)
     init?(serialNumber: String, temperatureCelsius: Double) {
+        self.serialNumber = serialNumber
+        self.temperatureCelsius = temperatureCelsius
+
         var payload = Data(capacity: Constants.NODE_SERIAL_NUM_LENGTH + 2)
 
         // Serial Number (10 bytes, padded with nulls if needed)
@@ -50,5 +55,19 @@ class NodeSetEngineTargetTemperatureRequest: NodeRequest {
         payload.append(Data(bytes: &tempBytes, count: MemoryLayout.size(ofValue: tempBytes)))
 
         super.init(outgoingPayload: payload, type: .setEngineTargetTemperature)
+    }
+}
+
+extension NodeSetEngineTargetTemperatureRequest: DeviceStatusConfirmingRequest {
+    var confirmationSerialNumber: String {
+        serialNumber
+    }
+
+    func isConfirmed(by status: DeviceStatus) -> Bool {
+        guard let status = status as? EngineStatus else {
+            return false
+        }
+
+        return EngineStatus.encodeTemperature(status.temperatureSetPoint) == EngineStatus.encodeTemperature(temperatureCelsius)
     }
 }

@@ -27,8 +27,28 @@ SOFTWARE.
 import Foundation
 
 class ConfigureFoodSafeRequest: Request {
-    init(foodSafeData: FoodSafeData) {
+    let serialNumber: UInt32
+    let foodSafeData: FoodSafeData
+
+    init(serialNumber: UInt32, foodSafeData: FoodSafeData) {
+        self.serialNumber = serialNumber
+        self.foodSafeData = foodSafeData
+
         super.init(payload: foodSafeData.toRawData(), type: .configureFoodSafe)
+    }
+}
+
+extension ConfigureFoodSafeRequest: DeviceStatusConfirmingRequest {
+    var confirmationSerialNumber: String {
+        String(serialNumber)
+    }
+
+    func isConfirmed(by status: DeviceStatus) -> Bool {
+        guard let status = status as? ProbeStatus else {
+            return false
+        }
+
+        return status.foodSafeData?.toRawData() == foodSafeData.toRawData()
     }
 }
 

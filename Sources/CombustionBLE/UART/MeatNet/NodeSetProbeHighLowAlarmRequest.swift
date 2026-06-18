@@ -28,8 +28,15 @@ SOFTWARE
 import Foundation
 
 class NodeSetProbeHighLowAlarmRequest: NodeRequest {
+    let serialNumber: UInt32
+    let highAlarms: [AlarmStatus]
+    let lowAlarms: [AlarmStatus]
     
     init(serialNumber: UInt32, highAlarms: [AlarmStatus], lowAlarms: [AlarmStatus]) {
+        self.serialNumber = serialNumber
+        self.highAlarms = highAlarms
+        self.lowAlarms = lowAlarms
+
         var payload = Data()
         
         var serialNumberBytes = serialNumber
@@ -48,6 +55,28 @@ class NodeSetProbeHighLowAlarmRequest: NodeRequest {
     }
 }
 
+extension NodeSetProbeHighLowAlarmRequest: DeviceStatusConfirmingRequest {
+    var confirmationSerialNumber: String {
+        String(serialNumber)
+    }
+
+    func isConfirmed(by status: DeviceStatus) -> Bool {
+        guard let status = status as? ProbeStatus else {
+            return false
+        }
+
+        guard let statusHighAlarms = status.highAlarms,
+              let statusLowAlarms = status.lowAlarms,
+              statusHighAlarms.count == highAlarms.count,
+              statusLowAlarms.count == lowAlarms.count else {
+            return false
+        }
+
+        return zip(statusHighAlarms, highAlarms).allSatisfy { $0.matchesCommandedConfiguration($1) }
+        && zip(statusLowAlarms, lowAlarms).allSatisfy { $0.matchesCommandedConfiguration($1) }
+    }
+}
+
 class NodeSetProbeHighLowAlarmResponse : NodeResponse {
     init(success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
         super.init(success: success,
@@ -55,5 +84,26 @@ class NodeSetProbeHighLowAlarmResponse : NodeResponse {
                    responseId: responseId,
                    payloadLength: payloadLength,
                    messageType: .setProbeHighLowAlarm)
+    }
+}
+
+extension AlarmStatus {
+    
+    func matchesCommandedConfiguration(_ expected: AlarmStatus) -> Bool {
+        guard set == expected.set else { return false }
+        guard expected.set else { return true }
+
+        return temperaturesMatch(alarmTemperature, expected.alarmTemperature)
+    }
+
+    private func temperaturesMatch(_ lhs: Double?, _ rhs: Double?) -> Bool {
+        switch (lhs, rhs) {
+        case (.none, .none):
+            return true
+        case (.some(let lhs), .some(let rhs)):
+            return abs(lhs - rhs) <= 0.05
+        default:
+            return false
+        }
     }
 }

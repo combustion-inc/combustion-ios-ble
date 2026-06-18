@@ -27,12 +27,34 @@ SOFTWARE.
 import Foundation
 
 class NodeResetFoodSafeRequest: NodeRequest {
+    let serialNumber: UInt32
+
     init(serialNumber: UInt32) {
+        self.serialNumber = serialNumber
+
         var serialNumberBytes = serialNumber
         var payload = Data()
         payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
         
         super.init(outgoingPayload: payload, type: .resetFoodSafe)
+    }
+}
+
+extension NodeResetFoodSafeRequest: DeviceStatusConfirmingRequest {
+    var confirmationSerialNumber: String {
+        String(serialNumber)
+    }
+
+    func isConfirmed(by status: DeviceStatus) -> Bool {
+        guard let status = status as? ProbeStatus else {
+            return false
+        }
+
+        guard let foodSafeStatus = status.foodSafeStatus else {
+            return false
+        }
+
+        return foodSafeStatus.logReduction == 0 && foodSafeStatus.secondsAboveThreshold == 0
     }
 }
 

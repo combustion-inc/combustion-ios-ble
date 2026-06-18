@@ -25,7 +25,13 @@ SOFTWARE.
 import Foundation
 
 class NodeSetPowerModeRequest: NodeRequest {
+    let serialNumber: UInt32
+    let mode: ProbePowerMode
+
     init(serialNumber: UInt32, mode: ProbePowerMode) {
+        self.serialNumber = serialNumber
+        self.mode = mode
+
         var serialNumberBytes = serialNumber
         
         var payload = Data()
@@ -36,6 +42,20 @@ class NodeSetPowerModeRequest: NodeRequest {
         payload.append(Data(bytes: &modeBytes, count: MemoryLayout.size(ofValue: modeBytes)))
         
         super.init(outgoingPayload: payload, type: .setPowerMode)
+    }
+}
+
+extension NodeSetPowerModeRequest: DeviceStatusConfirmingRequest {
+    var confirmationSerialNumber: String {
+        String(serialNumber)
+    }
+
+    func isConfirmed(by status: DeviceStatus) -> Bool {
+        guard let status = status as? ProbeStatus else {
+            return false
+        }
+
+        return status.thermometerPreferences.powerMode == mode
     }
 }
 

@@ -25,12 +25,16 @@ SOFTWARE.
 import Foundation
 
 class SetNodeHighLowAlarmRequest: NodeRequest {
+    let serialNumber: String
+    let status: HighLowAlarmStatus
     
     class Constants {
         static let NODE_SERIAL_NUM_LENGTH = 10
     }
     
     init?(serialNumber: String, status: HighLowAlarmStatus) {
+        self.serialNumber = serialNumber
+        self.status = status
         
         var payload = Data(capacity: Constants.NODE_SERIAL_NUM_LENGTH + 4)
         
@@ -45,6 +49,21 @@ class SetNodeHighLowAlarmRequest: NodeRequest {
     }
 }
 
+extension SetNodeHighLowAlarmRequest: DeviceStatusConfirmingRequest {
+    var confirmationSerialNumber: String {
+        serialNumber
+    }
+
+    func isConfirmed(by status: DeviceStatus) -> Bool {
+        guard let status = status as? GaugeStatus else {
+            return false
+        }
+
+        return status.highLowAlarmStatus.highAlarmStatus.matchesCommandedConfiguration(self.status.highAlarmStatus)
+        && status.highLowAlarmStatus.lowAlarmStatus.matchesCommandedConfiguration(self.status.lowAlarmStatus)
+    }
+}
+
 class SetNodeHighLowAlarmResponse : NodeResponse {
     init(success: Bool, requestId: UInt32, responseId: UInt32, payloadLength: Int) {
         super.init(success: success,
@@ -54,5 +73,3 @@ class SetNodeHighLowAlarmResponse : NodeResponse {
                    messageType: .setHighLowAlarm)
     }
 }
-
-

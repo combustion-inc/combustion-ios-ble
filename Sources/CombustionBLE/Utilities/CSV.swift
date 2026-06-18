@@ -50,19 +50,16 @@ public struct CSV {
         let notesBySequenceNumber = notesBySequenceNumber(notes: notes)
         let includesNotes = !notes.isEmpty
         
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let dateString = dateFormatter.string(from: date)
-        
         output.append("Combustion Inc. Gauge Data")
         output.append("App: iOS \(appVersion)")
-        output.append("CSV version: 5")
+        output.append("CSV version: 6")
         output.append("Gauge S/N: \(serialNumber)")
         output.append("Gauge FW version: \(firmwareVersion ?? "??")")
         output.append("Gauge HW revision: \(hardwareRevision ?? "??")")
         output.append("Framework: iOS")
         output.append("Sample Period: \(temperatureLogs.first?.sessionInformation.samplePeriod ?? 0)")
-        output.append("Created: \(dateString)")
+        output.append("CSV Creation Date: \(formattedDate(date))")
+        output.append("Session Start Date: \(formattedDate(temperatureLogs.first?.startTime))")
         output.append("")
         
         // Header
@@ -133,19 +130,16 @@ public struct CSV {
         let notesBySequenceNumber = notesBySequenceNumber(notes: notes)
         let includesNotes = !notes.isEmpty
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let dateString = dateFormatter.string(from: date)
-
         output.append("Combustion Inc. Engine Data")
         output.append("App: iOS \(appVersion)")
-        output.append("CSV version: 4")
+        output.append("CSV version: 5")
         output.append("Engine S/N: \(serialNumber)")
         output.append("Engine FW version: \(firmwareVersion ?? "??")")
         output.append("Engine HW revision: \(hardwareRevision ?? "??")")
         output.append("Framework: iOS")
         output.append("Sample Period: \(dataLogs.first?.sessionInformation.samplePeriod ?? 0)")
-        output.append("Created: \(dateString)")
+        output.append("CSV Creation Date: \(formattedDate(date))")
+        output.append("Session Start Date: \(formattedDate(dataLogs.first?.startTime))")
         output.append("")
 
         output.append("Timestamp,SessionID,SequenceNumber,TemperatureSetPoint,ControlTemperature,FanState,DutyCycle,CommandedSpeed,MeasuredSpeed,FanOffTimeMs,FanOnTimeMs\(includesNotes ? ",Notes" : "")")
@@ -200,19 +194,16 @@ public struct CSV {
         let notesBySequenceNumber = notesBySequenceNumber(notes: notes)
         let includesNotes = !notes.isEmpty
         
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let dateString = dateFormatter.string(from: date)
-        
         output.append("Combustion Inc. Probe Data")
         output.append("App: iOS \(appVersion)")
-        output.append("CSV version: 5")
+        output.append("CSV version: 6")
         output.append("Probe S/N: \(serialNumber)")
         output.append("Probe FW version: \(firmwareVersion ?? "??")")
         output.append("Probe HW revision: \(hardwareRevision ?? "??")")
         output.append("Framework: iOS")
         output.append("Sample Period: \(temperatureLogs.first?.sessionInformation.samplePeriod ?? 0)")
-        output.append("Created: \(dateString)")
+        output.append("CSV Creation Date: \(formattedDate(date))")
+        output.append("Session Start Date: \(formattedDate(temperatureLogs.first?.startTime))")
         output.append("")
         
         // Header
@@ -396,6 +387,17 @@ public struct CSV {
                                    includesNotes: Bool) {
         guard includesNotes else { return }
         values += ",\(csvEscaped(notesBySequenceNumber[sequenceNumber] ?? ""))"
+    }
+
+    private static func csvDateFormatter() -> DateFormatter {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return dateFormatter
+    }
+
+    private static func formattedDate(_ date: Date?, using dateFormatter: DateFormatter = csvDateFormatter()) -> String {
+        guard let date = date else { return "??" }
+        return dateFormatter.string(from: date)
     }
 
     private static func notesBySequenceNumber(notes: [CSVNote]) -> [UInt32: String] {

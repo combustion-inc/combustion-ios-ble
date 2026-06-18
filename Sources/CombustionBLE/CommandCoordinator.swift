@@ -25,9 +25,6 @@ SOFTWARE.
 --*/
 
 import Foundation
-#if DEBUG
-import os.log
-#endif
 
 @available(*, deprecated, renamed: "CommandCoordinator")
 public typealias MessageHandlers = CommandCoordinator
@@ -40,10 +37,6 @@ protocol DeviceStatusConfirmingRequest {
 private typealias CommandCompletionAction = (completion: CommandCompletionHandler, result: CommandResult)
 
 public final class CommandCoordinator {
-#if DEBUG
-    private static let meatNetCommandLog = OSLog(subsystem: "com.combustion.ble", category: "CommandCoordinator")
-#endif
-
     private enum Constants {
         static let directConnectionTimeOutSeconds: TimeInterval = 10
         static let meatnetTimeOutSeconds: TimeInterval = 30
@@ -218,7 +211,6 @@ public final class CommandCoordinator {
             nodeCommandOperations[operation.key] = operation
         }
 
-        logMeatNetCommand("initial_send", request: request)
         send()
         return NodeCommandHandle(commandCoordinator: self, key: operation.key)
     }
@@ -233,7 +225,6 @@ public final class CommandCoordinator {
     func callNodeCommandHandler(response: NodeResponse) {
         let key = NodeCommandKey(messageType: response.messageType, requestId: response.requestId)
         if let action = completeNodeCommand(key: key, result: response.success ? .success : .failure) {
-            logMeatNetCommand("request_completion", messageType: response.messageType, requestId: response.requestId, result: response.success ? "success" : "failure")
             action.completion(action.result)
         }
     }
@@ -279,7 +270,6 @@ public final class CommandCoordinator {
                 continue
             }
 
-            logMeatNetCommand("status_confirmation", request: operation.request, serialNumber: serialNumber)
             action.completion(action.result)
         }
     }
@@ -303,14 +293,12 @@ public final class CommandCoordinator {
 
             if now.timeIntervalSince(operation.timeSent) >= Constants.meatnetTimeOutSeconds {
                 if let operation = nodeCommandOperations.removeValue(forKey: operation.key) {
-                    logMeatNetCommand("timeout", request: operation.request, elapsedSeconds: now.timeIntervalSince(operation.timeSent))
                     commandCompletions.append((operation.completion, .failure))
                 }
                 continue
             }
 
             if now >= operation.nextRetryTime {
-                logMeatNetCommand("retry_send", request: operation.request, elapsedSeconds: now.timeIntervalSince(operation.timeSent))
                 commandRetries.append(operation.send)
                 operation.nextRetryTime = operation.nextRetryTime.addingTimeInterval(Constants.commandRetryInterval)
             }
@@ -335,7 +323,6 @@ public final class CommandCoordinator {
 
     private func cancelNodeCommand(key: NodeCommandKey) {
         if let action = completeNodeCommand(key: key, result: .cancelled) {
-            logMeatNetCommand("cancelled", messageType: key.messageType, requestId: key.requestId, result: "cancelled")
             action.completion(action.result)
         }
     }
@@ -353,44 +340,4 @@ public final class CommandCoordinator {
             return (operation.completion, result)
         }
     }
-
-    private func logMeatNetCommand(_ event: String,
-                                   request: NodeRequest,
-                                   elapsedSeconds: TimeInterval? = nil,
-                                   serialNumber: String? = nil) {
-        logMeatNetCommand(event,
-                          messageType: request.messageType,
-                          requestId: request.requestId,
-                          elapsedSeconds: elapsedSeconds,
-                          serialNumber: serialNumber)
-    }
-
-    private func logMeatNetCommand(_ event: String,
-                                   messageType: NodeMessageType,
-                                   requestId: UInt32,
-                                   elapsedSeconds: TimeInterval? = nil,
-                                   serialNumber: String? = nil,
-                                   result: String? = nil) {
-        var parts = [
-            "meatnet_command",
-            "event=\(event)",
-            "type=\(messageType)",
-            "requestId=\(requestId)"
-        ]
-
-        if let elapsedSeconds {
-            parts.append("elapsed=\(String(format: "%.1f", elapsedSeconds))s")
-        }
-
-        if let serialNumber {
-            parts.append("serialNumber=\(serialNumber)")
-        }
-
-        if let result {
-            parts.append("result=\(result)")
-        }
-
-        os_log("%{public}@", log: Self.meatNetCommandLog, type: .debug, parts.joined(separator: " "))
-    }
 }
-

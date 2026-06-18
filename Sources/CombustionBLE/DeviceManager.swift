@@ -39,9 +39,7 @@ public protocol DeviceManagerProtocol {
     func setRemovalPrediction(_ probe: Probe,
                               removalTemperatureC: Double,
                               completionHandler: @escaping (_ success: Bool) -> Void)
-}
-
-public protocol CancellableDeviceManagerProtocol {
+    
     @discardableResult
     func cancelPredictionCommand(_ probe: Probe,
                                  completionHandler: @escaping CommandCompletionHandler) -> CommandHandle?
@@ -69,7 +67,7 @@ public protocol MeatNetActionDelegate: AnyObject {
 
 /// Singleton that provides list of detected Devices
 /// (either via Bluetooth or from a list in the Cloud)
-open class DeviceManager : DeviceManagerProtocol, CancellableDeviceManagerProtocol, ObservableObject {
+open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// Singleton accessor for class
     public static let shared = DeviceManager()
     

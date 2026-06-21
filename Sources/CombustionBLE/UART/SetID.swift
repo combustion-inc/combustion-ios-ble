@@ -27,11 +27,31 @@ SOFTWARE.
 import Foundation
 
 class SetIDRequest: Request {
-    init(id: ProbeID) {
+    let serialNumber: UInt32
+    let id: ProbeID
+
+    init(serialNumber: UInt32, id: ProbeID) {
+        self.serialNumber = serialNumber
+        self.id = id
+
         var payload = Data()
         payload.append(id.rawValue)
         
         super.init(payload: payload, type: .setID)
+    }
+}
+
+extension SetIDRequest: DeviceStatusConfirmingRequest {
+    var confirmationSerialNumber: String {
+        String(serialNumber)
+    }
+
+    func isConfirmed(by status: DeviceStatus) -> Bool {
+        guard let status = status as? ProbeStatus else {
+            return false
+        }
+
+        return status.modeId.id == id
     }
 }
 

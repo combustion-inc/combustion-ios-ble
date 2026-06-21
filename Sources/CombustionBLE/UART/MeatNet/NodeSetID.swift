@@ -27,13 +27,33 @@ SOFTWARE.
 import Foundation
 
 class NodeSetIDRequest: NodeRequest {
+    let serialNumber: UInt32
+    let id: ProbeID
+
     init(serialNumber: UInt32, id: ProbeID) {
+        self.serialNumber = serialNumber
+        self.id = id
+
         var payload = Data()
         var serialNumberBytes = serialNumber
         payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
         payload.append(id.rawValue)
         
         super.init(outgoingPayload: payload, type: .setID)
+    }
+}
+
+extension NodeSetIDRequest: DeviceStatusConfirmingRequest {
+    var confirmationSerialNumber: String {
+        String(serialNumber)
+    }
+
+    func isConfirmed(by status: DeviceStatus) -> Bool {
+        guard let status = status as? ProbeStatus else {
+            return false
+        }
+
+        return status.modeId.id == id
     }
 }
 

@@ -31,12 +31,23 @@ import Combine
 
 // Device Manager protocol to support unit testing
 public protocol DeviceManagerProtocol {
+    @available(*, deprecated, message: "Use CancellableDeviceManagerProtocol.cancelPredictionCommand(_:completionHandler:) for cancellable MeatNet retry behavior.")
     func cancelPrediction(_ probe: Probe,
-                          completionHandler: @escaping MessageHandlers.SuccessCompletionHandler)
-    
+                          completionHandler: @escaping (_ success: Bool) -> Void)
+
+    @available(*, deprecated, message: "Use CancellableDeviceManagerProtocol.setRemovalPredictionCommand(_:removalTemperatureC:completionHandler:) for cancellable MeatNet retry behavior.")
     func setRemovalPrediction(_ probe: Probe,
                               removalTemperatureC: Double,
-                              completionHandler: @escaping MessageHandlers.SuccessCompletionHandler)
+                              completionHandler: @escaping (_ success: Bool) -> Void)
+    
+    @discardableResult
+    func cancelPredictionCommand(_ probe: Probe,
+                                 completionHandler: @escaping CommandCompletionHandler) -> CommandHandle?
+
+    @discardableResult
+    func setRemovalPredictionCommand(_ probe: Probe,
+                                     removalTemperatureC: Double,
+                                     completionHandler: @escaping CommandCompletionHandler) -> CommandHandle?
 }
 
 public protocol DeviceResponseHandlerProtocol: AnyObject {
@@ -57,7 +68,6 @@ public protocol MeatNetActionDelegate: AnyObject {
 /// Singleton that provides list of detected Devices
 /// (either via Bluetooth or from a list in the Cloud)
 open class DeviceManager : DeviceManagerProtocol, ObservableObject {
-    
     /// Singleton accessor for class
     public static let shared = DeviceManager()
     
@@ -81,12 +91,6 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// Flag that tracks if any DFUs are currently in progress
     @Published public private(set) var dfuIsInProgress = false
 
-    // Struct to store when BLE message was send and the completion handler for message
-    private struct MessageHandler {
-        let timeSent: Date
-        let handler: (Bool) -> Void
-    }
-    
     private var dfuManager = DFUManager.shared
     
     private var cancellables: Set<AnyCancellable> = []
@@ -95,7 +99,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     private var probeIdCancellables: [String: AnyCancellable] = [:]
     
     /// Handler for messages from Probe
-    private let messageHandlers = MessageHandlers()
+    private let commandCoordinator = CommandCoordinator()
     
     /// Connection manager to handle BLE connection logic
     private let connectionManager = ConnectionManager()
@@ -160,7 +164,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         
         // Start a timer to check for BLE message timeouts
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
-            messageHandlers.checkForTimeout()
+            commandCoordinator.checkForTimeout()
         }
         
         // Observe flag on DFU manager
@@ -282,7 +286,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         guard let lowestAvailableId = ProbeID.allCases.first(where: { !usedIds.contains($0) }) else { return }
         guard highestSerialProbe.id != lowestAvailableId else { return }
         
-        setProbeID(highestSerialProbe, id: lowestAvailableId) { _ in }
+        setProbeIDCommand(highestSerialProbe, id: lowestAvailableId) { _ in }
     }
     
     /// Returns list of gauges
@@ -453,47 +457,104 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// - parameter device: Device to set ID on
     /// - parameter ProbeID: New Probe ID
     /// - parameter completionHandler: Completion handler to be called operation is complete
-    public func setProbeID(_ device: Device, id: ProbeID, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        if let probe = device as? Probe, shouldSendMessageDirectlyTo(probe: probe) {
-            let request = SetIDRequest(id: id)
-            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+    @available(*, deprecated, message: "Use setProbeIDCommand(_:id:completionHandler:) for cancellable MeatNet retry behavior.")
+    public func setProbeID(_ device: Device, id: ProbeID, completionHandler: @escaping (_ success: Bool) -> Void) {
+        guard let probe = device as? Probe else {
+            completionHandler(false)
+            return
         }
-        else if let probe = device as? Probe {
-            let request = NodeSetIDRequest(serialNumber: probe.serialNumber, id: id)
-            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+
+        setProbeIDCommand(probe, id: id) { result in
+            completionHandler(result == .success)
         }
+    }
+
+    /// Sends a cancellable request to set a probe's ID.
+    ///
+    /// - parameter probe: Probe to set ID on.
+    /// - parameter id: New Probe ID.
+    /// - parameter completionHandler: Completion handler to be called once operation is complete.
+    /// - returns: A handle that can cancel the pending command.
+    @discardableResult
+    public func setProbeIDCommand(_ probe: Probe, id: ProbeID, completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
+        let confirmationRequest = SetIDRequest(serialNumber: probe.serialNumber, id: id)
+        return sendRoutedProbeRequestWithCommandHandler(probe,
+                                                        makeDirectRequest: {
+            SetIDRequest(serialNumber: probe.serialNumber, id: id)
+        },
+                                                        makeNodeRequest: {
+            NodeSetIDRequest(serialNumber: probe.serialNumber, id: id)
+        },
+                                                        isConfirmed: confirmationRequest.isConfirmed(by:),
+                                                        completionHandler: completionHandler)
     }
     
     /// Set Probe Color on specified device.
     /// - parameter device: Device to set Color on
     /// - parameter ProbeColor: New Probe color
     /// - parameter completionHandler: Completion handler to be called operation is complete
+    @available(*, deprecated, message: "Use setProbeColorCommand(_:color:completionHandler:) for cancellable MeatNet retry behavior.")
     public func setProbeColor(_ device: Device,
                               color: ProbeColor,
-                              completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        if let probe = device as? Probe, shouldSendMessageDirectlyTo(probe: probe) {
-            let request = SetColorRequest(color: color)
-            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+                              completionHandler: @escaping (_ success: Bool) -> Void) {
+        guard let probe = device as? Probe else {
+            completionHandler(false)
+            return
         }
-        else if let probe = device as? Probe {
-            let request = NodeSetColorRequest(serialNumber: probe.serialNumber, color: color)
-            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+
+        setProbeColorCommand(probe, color: color) { result in
+            completionHandler(result == .success)
         }
+    }
+
+    /// Sends a cancellable request to set a probe's color.
+    ///
+    /// - parameter probe: Probe to set color on.
+    /// - parameter color: New Probe color.
+    /// - parameter completionHandler: Completion handler to be called once operation is complete.
+    /// - returns: A handle that can cancel the pending command.
+    @discardableResult
+    public func setProbeColorCommand(_ probe: Probe, color: ProbeColor, completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
+        return sendRoutedProbeRequestWithCommandHandler(probe,
+                                                        makeDirectRequest: {
+            SetColorRequest(color: color)
+        },
+                                                        makeNodeRequest: {
+            NodeSetColorRequest(serialNumber: probe.serialNumber, color: color)
+        },
+                                                        isConfirmed: { _ in false },
+                                                        completionHandler: completionHandler)
     }
     
     /// Set probe power mode on a specified node
     /// - parameter probe: Probe to set the power mode on
     /// - parameter powerMode: new power mode
     /// - parameter completionHandler: Completion handler to be called once operation is complete
-    public func setProbePowerMode(_ probe: Probe, powerMode: ProbePowerMode, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        if shouldSendMessageDirectlyTo(probe: probe) {
-            let request = SetPowerModeRequest(mode: powerMode)
-            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+    @available(*, deprecated, message: "Use setProbePowerModeCommand(_:powerMode:completionHandler:) for cancellable MeatNet retry behavior.")
+    public func setProbePowerMode(_ probe: Probe, powerMode: ProbePowerMode, completionHandler: @escaping (_ success: Bool) -> Void) {
+        setProbePowerModeCommand(probe, powerMode: powerMode) { result in
+            completionHandler(result == .success)
         }
-        else {
-            let request = NodeSetPowerModeRequest(serialNumber: probe.serialNumber, mode: powerMode)
-            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
-        }
+    }
+
+    /// Sends a cancellable request to set a probe's power mode.
+    ///
+    /// - parameter probe: Probe to set the power mode on.
+    /// - parameter powerMode: New power mode.
+    /// - parameter completionHandler: Completion handler to be called once operation is complete.
+    /// - returns: A handle that can cancel the pending command.
+    @discardableResult
+    public func setProbePowerModeCommand(_ probe: Probe, powerMode: ProbePowerMode, completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
+        let confirmationRequest = SetPowerModeRequest(serialNumber: probe.serialNumber, mode: powerMode)
+        return sendRoutedProbeRequestWithCommandHandler(probe,
+                                                        makeDirectRequest: {
+            SetPowerModeRequest(serialNumber: probe.serialNumber, mode: powerMode)
+        },
+                                                        makeNodeRequest: {
+            NodeSetPowerModeRequest(serialNumber: probe.serialNumber, mode: powerMode)
+        },
+                                                        isConfirmed: confirmationRequest.isConfirmed(by:),
+                                                        completionHandler: completionHandler)
     }
     
     // Set probe high low alarms
@@ -501,22 +562,38 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// - parameter highAlarms: high alarms to set
     /// - parameter lowAlarms: low alarms to set
     /// - parameter completionHandler: Completion handler to be called once operation is complete
-    public func setProbeHighLowAlarms(_ probe: Probe, highAlarms: [AlarmStatus], lowAlarms: [AlarmStatus], completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        if shouldSendMessageDirectlyTo(probe: probe) {
-            let request = SetHighLowAlarmsRequest(highAlarms: highAlarms,
-                                                  lowAlarms: lowAlarms)
-            sendDirectRequestWithSuccessHandler(probe,
-                                                request: request,
-                                                completionHandler: completionHandler)
+    @available(*, deprecated, message: "Use setProbeHighLowAlarmsCommand(_:highAlarms:lowAlarms:completionHandler:) for cancellable MeatNet retry behavior.")
+    public func setProbeHighLowAlarms(_ probe: Probe, highAlarms: [AlarmStatus], lowAlarms: [AlarmStatus], completionHandler: @escaping (_ success: Bool) -> Void) {
+        setProbeHighLowAlarmsCommand(probe, highAlarms: highAlarms, lowAlarms: lowAlarms) { result in
+            completionHandler(result == .success)
         }
-        else {
-            let request = NodeSetProbeHighLowAlarmRequest(serialNumber: probe.serialNumber,
+    }
+
+    /// Sends a cancellable request to set a probe's high and low alarms.
+    ///
+    /// - parameter probe: Probe to set high and low alarms on.
+    /// - parameter highAlarms: High alarms to set.
+    /// - parameter lowAlarms: Low alarms to set.
+    /// - parameter completionHandler: Completion handler to be called once operation is complete.
+    /// - returns: A handle that can cancel the pending command.
+    @discardableResult
+    public func setProbeHighLowAlarmsCommand(_ probe: Probe, highAlarms: [AlarmStatus], lowAlarms: [AlarmStatus], completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
+        let confirmationRequest = SetHighLowAlarmsRequest(serialNumber: probe.serialNumber,
                                                           highAlarms: highAlarms,
                                                           lowAlarms: lowAlarms)
-            sendNodeRequestWithSuccessHandler(probe,
-                                              request: request,
-                                              completionHandler: completionHandler)
-        }
+        return sendRoutedProbeRequestWithCommandHandler(probe,
+                                                        makeDirectRequest: {
+            SetHighLowAlarmsRequest(serialNumber: probe.serialNumber,
+                                    highAlarms: highAlarms,
+                                    lowAlarms: lowAlarms)
+        },
+                                                        makeNodeRequest: {
+            NodeSetProbeHighLowAlarmRequest(serialNumber: probe.serialNumber,
+                                            highAlarms: highAlarms,
+                                            lowAlarms: lowAlarms)
+        },
+                                                        isConfirmed: confirmationRequest.isConfirmed(by:),
+                                                        completionHandler: completionHandler)
     }
     
     // Silence alarms on all devices
@@ -553,27 +630,51 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// - parameter probe: Probe to set prediction on
     /// - parameter removalTemperatureC: the target removal temperature in Celsius
     /// - parameter completionHandler: Completion handler to be called operation is complete
+    @available(*, deprecated, message: "Use setRemovalPredictionCommand(_:removalTemperatureC:completionHandler:) for cancellable MeatNet retry behavior.")
     public func setRemovalPrediction(_ probe: Probe,
                                      removalTemperatureC: Double,
-                                     completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+                                     completionHandler: @escaping (_ success: Bool) -> Void) {
+        setRemovalPredictionCommand(probe, removalTemperatureC: removalTemperatureC) { result in
+            completionHandler(result == .success)
+        }
+    }
+
+    /// Sends a cancellable request to set or update the time-to-removal prediction.
+    ///
+    /// If a prediction is not currently active, it will be started. If a removal prediction is currently
+    /// active, the set point will be modified. If another type of prediction is active, the probe will
+    /// start predicting removal.
+    ///
+    /// - parameter probe: Probe to set prediction on.
+    /// - parameter removalTemperatureC: Target removal temperature in Celsius.
+    /// - parameter completionHandler: Completion handler to be called once operation is complete.
+    /// - returns: A handle that can cancel the pending command, or nil if the set point is invalid.
+    @discardableResult
+    public func setRemovalPredictionCommand(_ probe: Probe,
+                                            removalTemperatureC: Double,
+                                            completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
         guard removalTemperatureC < Constants.MAXIMUM_PREDICTION_SETPOINT_CELSIUS,
               removalTemperatureC > Constants.MINIMUM_PREDICTION_SETPOINT_CELSIUS else {
-            completionHandler(false)
-            return
+            completionHandler(.failure)
+            return nil
         }
         
-        if shouldSendMessageDirectlyTo(probe: probe) {
-            // If the best route is directly to the Probe, send it that way.
-            let request = SetPredictionRequest(setPointCelsius: removalTemperatureC, mode: .timeToRemoval)
-            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
-        }
-        else {
-            // Send message to all nodes that have a route to the probe
-            let request = NodeSetPredictionRequest(serialNumber: probe.serialNumber,
-                                                   setPointCelsius: removalTemperatureC,
-                                                   mode: .timeToRemoval)
-            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
-        }
+        let confirmationRequest = SetPredictionRequest(serialNumber: probe.serialNumber,
+                                                       setPointCelsius: removalTemperatureC,
+                                                       mode: .timeToRemoval)
+        return sendRoutedProbeRequestWithCommandHandler(probe,
+                                                        makeDirectRequest: {
+            SetPredictionRequest(serialNumber: probe.serialNumber,
+                                 setPointCelsius: removalTemperatureC,
+                                 mode: .timeToRemoval)
+        },
+                                                        makeNodeRequest: {
+            NodeSetPredictionRequest(serialNumber: probe.serialNumber,
+                                     setPointCelsius: removalTemperatureC,
+                                     mode: .timeToRemoval)
+        },
+                                                        isConfirmed: confirmationRequest.isConfirmed(by:),
+                                                        completionHandler: completionHandler)
     }
     
     
@@ -581,20 +682,36 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     ///
     /// - parameter probe: Probe to cancel prediction on
     /// - parameter completionHandler: Completion handler to be called operation is complete
-    public func cancelPrediction(_ probe: Probe, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        
-        if shouldSendMessageDirectlyTo(probe: probe) {
-            // If the best route is directly to the Probe, send it that way.
-            let request = SetPredictionRequest(setPointCelsius: 0.0, mode: .none)
-            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+    @available(*, deprecated, message: "Use cancelPredictionCommand(_:completionHandler:) for cancellable MeatNet retry behavior.")
+    public func cancelPrediction(_ probe: Probe, completionHandler: @escaping (_ success: Bool) -> Void) {
+        cancelPredictionCommand(probe) { result in
+            completionHandler(result == .success)
         }
-        else {
-            // Send message to all nodes that have a route to the probe
-            let request = NodeSetPredictionRequest(serialNumber: probe.serialNumber,
-                                                   setPointCelsius: 0.0,
-                                                   mode: .none)
-            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
-        }
+    }
+
+    /// Sends a cancellable request to stop any active prediction on a probe.
+    ///
+    /// - parameter probe: Probe to cancel prediction on.
+    /// - parameter completionHandler: Completion handler to be called once operation is complete.
+    /// - returns: A handle that can cancel the pending command.
+    @discardableResult
+    public func cancelPredictionCommand(_ probe: Probe, completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
+        let confirmationRequest = SetPredictionRequest(serialNumber: probe.serialNumber,
+                                                       setPointCelsius: 0.0,
+                                                       mode: .none)
+        return sendRoutedProbeRequestWithCommandHandler(probe,
+                                                        makeDirectRequest: {
+            SetPredictionRequest(serialNumber: probe.serialNumber,
+                                 setPointCelsius: 0.0,
+                                 mode: .none)
+        },
+                                                        makeNodeRequest: {
+            NodeSetPredictionRequest(serialNumber: probe.serialNumber,
+                                     setPointCelsius: 0.0,
+                                     mode: .none)
+        },
+                                                        isConfirmed: confirmationRequest.isConfirmed(by:),
+                                                        completionHandler: completionHandler)
     }
     
     /// Sends a request to the device to configure Food Safe
@@ -602,40 +719,70 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// - parameter probe: Probe to cancel prediction on
     /// - parameter foodSafeData: Food Safe data
     /// - parameter completionHandler: Completion handler to be called operation is complete
+    @available(*, deprecated, message: "Use configureFoodSafeCommand(_:foodSafeData:completionHandler:) for cancellable MeatNet retry behavior.")
     public func configureFoodSafe(_ probe: Probe,
                             foodSafeData: FoodSafeData,
-                            completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        
-        if shouldSendMessageDirectlyTo(probe: probe) {
-            // If the best route is directly to the Probe, send it that way.
-            let request = ConfigureFoodSafeRequest(foodSafeData: foodSafeData)
-            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+                            completionHandler: @escaping (_ success: Bool) -> Void) {
+        configureFoodSafeCommand(probe, foodSafeData: foodSafeData) { result in
+            completionHandler(result == .success)
         }
-        else {
-            // Send message to all nodes that have a route to the probe
-            let request = NodeConfigureFoodSafeRequest(serialNumber: probe.serialNumber,
-                                                       foodSafeData: foodSafeData)
-            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
-        }
+    }
+
+    /// Sends a cancellable request to configure Food Safe data on a probe.
+    ///
+    /// - parameter probe: Probe to configure Food Safe data on.
+    /// - parameter foodSafeData: Food Safe data to configure.
+    /// - parameter completionHandler: Completion handler to be called once operation is complete.
+    /// - returns: A handle that can cancel the pending command.
+    @discardableResult
+    public func configureFoodSafeCommand(_ probe: Probe,
+                                         foodSafeData: FoodSafeData,
+                                         completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
+        let confirmationRequest = ConfigureFoodSafeRequest(serialNumber: probe.serialNumber,
+                                                           foodSafeData: foodSafeData)
+        return sendRoutedProbeRequestWithCommandHandler(probe,
+                                                        makeDirectRequest: {
+            ConfigureFoodSafeRequest(serialNumber: probe.serialNumber,
+                                     foodSafeData: foodSafeData)
+        },
+                                                        makeNodeRequest: {
+            NodeConfigureFoodSafeRequest(serialNumber: probe.serialNumber,
+                                         foodSafeData: foodSafeData)
+        },
+                                                        isConfirmed: confirmationRequest.isConfirmed(by:),
+                                                        completionHandler: completionHandler)
     }
     
     /// Sends a request to the device to reset Food Safe
     ///
     /// - parameter probe: Probe to cancel prediction on
     /// - parameter completionHandler: Completion handler to be called operation is complete
+    @available(*, deprecated, message: "Use resetFoodSafeCommand(_:completionHandler:) for cancellable MeatNet retry behavior.")
     public func resetFoodSafe(_ probe: Probe,
-                            completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        
-        if shouldSendMessageDirectlyTo(probe: probe) {
-            // If the best route is directly to the Probe, send it that way.
-            let request = ResetFoodSafeRequest()
-            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+                            completionHandler: @escaping (_ success: Bool) -> Void) {
+        resetFoodSafeCommand(probe) { result in
+            completionHandler(result == .success)
         }
-        else {
-            // Send message to all nodes that have a route to the probe
-            let request = NodeResetFoodSafeRequest(serialNumber: probe.serialNumber)
-            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
-        }
+    }
+
+    /// Sends a cancellable request to reset Food Safe data on a probe.
+    ///
+    /// - parameter probe: Probe to reset Food Safe data on.
+    /// - parameter completionHandler: Completion handler to be called once operation is complete.
+    /// - returns: A handle that can cancel the pending command.
+    @discardableResult
+    public func resetFoodSafeCommand(_ probe: Probe,
+                                     completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
+        let confirmationRequest = ResetFoodSafeRequest(serialNumber: probe.serialNumber)
+        return sendRoutedProbeRequestWithCommandHandler(probe,
+                                                        makeDirectRequest: {
+            ResetFoodSafeRequest(serialNumber: probe.serialNumber)
+        },
+                                                        makeNodeRequest: {
+            NodeResetFoodSafeRequest(serialNumber: probe.serialNumber)
+        },
+                                                        isConfirmed: confirmationRequest.isConfirmed(by:),
+                                                        completionHandler: completionHandler)
     }
     
     /// Reads the feature flags from a meat net node device
@@ -735,16 +882,13 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// - parameter device: Device to read flag from
     /// - parameter completionHandler: Completion handler to be called operation is complete
     public func readOverTemperatureFlag(_ device: Device,
-                                        completionHandler: @escaping MessageHandlers.ReadOverTemperatureCompletionHandler) {
+                                        completionHandler: @escaping (_ success: Bool, _ overTemperature: Bool) -> Void) {
         // TODO - Send request via Node.
         
         let request = ReadOverTemperatureRequest()
         
         if let device = device as? Probe, let bleIdentifier = device.bleIdentifier {
-            // Store completion handler
-            messageHandlers.addReadOverTemperatureCompletionHandler(device, request: request, completionHandler: completionHandler)
-            
-            // Send request to device
+            commandCoordinator.addReadOverTemperatureHandler(identifier: bleIdentifier, completionHandler: completionHandler)
             BleManager.shared.sendRequest(identifier: bleIdentifier, request: request)
         }
     }
@@ -752,31 +896,65 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// Sends a request to reset the current session for a probe
     ///  - Parameter probe: The probe to reset
     ///  - parameter completionHandler: Completion handler to be called operation is complete
-    public func resetSession(_ probe: Probe, completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        if shouldSendMessageDirectlyTo(probe: probe) {
-            let request = ResetSessionRequest()
-            sendDirectRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
+    @available(*, deprecated, message: "Use resetSessionCommand(_:completionHandler:) for cancellable MeatNet retry behavior.")
+    public func resetSession(_ probe: Probe, completionHandler: @escaping (_ success: Bool) -> Void) {
+        resetSessionCommand(probe) { result in
+            completionHandler(result == .success)
         }
-        else {
-            let request = NodeResetSessionRequest(serialNumber: probe.serialNumber)
-            sendNodeRequestWithSuccessHandler(probe, request: request, completionHandler: completionHandler)
-        }
+    }
+
+    /// Sends a non-retrying request to reset the current session for a probe.
+    ///
+    /// Reset session commands are not retried because a duplicate delivery could reset a new session
+    /// after the original command has already succeeded.
+    ///
+    /// - parameter probe: Probe to reset the current session on.
+    /// - parameter completionHandler: Completion handler to be called once operation is complete.
+    /// - returns: A handle that can cancel the pending command.
+    @discardableResult
+    public func resetSessionCommand(_ probe: Probe, completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
+        return sendRoutedProbeRequestWithCommandHandler(probe,
+                                                        makeDirectRequest: {
+            ResetSessionRequest()
+        },
+                                                        makeNodeRequest: {
+            NodeResetSessionRequest(serialNumber: probe.serialNumber)
+        },
+                                                        isConfirmed: { _ in false },
+                                                        retriesEnabled: false,
+                                                        completionHandler: completionHandler)
     }
     
     /// Sends a request to set high low alarms for a device
     ///
     /// - parameter device: the device to update with high low alarms
+    @available(*, deprecated, message: "Use setHighLowAlarmsCommand(_:status:completionHandler:) for cancellable MeatNet retry behavior.")
     public func setHighLowAlarms(_ device: MeatNetNode,
                                  status: HighLowAlarmStatus,
-                                 completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+                                 completionHandler: @escaping (_ success: Bool) -> Void) {
+        setHighLowAlarmsCommand(device, status: status) { result in
+            completionHandler(result == .success)
+        }
+    }
+
+    /// Sends a cancellable request to set high and low alarms for a node accessory.
+    ///
+    /// - parameter device: Node advertising the accessory to update.
+    /// - parameter status: High and low alarm status to set.
+    /// - parameter completionHandler: Completion handler to be called once operation is complete.
+    /// - returns: A handle that can cancel the pending command, or nil if no accessory serial number is available.
+    @discardableResult
+    public func setHighLowAlarmsCommand(_ device: MeatNetNode,
+                                        status: HighLowAlarmStatus,
+                                        completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
         // cannot send request if no serial number present
         guard let serialNumberString = device.accessory?.serialNumberString,
               let request = SetNodeHighLowAlarmRequest(serialNumber: serialNumberString, status: status) else {
-            completionHandler(false)
-            return
+            completionHandler(.failure)
+            return nil
         }
        
-        sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
+        return sendNodeRequestWithCommandHandler(device, request: request, completionHandler: completionHandler)
     }
 
     /// Sends a request to set an engine's control device to a probe.
@@ -784,17 +962,33 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// - parameter device: the node advertising the engine accessory
     /// - parameter probeSerialNumber: probe serial number to set as control device
     /// - parameter completionHandler: completion handler to be called once operation is complete
+    @available(*, deprecated, message: "Use setEngineControlDeviceCommand(_:probeSerialNumber:completionHandler:) for cancellable MeatNet retry behavior.")
     public func setEngineControlDevice(_ device: MeatNetNode,
                                        probeSerialNumber: UInt32,
-                                       completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+                                       completionHandler: @escaping (_ success: Bool) -> Void) {
+        setEngineControlDeviceCommand(device, probeSerialNumber: probeSerialNumber) { result in
+            completionHandler(result == .success)
+        }
+    }
+
+    /// Sends a cancellable request to set an engine's control device to a probe.
+    ///
+    /// - parameter device: Node advertising the engine accessory.
+    /// - parameter probeSerialNumber: Probe serial number to set as control device.
+    /// - parameter completionHandler: Completion handler to be called once operation is complete.
+    /// - returns: A handle that can cancel the pending command, or nil if no accessory serial number is available.
+    @discardableResult
+    public func setEngineControlDeviceCommand(_ device: MeatNetNode,
+                                              probeSerialNumber: UInt32,
+                                              completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
         guard let serialNumberString = device.accessory?.serialNumberString,
               let request = NodeSetEngineControlDeviceRequest(serialNumber: serialNumberString,
                                                               probeSerialNumber: probeSerialNumber) else {
-            completionHandler(false)
-            return
+            completionHandler(.failure)
+            return nil
         }
 
-        sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
+        return sendNodeRequestWithCommandHandler(device, request: request, completionHandler: completionHandler)
         
     }
 
@@ -803,17 +997,33 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// - parameter device: the node advertising the engine accessory
     /// - parameter gaugeSerialNumber: gauge serial number to set as control device
     /// - parameter completionHandler: completion handler to be called once operation is complete
+    @available(*, deprecated, message: "Use setEngineControlDeviceCommand(_:gaugeSerialNumber:completionHandler:) for cancellable MeatNet retry behavior.")
     public func setEngineControlDevice(_ device: MeatNetNode,
                                        gaugeSerialNumber: String,
-                                       completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+                                       completionHandler: @escaping (_ success: Bool) -> Void) {
+        setEngineControlDeviceCommand(device, gaugeSerialNumber: gaugeSerialNumber) { result in
+            completionHandler(result == .success)
+        }
+    }
+
+    /// Sends a cancellable request to set an engine's control device to a gauge.
+    ///
+    /// - parameter device: Node advertising the engine accessory.
+    /// - parameter gaugeSerialNumber: Gauge serial number to set as control device.
+    /// - parameter completionHandler: Completion handler to be called once operation is complete.
+    /// - returns: A handle that can cancel the pending command, or nil if no accessory serial number is available.
+    @discardableResult
+    public func setEngineControlDeviceCommand(_ device: MeatNetNode,
+                                              gaugeSerialNumber: String,
+                                              completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
         guard let serialNumberString = device.accessory?.serialNumberString,
               let request = NodeSetEngineControlDeviceRequest(serialNumber: serialNumberString,
                                                               gaugeSerialNumber: gaugeSerialNumber) else {
-            completionHandler(false)
-            return
+            completionHandler(.failure)
+            return nil
         }
 
-        sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
+        return sendNodeRequestWithCommandHandler(device, request: request, completionHandler: completionHandler)
     }
 
     /// Sends a request to set an engine's target temperature.
@@ -821,17 +1031,33 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// - parameter device: the node advertising the engine accessory
     /// - parameter temperatureCelsius: target temperature in Celsius
     /// - parameter completionHandler: completion handler to be called once operation is complete
+    @available(*, deprecated, message: "Use setEngineTargetTemperatureCommand(_:temperatureCelsius:completionHandler:) for cancellable MeatNet retry behavior.")
     public func setEngineTargetTemperature(_ device: MeatNetNode,
                                            temperatureCelsius: Double,
-                                           completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
+                                           completionHandler: @escaping (_ success: Bool) -> Void) {
+        setEngineTargetTemperatureCommand(device, temperatureCelsius: temperatureCelsius) { result in
+            completionHandler(result == .success)
+        }
+    }
+
+    /// Sends a cancellable request to set an engine's target temperature.
+    ///
+    /// - parameter device: Node advertising the engine accessory.
+    /// - parameter temperatureCelsius: Target temperature in Celsius.
+    /// - parameter completionHandler: Completion handler to be called once operation is complete.
+    /// - returns: A handle that can cancel the pending command, or nil if no accessory serial number is available.
+    @discardableResult
+    public func setEngineTargetTemperatureCommand(_ device: MeatNetNode,
+                                                  temperatureCelsius: Double,
+                                                  completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
         guard let serialNumberString = device.accessory?.serialNumberString,
               let request = NodeSetEngineTargetTemperatureRequest(serialNumber: serialNumberString,
                                                                   temperatureCelsius: temperatureCelsius) else {
-            completionHandler(false)
-            return
+            completionHandler(.failure)
+            return nil
         }
 
-        sendNodeRequestWithSuccessHandler(device, request: request, completionHandler: completionHandler)
+        return sendNodeRequestWithCommandHandler(device, request: request, completionHandler: completionHandler)
     }
     
     /// Set the DFU file to be used on devices with failed software upgrade.
@@ -852,48 +1078,64 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         dfuManager.setAnalyticsLogger(logger)
     }
     
-    private func sendDirectRequestWithSuccessHandler(_ probe: Probe,
-                                   request: Request,
-                                   completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        // Store completion handler
-        messageHandlers.addSuccessCompletionHandler(probe, request: request, completionHandler: completionHandler)
-        
-        // Send request to device
-        BleManager.shared.sendRequest(identifier: probe.bleIdentifier, request: request)
-    }
-    
-    private func sendNodeRequestWithSuccessHandler(_ probe: Probe,
-                                   request: NodeRequest,
-                                   completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        // Send message to all nodes that have a route to the probe
-        let nodesConnectedToProbe = getNodesConnectedToDevice(identifier: probe.uniqueIdentifier)
-        
-        // Store completion handler
-        messageHandlers.addNodeSuccessCompletionHandler(request: request, completionHandler: completionHandler)
-        
-        // Send request to device
-        BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
+    @discardableResult
+    private func sendRoutedProbeRequestWithCommandHandler(_ probe: Probe,
+                                                          makeDirectRequest: @escaping () -> Request,
+                                                          makeNodeRequest: @escaping () -> NodeRequest,
+                                                          isConfirmed: @escaping (DeviceStatus) -> Bool,
+                                                          retriesEnabled: Bool = true,
+                                                          completionHandler: @escaping CommandCompletionHandler) -> CommandHandle {
+        return commandCoordinator.addRoutedCommandHandler(targetSerialNumber: String(probe.serialNumber),
+                                                          send: { [weak self, weak probe] in
+            guard let self,
+                  let probe else {
+                return []
+            }
+
+            if self.shouldSendMessageDirectlyTo(probe: probe),
+               let identifier = probe.bleIdentifier {
+                let request = makeDirectRequest()
+                BleManager.shared.sendRequest(identifier: identifier, request: request)
+                return [.direct(messageType: request.messageType, identifier: identifier)]
+            }
+
+            let nodesConnectedToProbe = self.getNodesConnectedToDevice(identifier: probe.uniqueIdentifier)
+            guard !nodesConnectedToProbe.isEmpty else {
+                return []
+            }
+
+            let request = makeNodeRequest()
+            BleManager.shared.sendRequestToNodes(nodesConnectedToProbe, request: request)
+            return [.node(messageType: request.messageType, requestId: request.requestId)]
+        },
+                                                          isConfirmed: isConfirmed,
+                                                          retriesEnabled: retriesEnabled,
+                                                          completionHandler: completionHandler)
     }
     
     public func sendNodeRequest(node: MeatNetNode,
                                            request: NodeRequest) {
         BleManager.shared.sendRequestToNodes([node], request: request)
     }
-    
-    private func sendNodeRequestWithSuccessHandler(_ device: MeatNetNode,
-                                   request: NodeRequest,
-                                   completionHandler: @escaping MessageHandlers.SuccessCompletionHandler) {
-        messageHandlers.addNodeSuccessCompletionHandler(request: request, completionHandler: completionHandler)
-        
-        if shouldSendMessageDirectlyTo(device: device) {
-            // Send request to device
-            BleManager.shared.sendRequestToNodes([device], request: request)
-        }
-        else {
-            // Send message to all nodes that have a route to the device
-            let nodesConnectedToDevice = getNodesConnectedToDevice(identifier: device.uniqueIdentifier)
-            BleManager.shared.sendRequestToNodes(nodesConnectedToDevice, request: request)
-        }
+
+    @discardableResult
+    private func sendNodeRequestWithCommandHandler(_ device: MeatNetNode,
+                                                   request: NodeRequest,
+                                                   completionHandler: @escaping CommandCompletionHandler) -> CommandHandle {
+        return commandCoordinator.addNodeCommandHandler(request: request,
+                                                     send: { [weak self, weak device] in
+            guard let self,
+                  let device else { return }
+
+            if self.shouldSendMessageDirectlyTo(device: device) {
+                BleManager.shared.sendRequestToNodes([device], request: request)
+            }
+            else {
+                let nodesConnectedToDevice = self.getNodesConnectedToDevice(identifier: device.uniqueIdentifier)
+                BleManager.shared.sendRequestToNodes(nodesConnectedToDevice, request: request)
+            }
+        },
+                                                     completionHandler: completionHandler)
     }
 }
 
@@ -932,8 +1174,7 @@ extension DeviceManager : BleManagerDelegate {
         
         device.updateConnectionState(.disconnected)
         
-        // Clear any pending message handlers
-        messageHandlers.clearHandlersForDevice(identifier)
+        commandCoordinator.handleDeviceDisconnected(identifier: identifier)
     }
     
     func didCompleteDiscovery(identifier: UUID, maximumWriteValueLength: Int) {
@@ -981,6 +1222,7 @@ extension DeviceManager : BleManagerDelegate {
         guard let probe = findDeviceByBleIdentifier(bleIdentifier: identifier) as? Probe else { return }
         let previousId = probe.id
         probe.updateProbeStatus(deviceStatus: status)
+        commandCoordinator.confirmCommandStatus(serialNumber: String(probe.serialNumber), status: status)
 
         if previousId != probe.id {
             resolveProbeIdCollision(for: probe, incomingId: probe.id)
@@ -994,6 +1236,7 @@ extension DeviceManager : BleManagerDelegate {
 
         let previousId = probe.id
         probe.updateProbeStatus(deviceStatus: status, hopCount: hopCount)
+        commandCoordinator.confirmCommandStatus(serialNumber: String(serialNumber), status: status)
 
         if previousId != probe.id {
             resolveProbeIdCollision(for: probe, incomingId: probe.id)
@@ -1032,6 +1275,8 @@ extension DeviceManager : BleManagerDelegate {
 
             connectionManager.receivedStatusFor(engine, node: node)
         }
+
+        commandCoordinator.confirmCommandStatus(serialNumber: serialNumber, status: status)
     }
     
     func handleDFUData(identifier: UUID, characteristic: BleCharacteristic, data: Data) {
@@ -1272,7 +1517,7 @@ extension DeviceManager : BleManagerDelegate {
     private func findAccesoryBySerialNumber(serialNumber: String) -> (any Accessory)? {
         return self.accessories[serialNumber]
     }
-    
+
     func updateDeviceFwVersion(identifier: UUID, fwVersion: String) {
         if let device = findDeviceByBleIdentifier(bleIdentifier: identifier) {
             device.firmareVersion = fwVersion
@@ -1342,10 +1587,10 @@ extension DeviceManager : BleManagerDelegate {
             
         case .readOverTemperature:
             if let readOverTemperatureResponse = response as? ReadOverTemperatureResponse {
-                messageHandlers.callReadOverTemperatureCompletionHandler(identifier, response: readOverTemperatureResponse)
+                commandCoordinator.callReadOverTemperatureHandler(identifier: identifier, response: readOverTemperatureResponse)
             }
         // Messages with success completion handlers
-        case .configureFoodSafe, 
+        case .configureFoodSafe,
                 .resetFoodSafe,
                 .setColor,
                 .setPowerMode,
@@ -1354,7 +1599,7 @@ extension DeviceManager : BleManagerDelegate {
                 .setHighLowAlarms,
                 .silenceAlarms,
                 .resetSession:
-                messageHandlers.callSuccessHandler(identifier, response: response)
+            commandCoordinator.callDirectCommandHandler(identifier: identifier, response: response)
         }
     }
     
@@ -1428,7 +1673,7 @@ extension DeviceManager : BleManagerDelegate {
                 device.updateFeatureFlags(featureFlagsResponse.flags)
             }
         case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm, .setProbeHighLowAlarm, .silenceAlarms, .setEngineControlDevice, .setEngineTargetTemperature:
-            messageHandlers.callNodeSuccessCompletionHandler(response: response)
+            commandCoordinator.callNodeCommandHandler(response: response)
         case .custom(_):
             deviceResponseHandler?.handleResponse(identifier: identifier, response: response)
         default: break

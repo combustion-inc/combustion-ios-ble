@@ -27,13 +27,43 @@ SOFTWARE.
 import Foundation
 
 class SetPredictionRequest: Request {
-    init(setPointCelsius: Double, mode: PredictionMode) {
+    let serialNumber: UInt32
+    let setPointCelsius: Double
+    let mode: PredictionMode
+
+    init(serialNumber: UInt32, setPointCelsius: Double, mode: PredictionMode) {
+        self.serialNumber = serialNumber
+        self.setPointCelsius = setPointCelsius
+        self.mode = mode
+
         let rawSetPoint = UInt16(setPointCelsius / 0.1)        
         var rawPayload = (UInt16(mode.rawValue) << 10) | (rawSetPoint & 0x3FF)
         
         let payload = Data(bytes: &rawPayload, count: MemoryLayout.size(ofValue: rawPayload))
         
         super.init(payload: payload, type: .setPrediction)
+    }
+}
+
+extension SetPredictionRequest: DeviceStatusConfirmingRequest {
+    var confirmationSerialNumber: String {
+        String(serialNumber)
+    }
+
+    func isConfirmed(by status: DeviceStatus) -> Bool {
+        guard let status = status as? ProbeStatus else {
+            return false
+        }
+
+        guard status.predictionStatus.predictionMode == mode else {
+            return false
+        }
+
+        guard mode != .none else {
+            return true
+        }
+
+        return abs(status.predictionStatus.predictionSetPointTemperature - setPointCelsius) <= 0.05
     }
 }
 

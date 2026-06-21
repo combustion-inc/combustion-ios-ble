@@ -27,7 +27,13 @@ SOFTWARE.
 import Foundation
 
 class NodeConfigureFoodSafeRequest: NodeRequest {
+    let serialNumber: UInt32
+    let foodSafeData: FoodSafeData
+
     init(serialNumber: UInt32, foodSafeData: FoodSafeData) {
+        self.serialNumber = serialNumber
+        self.foodSafeData = foodSafeData
+
         var serialNumberBytes = serialNumber
         var payload = Data()
         payload.append(Data(bytes: &serialNumberBytes, count: MemoryLayout.size(ofValue: serialNumberBytes)))
@@ -35,6 +41,20 @@ class NodeConfigureFoodSafeRequest: NodeRequest {
         payload.append(foodSafeData.toRawData())
         
         super.init(outgoingPayload: payload, type: .configureFoodSafe)
+    }
+}
+
+extension NodeConfigureFoodSafeRequest: DeviceStatusConfirmingRequest {
+    var confirmationSerialNumber: String {
+        String(serialNumber)
+    }
+
+    func isConfirmed(by status: DeviceStatus) -> Bool {
+        guard let status = status as? ProbeStatus else {
+            return false
+        }
+
+        return status.foodSafeData?.toRawData() == foodSafeData.toRawData()
     }
 }
 

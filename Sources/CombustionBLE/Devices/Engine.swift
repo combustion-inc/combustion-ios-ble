@@ -53,6 +53,8 @@ public class Engine: Accessory {
 
     @Published public internal(set) var controlTemperature: Double = 0.0
 
+    @Published public internal(set) var statusFlags: EngineStatusFlags = .defaultValues()
+
     @Published public internal(set) var fanStatus: EngineFanStatus = .defaultValues()
 
     @Published public internal(set) var controlDeviceType: ProductType = .probe
@@ -139,9 +141,10 @@ public class Engine: Accessory {
         guard let advertisingData = advertising as? EngineAdvertisingData else { return }
         
         updateLastUpdateTime()
-        
+       
         if let parent = parent, parent.connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(parent) {
             updateTemperatureSetPoint(advertisingData.temperatureSetPoint)
+            updateStatusFlags(advertisingData.statusFlags)
         }
     }
     
@@ -161,6 +164,7 @@ public class Engine: Accessory {
             
             updateTemperatureSetPoint(deviceStatus.temperatureSetPoint)
             updateControlTemperature(deviceStatus.controlTemperature)
+            updateStatusFlags(deviceStatus.statusFlags)
             updateFanStatus(deviceStatus.fanStatus)
             updateControlDeviceType(deviceStatus.controlDeviceType)
             updateKnobVoltage(deviceStatus.knobVoltage)
@@ -311,6 +315,10 @@ extension Engine {
 
     private func updateControlTemperature(_ controlTemperature: Double) {
         self.controlTemperature = controlTemperature
+    }
+
+    private func updateStatusFlags(_ statusFlags: EngineStatusFlags) {
+        self.statusFlags = statusFlags
     }
 
     private func updateFanStatus(_ fanStatus: EngineFanStatus) {

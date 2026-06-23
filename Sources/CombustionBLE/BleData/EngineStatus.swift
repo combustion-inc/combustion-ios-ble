@@ -79,6 +79,9 @@ public struct EngineStatus: DeviceAccessoryStatus {
     /// Raw knob angle converted to degrees.
     public let knobAngle: Double
 
+    /// Charging fault reported by the Engine.
+    public let chargingFault: EngineChargingFault
+
     public init(serialNumber: String,
                 sessionID: UInt32,
                 samplePeriod: UInt16,
@@ -95,7 +98,8 @@ public struct EngineStatus: DeviceAccessoryStatus {
                 controllerStatus: EngineControllerStatus = .defaultValues(),
                 hopCount: HopCount = .hop1,
                 knobVoltage: Double = 0.0,
-                knobAngle: Double = 0.0) {
+                knobAngle: Double = 0.0,
+                chargingFault: EngineChargingFault = .defaultValues()) {
         self.serialNumber = serialNumber
         self.sessionID = sessionID
         self.samplePeriod = samplePeriod
@@ -113,6 +117,7 @@ public struct EngineStatus: DeviceAccessoryStatus {
         self.hopCount = hopCount
         self.knobVoltage = knobVoltage
         self.knobAngle = knobAngle
+        self.chargingFault = chargingFault
     }
 }
 
@@ -135,6 +140,7 @@ extension EngineStatus {
         static let NETWORK_INFO_RANGE = 75..<76
         static let KNOB_VOLTAGE_RANGE = 76..<78
         static let KNOB_ANGLE_RANGE = 78..<80
+        static let CHARGING_FAULT_RANGE = 80..<81
 
         static let MINIMUM_DATA_LENGTH = 80
     }
@@ -218,6 +224,13 @@ extension EngineStatus {
         let knobAngleData = data.subdata(in: Constants.KNOB_ANGLE_RANGE)
         let knobAngleRaw = knobAngleData.withUnsafeBytes { $0.load(as: UInt16.self) }
         self.knobAngle = Double(knobAngleRaw) / 10.0
+
+        if data.count >= Constants.CHARGING_FAULT_RANGE.upperBound {
+            let chargingFaultByte = data[Constants.CHARGING_FAULT_RANGE.lowerBound]
+            self.chargingFault = EngineChargingFault.fromByte(chargingFaultByte)
+        } else {
+            self.chargingFault = .defaultValues()
+        }
     }
 }
 

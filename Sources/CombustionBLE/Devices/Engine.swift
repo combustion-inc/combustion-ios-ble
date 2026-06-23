@@ -62,6 +62,8 @@ public class Engine: Accessory {
     @Published public internal(set) var knobVoltage: Double = 0.0
 
     @Published public internal(set) var knobAngle: Double = 0.0
+
+    @Published public internal(set) var chargingFault: EngineChargingFault = .defaultValues()
     
     /// Sequence number range of records on the engine
     @Published public internal(set) var sequenceNumberRange: ClosedRange<UInt32>?
@@ -169,6 +171,7 @@ public class Engine: Accessory {
             updateControlDeviceType(deviceStatus.controlDeviceType)
             updateKnobVoltage(deviceStatus.knobVoltage)
             updateKnobAngle(deviceStatus.knobAngle)
+            updateChargingFault(deviceStatus.chargingFault)
             updateWithSessionInformation(.init(sessionID: deviceStatus.sessionID,
                                                samplePeriod: deviceStatus.samplePeriod))
             
@@ -335,6 +338,10 @@ extension Engine {
 
     private func updateKnobAngle(_ knobAngle: Double) {
         self.knobAngle = knobAngle
+    }
+
+    private func updateChargingFault(_ chargingFault: EngineChargingFault) {
+        self.chargingFault = chargingFault
     }
     
     private func updateLogPercent() {

@@ -168,6 +168,24 @@ extension NodeRequest {
             return NodeHeartbeatRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
         case .silenceAlarms:
             return NodeSilenceAlarmsRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
+        case .readLinkedDevices:
+            return NodeReadLinkedDevicesRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
+        case .readUnlinkedDevices:
+            return NodeReadUnlinkedDevicesRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
+        case .linkDevice:
+            return NodeLinkDeviceRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
+        case .unlinkDevice:
+            return NodeUnlinkDeviceRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
+        case .deviceLinked:
+            return NodeDeviceLinkedRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
+        case .deviceUnlinked:
+            return NodeDeviceUnlinkedRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
+        case .setProximityLinking:
+            return NodeSetProximityLinkingRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
+        case .readProximityLinking:
+            return NodeReadProximityLinkingRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
+        case .syncLinkTable:
+            return NodeSyncLinkTableRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
         case .syncThermometerList, .connected, .disconnected, .log, .associateNode,
                 .probeModelInformation, .probeFirmwareRevision, .probeHardwareRevision, .sessionInfo, .getFeatureFlags:
             // In case these are packed with other messages, we need to return something to ensure the other messages don't

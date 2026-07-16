@@ -25,21 +25,25 @@ SOFTWARE.
 --*/
 import Foundation
 
-class NodeHeartbeatRequest: NodeRequest {
-    let serialNumber: String
-    let macAddress: String
-    let productType: ProductType
-    let hopCount: HopCount
-    let inbound: Bool
-    let connectionDetails: [ConnectionDetail]
+public final class NodeHeartbeatRequest: NodeRequest, Equatable {
+    public let serialNumber: String
+    public let macAddress: String
+    public let productType: ProductType
+
+    /// Raw number of MeatNet hops reported by the sending Node.
+    public let hopCount: UInt8
+
+    public let inbound: Bool
+    public let connectionDetails: [ConnectionDetail]
     
-    struct ConnectionDetail {
-        let present: Bool
-        let serialNumber: String
-        let productType: ProductType
-        let rssi: Int
+    public struct ConnectionDetail: Equatable {
+        public let present: Bool
+        public let serialNumber: String
+        public let productType: ProductType
+        public let attributes: UInt8
+        public let rssi: Int
         
-        enum Constants {
+        private enum Constants {
             static let PAYLOAD_LENGTH = 13
             
             static let PROBE_SERIAL_RANGE = 0..<4
@@ -49,8 +53,17 @@ class NodeHeartbeatRequest: NodeRequest {
             static let RSSI_INDEX = 12
         }
     }
+
+    public static func == (lhs: NodeHeartbeatRequest, rhs: NodeHeartbeatRequest) -> Bool {
+        lhs.serialNumber == rhs.serialNumber &&
+            lhs.macAddress == rhs.macAddress &&
+            lhs.productType == rhs.productType &&
+            lhs.hopCount == rhs.hopCount &&
+            lhs.inbound == rhs.inbound &&
+            lhs.connectionDetails == rhs.connectionDetails
+    }
     
-    enum Constants {
+    private enum Constants {
         static let PAYLOAD_LENGTH = 71
         
         static let SERIAL_NUMBER_RANGE = NodeRequest.HEADER_LENGTH..<(NodeRequest.HEADER_LENGTH + 10)
@@ -59,13 +72,15 @@ class NodeHeartbeatRequest: NodeRequest {
         static let HOP_COUNT_RANGE = (NodeRequest.HEADER_LENGTH + 17)..<(NodeRequest.HEADER_LENGTH + 18)
         static let INBOUND_RANGE = (NodeRequest.HEADER_LENGTH + 18)..<(NodeRequest.HEADER_LENGTH + 19)
         static let CONNECTION_DETAIL_START = (NodeRequest.HEADER_LENGTH + 19)
+        static let CONNECTION_DETAIL_LENGTH = 13
     }
     
-    init(data: Data, requestId: UInt32, payloadLength: Int) {
+    private init(data: Data, requestId: UInt32, payloadLength: Int) {
         
         // Serial number
         let serialRaw = data.subdata(in: Constants.SERIAL_NUMBER_RANGE)
         serialNumber = String(decoding: serialRaw, as: UTF8.self)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\0"))
         
         // Mac address
         let macAddressRaw = data.subdata(in: Constants.MAC_ADDRESS_RANGE)
@@ -76,17 +91,16 @@ class NodeHeartbeatRequest: NodeRequest {
         productType = ProductType(rawValue: typeByte) ?? .unknown
         
         // Hop Count
-        let hopByte = data.subdata(in: Constants.HOP_COUNT_RANGE)[0]
-        hopCount = HopCount.from(networkInfoByte: hopByte)
+        hopCount = data[Constants.HOP_COUNT_RANGE.lowerBound]
         
         // Inbound
         let inboundByte = data.subdata(in: Constants.INBOUND_RANGE)[0]
         inbound = (inboundByte != 0x00)
         
         var connections: [ConnectionDetail] = []
-        for i in 0...3 {
-            let startIndex = Constants.CONNECTION_DETAIL_START + (i * ConnectionDetail.Constants.PAYLOAD_LENGTH)
-            let stopIndex = startIndex + ConnectionDetail.Constants.PAYLOAD_LENGTH
+        for i in 0..<4 {
+            let startIndex = Constants.CONNECTION_DETAIL_START + (i * Constants.CONNECTION_DETAIL_LENGTH)
+            let stopIndex = startIndex + Constants.CONNECTION_DETAIL_LENGTH
             let dataRange = (startIndex)..<(stopIndex)
             connections.append(ConnectionDetail.fromRaw(data: data.subdata(in: dataRange)))
         }
@@ -101,7 +115,8 @@ class NodeHeartbeatRequest: NodeRequest {
 extension NodeHeartbeatRequest {
 
     static func fromRaw(data: Data, requestId: UInt32, payloadLength: Int) -> NodeHeartbeatRequest? {
-        if(payloadLength < Constants.PAYLOAD_LENGTH) {
+        if payloadLength < Constants.PAYLOAD_LENGTH ||
+            data.count < NodeRequest.HEADER_LENGTH + payloadLength {
             return nil
         }
             
@@ -120,7 +135,7 @@ extension NodeHeartbeatRequest.ConnectionDetail {
 
         // If this value isn't set, ignore the rest of it.
         guard ((attributes & 0x01) == 0x01) else {
-            return NodeHeartbeatRequest.ConnectionDetail.notPresent()
+            return NodeHeartbeatRequest.ConnectionDetail.notPresent(attributes: attributes)
         }
         
         let productType = ProductType(rawValue: data[Constants.PRODUCT_TYPE_INDEX]) ?? .unknown
@@ -128,27 +143,16 @@ extension NodeHeartbeatRequest.ConnectionDetail {
         let serialNumber: String
         switch (productType) {
         case .probe:
-            let rawSerial = data.subdata(in: Constants.PROBE_SERIAL_RANGE)
-            var revSerial : [UInt8] = []
-            for byte in rawSerial {
-                revSerial.insert(byte as UInt8, at: 0)
-            }
-            
-            let serialArray = [UInt8](revSerial)
-            var value: UInt32 = 0
-            for byte in serialArray {
-                value = value << 8
-                value = value | UInt32(byte)
-            }
-            
+            let value = UInt32(data[Constants.PROBE_SERIAL_RANGE.lowerBound])
+                | (UInt32(data[Constants.PROBE_SERIAL_RANGE.lowerBound + 1]) << 8)
+                | (UInt32(data[Constants.PROBE_SERIAL_RANGE.lowerBound + 2]) << 16)
+                | (UInt32(data[Constants.PROBE_SERIAL_RANGE.lowerBound + 3]) << 24)
             serialNumber = String(format:"%02X", value)
-        case .meatNetNode:
+        case .meatNetNode, .gauge, .display, .charger, .engine:
             let serialRaw = data.subdata(in: Constants.NODE_SERIAL_RANGE)
             serialNumber = String(decoding: serialRaw, as: UTF8.self)
-        case .gauge, .engine:
-            let serialRaw = data.subdata(in: Constants.NODE_SERIAL_RANGE)
-            serialNumber = String(decoding: serialRaw, as: UTF8.self)
-        case .unknown, .display, .charger:
+                .trimmingCharacters(in: CharacterSet(charactersIn: "\0"))
+        case .unknown:
             serialNumber = ""
         }
         
@@ -157,13 +161,15 @@ extension NodeHeartbeatRequest.ConnectionDetail {
         return NodeHeartbeatRequest.ConnectionDetail(present: true,
                                                      serialNumber: serialNumber,
                                                      productType: productType,
+                                                     attributes: attributes,
                                                      rssi: Int(rssi))
     }
     
-    static func notPresent() -> NodeHeartbeatRequest.ConnectionDetail {
+    static func notPresent(attributes: UInt8 = 0) -> NodeHeartbeatRequest.ConnectionDetail {
         return NodeHeartbeatRequest.ConnectionDetail(present: false,
                                                      serialNumber: "",
                                                      productType: .unknown,
+                                                     attributes: attributes,
                                                      rssi: 0)
     }
 }

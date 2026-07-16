@@ -41,7 +41,7 @@ class BoosterAdvertisingData: NodeAdvertisingData {
 
         return BoosterAdvertisingData(
             serialNumber: fields.serialNumber,
-            preferences: BoosterPreferences.fromByte(fields.preferencesByte)
+            preferences: fields.preferencesByte.map(BoosterPreferences.fromByte) ?? .defaultValues()
         )
     }
 }

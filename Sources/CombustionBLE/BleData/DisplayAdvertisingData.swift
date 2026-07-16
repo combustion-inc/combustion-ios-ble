@@ -41,7 +41,7 @@ class DisplayAdvertisingData: NodeAdvertisingData {
 
         return DisplayAdvertisingData(
             serialNumber: fields.serialNumber,
-            preferences: DisplayPreferences.fromByte(fields.preferencesByte)
+            preferences: fields.preferencesByte.map(DisplayPreferences.fromByte) ?? .defaultValues()
         )
     }
 }

@@ -50,7 +50,7 @@ class NodeAdvertisingData: AdvertisingData {
         static let PREFERENCES_RANGE = 13..<14
 
         static let COMBUSTION_VENDOR_ID: UInt16 = 0x09C7
-        static let DEVICE_INFO_LENGTH = 14
+        static let MINIMUM_DATA_LENGTH = 13
     }
 
     typealias SerialNumberType = String
@@ -100,9 +100,9 @@ class NodeAdvertisingData: AdvertisingData {
     }
 
     static func deviceInfoFields(fromData data: Data?,
-                                 expectedType: ProductType) -> (serialNumber: String, preferencesByte: UInt8)? {
+                                 expectedType: ProductType) -> (serialNumber: String, preferencesByte: UInt8?)? {
         guard let data else { return nil }
-        guard data.count >= Constants.DEVICE_INFO_LENGTH else { return nil }
+        guard data.count >= Constants.MINIMUM_DATA_LENGTH else { return nil }
 
         let vendorID = data.subdata(in: Constants.VENDOR_ID_RANGE).withUnsafeBytes {
             $0.load(as: UInt16.self)
@@ -114,6 +114,10 @@ class NodeAdvertisingData: AdvertisingData {
         let serialNumber = String(decoding: serialRaw, as: UTF8.self)
             .trimmingCharacters(in: CharacterSet(["\0"]))
 
-        return (serialNumber, data[Constants.PREFERENCES_RANGE.lowerBound])
+        let preferencesByte = data.count >= Constants.PREFERENCES_RANGE.endIndex
+            ? data[Constants.PREFERENCES_RANGE.lowerBound]
+            : nil
+
+        return (serialNumber, preferencesByte)
     }
 }

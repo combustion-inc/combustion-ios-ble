@@ -36,28 +36,33 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         static let DEVICE_STATUS_RANGE = 15..<16
         static let RESERVED_RANGE = 16..<17
         static let HI_LO_STATUS_ALARM_RANGE = 17..<21
+        static let PREFERENCES_RANGE = 21..<22
         
-        static let COMBUSTION_VENDOR_ID = 0x09C7
+        static let COMBUSTION_VENDOR_ID: UInt16 = 0x09C7
+        static let MINIMUM_REQUIRED_FIELDS_LENGTH = 22
     }
     
     var temperatures: GaugeTemperature
     var status: GaugeDetails
     var highLowAlarmStatus: HighLowAlarmStatus
+    var preferences: GaugePreferences
     
     init(type: ProductType,
          serialNumber: String,
          temperature: GaugeTemperature,
          status: GaugeDetails,
-         highLowAlarmStatus: HighLowAlarmStatus) {
+         highLowAlarmStatus: HighLowAlarmStatus,
+         preferences: GaugePreferences = .defaultValues()) {
         self.temperatures = temperature
         self.status = status
         self.highLowAlarmStatus = highLowAlarmStatus
+        self.preferences = preferences
         super.init(type: type, serialNumber: serialNumber)
     }
     
     static func populate(fromData data: Data?) -> (any AdvertisingData)? {
         guard let data = data else { return nil }
-        guard data.count >= 14 else { return nil }
+        guard data.count >= Constants.MINIMUM_REQUIRED_FIELDS_LENGTH else { return nil }
         
         // Vendor ID
         let rawVendorId = data.subdata(in: Constants.VENDOR_ID_RANGE)
@@ -78,12 +83,15 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         
         let hiLoAlarmData = data.subdata(in: Constants.HI_LO_STATUS_ALARM_RANGE)
         let hiLoAlarmStatus = HighLowAlarmStatus.fromData(hiLoAlarmData)
+
+        let preferences = GaugePreferences.fromByte(data[Constants.PREFERENCES_RANGE.lowerBound])
         
         return GaugeAdvertisingData(type: .gauge,
                                     serialNumber: serialNumberString,
                                     temperature: temperatures,
                                     status: status,
-                                    highLowAlarmStatus: hiLoAlarmStatus)
+                                    highLowAlarmStatus: hiLoAlarmStatus,
+                                    preferences: preferences)
     }
 }
 
@@ -94,7 +102,8 @@ extension GaugeAdvertisingData {
                   serialNumber: fakeSerial,
                   temperature: GaugeTemperature.withFakeData(),
                   status: GaugeDetails.defaultValues(),
-                  highLowAlarmStatus: HighLowAlarmStatus.defaultValues())
+                  highLowAlarmStatus: HighLowAlarmStatus.defaultValues(),
+                  preferences: GaugePreferences.defaultValues())
     }
     
     // Fake data initializer for Simulated Gauge
@@ -103,6 +112,7 @@ extension GaugeAdvertisingData {
                   serialNumber: fakeSerial,
                   temperature: fakeTemperatures,
                   status: GaugeDetails.defaultValues(),
-                  highLowAlarmStatus: HighLowAlarmStatus.defaultValues())
+                  highLowAlarmStatus: HighLowAlarmStatus.defaultValues(),
+                  preferences: GaugePreferences.defaultValues())
     }
 }

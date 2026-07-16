@@ -1441,7 +1441,22 @@ extension DeviceManager : BleManagerDelegate {
             
             
             connectionManager.receivedDeviceAdvertising(meatNetNode)
-        case .unknown, .charger, .display:
+        case .charger, .display:
+            let meatNetNode: MeatNetNode
+
+            if let node = devices[identifier.uuidString] as? MeatNetNode {
+                node.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
+                meatNetNode = node
+            } else {
+                meatNetNode = MeatNetNode(advertising,
+                                          isConnectable: isConnectable,
+                                          RSSI: rssi,
+                                          identifier: identifier)
+                addDevice(device: meatNetNode)
+            }
+
+            connectionManager.receivedDeviceAdvertising(meatNetNode)
+        case .unknown:
             print("Found device with unknown type")
         }
     }

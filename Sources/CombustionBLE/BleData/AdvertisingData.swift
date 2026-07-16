@@ -42,39 +42,78 @@ extension AdvertisingData {
 }
 
 class NodeAdvertisingData: AdvertisingData {
-    
+
     private enum Constants {
+        static let VENDOR_ID_RANGE = 0..<2
         static let PRODUCT_TYPE_RANGE = 2..<3
+        static let SERIAL_RANGE = 3..<13
+        static let PREFERENCES_RANGE = 13..<14
+
+        static let COMBUSTION_VENDOR_ID: UInt16 = 0x09C7
+        static let DEVICE_INFO_LENGTH = 14
     }
-    
+
     typealias SerialNumberType = String
-    
+
     var serialNumber: String
     var type: ProductType
-    
+    var highRadioPower: Bool {
+        switch self {
+        case let advertising as BoosterAdvertisingData:
+            advertising.preferences.highRadioPower
+        case let advertising as DisplayAdvertisingData:
+            advertising.preferences.highRadioPower
+        case let advertising as EngineAdvertisingData:
+            advertising.preferences.highRadioPower
+        case let advertising as GaugeAdvertisingData:
+            advertising.preferences.highRadioPower
+        default:
+            false
+        }
+    }
+
     init(type: ProductType, serialNumber: String) {
         self.type = type
         self.serialNumber = serialNumber
     }
-    
+
     static func create(fromData data: Data?) -> (any AdvertisingData)? {
         guard let data = data else { return nil }
-        
-        let rawType = data.subdata(in: Constants.PRODUCT_TYPE_RANGE)
-        
-        let typeByte = rawType.withUnsafeBytes {
-            $0.load(as: UInt8.self)
+        guard data.count >= Constants.PRODUCT_TYPE_RANGE.endIndex else { return nil }
+
+        guard let type = ProductType(rawValue: data[Constants.PRODUCT_TYPE_RANGE.lowerBound]) else {
+            return nil
         }
-        
-        let type = ProductType(rawValue: typeByte)
-        
+
         switch type {
         case .gauge:
             return GaugeAdvertisingData.populate(fromData: data)
         case .engine:
             return EngineAdvertisingData.populate(fromData: data)
-        case nil, .probe, .display, .charger, .meatNetNode, .some(.unknown):
+        case .display:
+            return DisplayAdvertisingData.populate(fromData: data)
+        case .charger:
+            return BoosterAdvertisingData.populate(fromData: data)
+        case .probe, .meatNetNode, .unknown:
             return nil
         }
+    }
+
+    static func deviceInfoFields(fromData data: Data?,
+                                 expectedType: ProductType) -> (serialNumber: String, preferencesByte: UInt8)? {
+        guard let data else { return nil }
+        guard data.count >= Constants.DEVICE_INFO_LENGTH else { return nil }
+
+        let vendorID = data.subdata(in: Constants.VENDOR_ID_RANGE).withUnsafeBytes {
+            $0.load(as: UInt16.self)
+        }
+        guard vendorID == Constants.COMBUSTION_VENDOR_ID else { return nil }
+        guard data[Constants.PRODUCT_TYPE_RANGE.lowerBound] == expectedType.rawValue else { return nil }
+
+        let serialRaw = data.subdata(in: Constants.SERIAL_RANGE)
+        let serialNumber = String(decoding: serialRaw, as: UTF8.self)
+            .trimmingCharacters(in: CharacterSet(["\0"]))
+
+        return (serialNumber, data[Constants.PREFERENCES_RANGE.lowerBound])
     }
 }

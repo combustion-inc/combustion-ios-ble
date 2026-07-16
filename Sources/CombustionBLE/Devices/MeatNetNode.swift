@@ -105,8 +105,21 @@ public class MeatNetNode: Device {
     }
     
     func updateWithAdvertising(_ advertising: any AdvertisingData, isConnectable: Bool, RSSI: NSNumber) {
-        // Always update device RSSI and isConnectable flag
-        
+        if let nodeAdvertising = advertising as? NodeAdvertisingData {
+            if serialNumberString != nodeAdvertising.serialNumber {
+                serialNumberString = nodeAdvertising.serialNumber
+            }
+            if dfuType != nodeAdvertising.type {
+                dfuType = nodeAdvertising.type
+            }
+
+            if highRadioPower != nodeAdvertising.highRadioPower {
+                highRadioPower = nodeAdvertising.highRadioPower
+            }
+        }
+
+        // Always update device RSSI and isConnectable flag after radio power so
+        // proximity thresholds apply to the current advertisement.
         self.rssi = RSSI.intValue
         self.isConnectable = isConnectable
         

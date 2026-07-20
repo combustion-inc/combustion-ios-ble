@@ -137,10 +137,8 @@ public class MeatNetNode: Device {
 
     func updateHeartbeat(_ heartbeat: NodeHeartbeatRequest) {
         if heartbeat.inbound {
-            guard inboundHeartbeat != heartbeat else { return }
             inboundHeartbeat = heartbeat
         } else {
-            guard outboundHeartbeat != heartbeat else { return }
             outboundHeartbeat = heartbeat
         }
     }

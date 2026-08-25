@@ -37,7 +37,7 @@ class EngineAdvertisingData: NodeAdvertisingData {
         static let PREFERENCES_RANGE = 16..<17
 
         static let COMBUSTION_VENDOR_ID: UInt16 = 0x09C7
-        static let MINIMUM_REQUIRED_FIELDS_LENGTH = 17
+        static let MINIMUM_DATA_LENGTH = 16
     }
 
     /// Current temperature set point (in Celsius)
@@ -60,7 +60,7 @@ class EngineAdvertisingData: NodeAdvertisingData {
 
     static func populate(fromData data: Data?) -> (any AdvertisingData)? {
         guard let data = data else { return nil }
-        guard data.count >= Constants.MINIMUM_REQUIRED_FIELDS_LENGTH else { return nil }
+        guard data.count >= Constants.MINIMUM_DATA_LENGTH else { return nil }
 
         // Vendor ID
         let rawVendorId = data.subdata(in: Constants.VENDOR_ID_RANGE)
@@ -85,8 +85,9 @@ class EngineAdvertisingData: NodeAdvertisingData {
         let statusFlags = EngineStatusFlags.fromByte(statusFlagsByte)
 
         // Preferences
-        let preferencesByte = data[Constants.PREFERENCES_RANGE.lowerBound]
-        let preferences = EnginePreferences.fromByte(preferencesByte)
+        let preferences = data.count >= Constants.PREFERENCES_RANGE.endIndex
+            ? EnginePreferences.fromByte(data[Constants.PREFERENCES_RANGE.lowerBound])
+            : .defaultValues()
 
         return EngineAdvertisingData(type: .engine,
                                      serialNumber: serialNumberString,

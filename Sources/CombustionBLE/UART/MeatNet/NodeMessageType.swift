@@ -116,7 +116,8 @@ extension NodeMessageType {
         case .resetFoodSafe: 0x08
         case .setPowerMode: 0x09
         case .gaugeLog: 0x62
-        case .engineLog: 0x63
+        // 0x63 is SET_GAUGE_ID; the Engine block (0x70-0x72) is boxed in by linking commands.
+        case .engineLog: 0x64
         case .getFeatureFlags: 0x30
         case .connected: 0x40
         case .disconnected: 0x41

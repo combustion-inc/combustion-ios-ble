@@ -65,7 +65,7 @@ public protocol MeatNetActionDelegate: AnyObject {
     func silenceAlarms(global: Bool, productType: ProductType?, probeSerialNumber: String?, nodeSerialNumber: String?)
 }
 
-private enum LinkingTableKind {
+enum LinkingTableKind: Hashable, Sendable {
     case linked
     case unlinked
 
@@ -82,55 +82,12 @@ private enum LinkingTableKind {
         case .unlinked: NodeReadUnlinkedDevicesRequest(page: page)
         }
     }
-}
 
-/// Represents one logical linking-table read while its individual page commands change.
-private final class LinkingTableCommandHandle: CommandHandle {
-    private let lock = NSLock()
-    private var currentCommand: CommandHandle?
-    private var cancelled = false
-    private var finished = false
-
-    var isCancelled: Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return cancelled
-    }
-
-    func replaceCurrentCommand(with command: CommandHandle) {
-        lock.lock()
-        let shouldCancel = cancelled || finished
-        if !shouldCancel {
-            currentCommand = command
+    var diagnosticName: String {
+        switch self {
+        case .linked: "linked"
+        case .unlinked: "unlinked"
         }
-        lock.unlock()
-
-        if shouldCancel {
-            command.cancel()
-        }
-    }
-
-    /// Returns true exactly once, allowing the operation to deliver one completion.
-    func finish() -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        guard !finished else { return false }
-        finished = true
-        currentCommand = nil
-        return true
-    }
-
-    func cancel() {
-        lock.lock()
-        guard !cancelled, !finished else {
-            lock.unlock()
-            return
-        }
-        cancelled = true
-        let command = currentCommand
-        lock.unlock()
-
-        command?.cancel()
     }
 }
 
@@ -171,7 +128,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     private let commandCoordinator = CommandCoordinator()
 
     /// Successful page responses waiting for their command completion callbacks.
-    /// Pagination itself remains private to DeviceManager and is never published on a node.
+    /// Entries are published atomically on a node; opt-in progress callbacks receive validated prefixes.
     private let linkingTableResponseLock = NSLock()
     private var pendingLinkingTableRequestIds: Set<UInt32> = []
     private var linkingTablePageResponses: [UInt32: NodeLinkingTablePageResponse] = [:]
@@ -1140,12 +1097,15 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// - parameter node: Node whose linking table should be read.
     /// - parameter completionHandler: Called with success only after every page has been fetched and published,
     ///   or failure if any page cannot be fetched or fails validation.
-    /// - returns: A handle that cancels the complete paginated read.
+    /// - parameter progressHandler: Optional main-actor callback after each validated page.
+    ///   Progress is provisional until `isComplete`; the previous complete table remains intact on failure.
+    /// - returns: A handle that cancels the complete paginated read from any thread.
+    @MainActor
     @discardableResult
     public func readLinkedDevicesCommand(_ node: MeatNetNode,
+                                         progressHandler: NodeLinkingTableProgressHandler? = nil,
                                          completionHandler: @escaping CommandCompletionHandler) -> CommandHandle {
-        fetchLinkingTableCommand(node,
-                                 kind: .linked,
+        fetchLinkingTableCommand(node, kind: .linked, progressHandler: progressHandler,
                                  completionHandler: completionHandler)
     }
 
@@ -1154,12 +1114,15 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     /// - parameter node: Node whose unlinking table should be read.
     /// - parameter completionHandler: Called with success only after every page has been fetched and published,
     ///   or failure if any page cannot be fetched or fails validation.
-    /// - returns: A handle that cancels the complete paginated read.
+    /// - parameter progressHandler: Optional main-actor callback after each validated page.
+    ///   Progress is provisional until `isComplete`; the previous complete table remains intact on failure.
+    /// - returns: A handle that cancels the complete paginated read from any thread.
+    @MainActor
     @discardableResult
     public func readUnlinkedDevicesCommand(_ node: MeatNetNode,
-                                           completionHandler: @escaping CommandCompletionHandler) -> CommandHandle {
-        fetchLinkingTableCommand(node,
-                                 kind: .unlinked,
+                                         progressHandler: NodeLinkingTableProgressHandler? = nil,
+                                         completionHandler: @escaping CommandCompletionHandler) -> CommandHandle {
+        fetchLinkingTableCommand(node, kind: .unlinked, progressHandler: progressHandler,
                                  completionHandler: completionHandler)
     }
 
@@ -1344,118 +1307,50 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
                                                           completionHandler: completionHandler)
     }
 
+    @MainActor
     @discardableResult
     private func fetchLinkingTableCommand(_ node: MeatNetNode,
                                           kind: LinkingTableKind,
+                                          progressHandler: NodeLinkingTableProgressHandler?,
                                           completionHandler: @escaping CommandCompletionHandler) -> CommandHandle {
-        let commandHandle = LinkingTableCommandHandle()
-        var entries: [NodeLinkingTableEntry] = []
-        var totalPages: UInt8?
-        var totalCount: UInt8?
-
-        func complete(_ result: CommandResult) {
-            guard commandHandle.finish() else { return }
-            completionHandler(result)
-        }
-
-        func fetchPage(_ page: UInt8) {
-            guard !commandHandle.isCancelled else {
-                complete(.cancelled)
-                return
-            }
-
-            let request = kind.makeRequest(page: page)
-            registerLinkingTableRequest(request)
-
-            let pageCommand = sendNodeRequestWithCommandHandler(node,
-                                                                request: request) { [weak self, weak node] result in
-                guard let self else {
-                    complete(.failure)
-                    return
+        // Per-node, per-table ownership also protects against overlapping reads from different screens.
+        let previous = node.linkingTableReads[kind]
+        let operationID = UUID()
+        let operation = LinkingTableReadOperation(
+            id: operationID,
+            sendPage: { [self, weak node] page, completion in
+                let request = kind.makeRequest(page: page)
+                registerLinkingTableRequest(request)
+                guard let node else {
+                    completion(.cancelled)
+                    return .init(requestID: request.requestId, command: EmptyLinkingTableCommandHandle())
                 }
-
-                guard result == .success else {
-                    self.discardLinkingTableResponse(requestId: request.requestId)
-                    complete(result)
-                    return
+                let command = sendNodeRequestWithCommandHandler(node, request: request, completionHandler: completion)
+                return .init(requestID: request.requestId, command: command)
+            },
+            takePage: { [self] requestID in
+                guard let response = takeLinkingTableResponse(requestId: requestID),
+                      response.messageType == kind.messageType else { return nil }
+                return .init(page: response.page, totalPages: response.totalPages,
+                             totalCount: response.totalCount, entries: response.entries)
+            },
+            discardPage: { [self] in discardLinkingTableResponse(requestId: $0) },
+            isCurrent: { [weak node] in node?.linkingTableReads[kind]?.id == operationID },
+            publishComplete: { [weak node] entries in
+                switch kind {
+                case .linked: node?.updateLinkedDevices(entries)
+                case .unlinked: node?.updateUnlinkedDevices(entries)
                 }
-
-                guard !commandHandle.isCancelled else {
-                    self.discardLinkingTableResponse(requestId: request.requestId)
-                    complete(.cancelled)
-                    return
-                }
-
-                guard let response = self.takeLinkingTableResponse(requestId: request.requestId),
-                      response.messageType == kind.messageType,
-                      response.page == page else {
-                    complete(.failure)
-                    return
-                }
-
-                if page == 0 {
-                    totalPages = response.totalPages
-                    totalCount = response.totalCount
-                }
-
-                guard response.totalPages == totalPages,
-                      response.totalCount == totalCount else {
-                    complete(.failure)
-                    return
-                }
-
-                // An empty table may report zero pages. Any non-empty table must
-                // include this page within the declared page count.
-                if response.totalPages == 0 {
-                    guard page == 0,
-                          response.totalCount == 0,
-                          response.entries.isEmpty,
-                          let node else {
-                        complete(.failure)
-                        return
-                    }
-
-                    switch kind {
-                    case .linked: node.updateLinkedDevices([])
-                    case .unlinked: node.updateUnlinkedDevices([])
-                    }
-                    complete(.success)
-                    return
-                }
-
-                guard page < response.totalPages else {
-                    complete(.failure)
-                    return
-                }
-
-                entries.append(contentsOf: response.entries)
-                guard entries.count <= Int(response.totalCount) else {
-                    complete(.failure)
-                    return
-                }
-
-                let isLastPage = Int(page) + 1 == Int(response.totalPages)
-                if isLastPage {
-                    guard entries.count == Int(response.totalCount),
-                          let node else {
-                        complete(.failure)
-                        return
-                    }
-
-                    switch kind {
-                    case .linked: node.updateLinkedDevices(entries)
-                    case .unlinked: node.updateUnlinkedDevices(entries)
-                    }
-                    complete(.success)
-                } else {
-                    fetchPage(page + 1)
-                }
-            }
-            commandHandle.replaceCurrentCommand(with: pageCommand)
-        }
-
-        fetchPage(0)
-        return commandHandle
+            },
+            progressHandler: progressHandler,
+            didFinish: { [weak node] in
+                if node?.linkingTableReads[kind]?.id == operationID { node?.linkingTableReads[kind] = nil }
+            },
+            completionHandler: completionHandler
+        )
+        node.linkingTableReads[kind] = operation
+        previous?.cancel()
+        return operation.start()
     }
 
     private func registerLinkingTableRequest(_ request: NodeRequest) {
@@ -1503,10 +1398,22 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
                   let device else { return }
 
             if self.shouldSendMessageDirectlyTo(device: device) {
+                if request.messageType == .readLinkedDevices || request.messageType == .readUnlinkedDevices {
+                    print("DEVIN: bleLinkingTable event=transportSend table=\(request.messageType) ownerSerial=\(device.serialNumberString ?? "unknown") requestID=\(request.requestId) route=direct destinationSerials=\(device.serialNumberString ?? "unknown") destinationIdentifiers=\(device.uniqueIdentifier)")
+                }
                 BleManager.shared.sendRequestToNodes([device], request: request)
             }
             else {
                 let nodesConnectedToDevice = self.getNodesConnectedToDevice(identifier: device.uniqueIdentifier)
+                if request.messageType == .readLinkedDevices || request.messageType == .readUnlinkedDevices {
+                    let destinationSerials = nodesConnectedToDevice
+                        .map { $0.serialNumberString ?? "unknown" }
+                        .joined(separator: ",")
+                    let destinationIdentifiers = nodesConnectedToDevice
+                        .map(\.uniqueIdentifier)
+                        .joined(separator: ",")
+                    print("DEVIN: bleLinkingTable event=transportSend table=\(request.messageType) ownerSerial=\(device.serialNumberString ?? "unknown") requestID=\(request.requestId) route=forwarded destinationSerials=\(destinationSerials.isEmpty ? "none" : destinationSerials) destinationIdentifiers=\(destinationIdentifiers.isEmpty ? "none" : destinationIdentifiers)")
+                }
                 BleManager.shared.sendRequestToNodes(nodesConnectedToDevice, request: request)
             }
         },
@@ -2055,6 +1962,11 @@ extension DeviceManager : BleManagerDelegate {
         case .readLinkedDevices, .readUnlinkedDevices:
             if let linkingTableResponse = response as? NodeLinkingTablePageResponse,
                linkingTableResponse.success {
+                let entrySummary = linkingTableResponse.entries.isEmpty
+                    ? "none"
+                    : linkingTableResponse.entries.map(\.diagnosticDescription).joined(separator: ",")
+                let responseNode = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode
+                print("DEVIN: bleLinkingTable event=responseHandled table=\(linkingTableResponse.messageType) sourceSerial=\(responseNode?.serialNumberString ?? "unknown") sourceType=\(responseNode?.dfuType.rawValue ?? ProductType.unknown.rawValue) peripheralIdentifier=\(identifier.uuidString) requestID=\(linkingTableResponse.requestId) responseID=\(linkingTableResponse.responseId) page=\(linkingTableResponse.page) totalPages=\(linkingTableResponse.totalPages) totalCount=\(linkingTableResponse.totalCount) pageCount=\(linkingTableResponse.entries.count) entries=\(entrySummary)")
                 storeLinkingTableResponse(linkingTableResponse)
             }
             commandCoordinator.callNodeCommandHandler(response: response)

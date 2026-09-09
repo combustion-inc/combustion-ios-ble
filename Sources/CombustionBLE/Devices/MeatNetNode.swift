@@ -59,11 +59,13 @@ public class MeatNetNode: Device {
     @Published public internal(set) var proximityLinkingEnabled: Bool?
 
     /// Complete linked-device table, or nil until it has been fetched successfully.
-    @Published public internal(set) var linkedDevices: [NodeLinkingTableEntry]?
+    @MainActor @Published public internal(set) var linkedDevices: [NodeLinkingTableEntry]?
 
     /// Complete explicitly-unlinked-device table, or nil until it has been fetched successfully.
-    @Published public internal(set) var unlinkedDevices: [NodeLinkingTableEntry]?
+    @MainActor @Published public internal(set) var unlinkedDevices: [NodeLinkingTableEntry]?
     
+    @MainActor var linkingTableReads: [LinkingTableKind: LinkingTableReadOperation] = [:]
+
     /// Meatnet node name
     public var name: String {
         let serialNumber = serialNumberString ?? ""
@@ -148,13 +150,22 @@ public class MeatNetNode: Device {
         proximityLinkingEnabled = enabled
     }
 
+    @MainActor
     func updateLinkedDevices(_ entries: [NodeLinkingTableEntry]) {
         guard linkedDevices != entries else { return }
         linkedDevices = entries
     }
 
+    @MainActor
     func updateUnlinkedDevices(_ entries: [NodeLinkingTableEntry]) {
         guard unlinkedDevices != entries else { return }
+        let previousSummary = unlinkedDevices.map {
+            $0.isEmpty ? "none" : $0.map(\.diagnosticDescription).joined(separator: ",")
+        } ?? "unknown"
+        let nextSummary = entries.isEmpty
+            ? "none"
+            : entries.map(\.diagnosticDescription).joined(separator: ",")
+        print("DEVIN: bleLinkingTable event=published table=unlinked ownerSerial=\(serialNumberString ?? "unknown") ownerType=\(dfuType.rawValue) previous=\(previousSummary) next=\(nextSummary)")
         unlinkedDevices = entries
     }
     

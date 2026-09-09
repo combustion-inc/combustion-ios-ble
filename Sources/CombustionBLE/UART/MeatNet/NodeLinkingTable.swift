@@ -27,7 +27,7 @@ SOFTWARE.
 import Foundation
 
 /// Serial-number representation used by the MeatNet linking-table protocol.
-public enum NodeLinkingSerialNumber: Equatable {
+public enum NodeLinkingSerialNumber: Equatable, Sendable {
     /// Numeric serial number used by Predictive Thermometers.
     case probe(UInt32)
 
@@ -39,7 +39,7 @@ public enum NodeLinkingSerialNumber: Equatable {
 }
 
 /// A device entry returned by Read Linked Devices or Read Unlinked Devices.
-public struct NodeLinkingTableEntry: Equatable {
+public struct NodeLinkingTableEntry: Equatable, Sendable {
     public let productType: ProductType
     public let serialNumber: NodeLinkingSerialNumber
 
@@ -57,6 +57,19 @@ public struct NodeLinkingTableEntry: Equatable {
         self.serialNumber = serialNumber
         self.timestamp = timestamp
         self.isLegacy = isLegacy
+    }
+}
+
+extension NodeLinkingTableEntry {
+    var diagnosticDescription: String {
+        let serial: String
+        switch serialNumber {
+        case .probe(let value):
+            serial = String(format: "%08X", value)
+        case .node(let value), .legacyMACAddress(let value):
+            serial = value
+        }
+        return "\(productType.rawValue):\(serial):timestamp=\(timestamp):legacy=\(isLegacy)"
     }
 }
 

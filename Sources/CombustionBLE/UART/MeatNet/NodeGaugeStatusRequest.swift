@@ -44,7 +44,9 @@ class NodeGaugeStatusRequest: NodeRequest {
         let serialNumberRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + Constants.SERIAL_NUMBER_LENGTH))
         self.serialNumber = String(decoding: serialNumberRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))
                 
-        if let gaugeStatus = GaugeStatus(fromData: data) {
+        // The receive buffer may contain another message after this payload.
+        let statusData = data.prefix(NodeRequest.HEADER_LENGTH + payloadLength)
+        if let gaugeStatus = GaugeStatus(fromData: statusData) {
             self.gaugeStatus = gaugeStatus
         }
         

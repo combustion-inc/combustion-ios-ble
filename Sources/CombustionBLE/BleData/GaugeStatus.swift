@@ -28,6 +28,9 @@ import Foundation
 /// Message containing Gauge status information.
 public struct GaugeStatus: DeviceAccessoryStatus {
     
+    /// Gauge ID, zero-based; nil when the status packet does not include it.
+    public let id: UInt8?
+
     /// gauge serial number
     public let serialNumber: String
     
@@ -63,7 +66,9 @@ public struct GaugeStatus: DeviceAccessoryStatus {
                 alarmStatus: HighLowAlarmStatus,
                 status: GaugeDetails,
                 samplePeriod: UInt16,
-                newRecordFlag: Bool) {
+                newRecordFlag: Bool,
+                id: UInt8? = nil) {
+        self.id = id
         self.serialNumber = serialNumber
         self.sessionID = sessionID
         self.minSequenceNumber = minSequenceNumber
@@ -88,12 +93,14 @@ extension GaugeStatus {
         static let RESERVED_RANGE = 37..<38
         static let HIGH_LOW_ALARM_RANGE = 38..<42
         static let NEW_RECORD_FLAG_RANGE = 42..<43
+        // Byte 43 contains network information.
+        static let ID_INDEX = 44
     }
     
     init?(fromData data: Data) {
         guard data.count >= Constants.NEW_RECORD_FLAG_RANGE.endIndex else { return nil }
         
-        let sequenceByteIndex = NodeRequest.HEADER_LENGTH
+        self.id = data.count > Constants.ID_INDEX ? data[Constants.ID_INDEX] : nil
         
         // Serial Number
         

@@ -43,8 +43,8 @@ public class GrillGauge: Accessory {
         return serialNumber
     }
     
-    /// Gauge ID, zero-based (0–255); nil when not yet known or unsupported.
-    @Published public internal(set) var id: UInt8?
+    /// Gauge ID, zero-based (0–255); defaults to zero (displayed as ID 1).
+    @Published public internal(set) var id: UInt8
 
     @Published public internal(set) var currentTemperature: GaugeTemperature?
     
@@ -107,7 +107,7 @@ public class GrillGauge: Accessory {
     
     init(parent: MeatNetNode, advertising: any AdvertisingData) {
         self.serialNumber = advertising.serialNumberString
-        self.id = (advertising as? GaugeAdvertisingData)?.id
+        self.id = (advertising as? GaugeAdvertisingData)?.id ?? 0 // default to 0 for legacy firmware. 
         
         setParent(parent)
         updateWithAdvertising(advertising)
@@ -115,6 +115,7 @@ public class GrillGauge: Accessory {
     
     init(parent: MeatNetNode? = nil, status: GaugeStatus, hopCount: HopCount?) {
         self.serialNumber = status.serialNumber
+        self.id = status.id ?? 0
         
         setParent(parent)
         updateDeviceStatus(deviceStatus: status, hopCount: hopCount)
@@ -141,7 +142,7 @@ public class GrillGauge: Accessory {
         updateLastUpdateTime()
         
         if let parent = parent, parent.connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(parent) {
-            // An ambiguous zero advertisement must not erase an ID learned from status.
+            // A packet without the ID field must not erase a previously learned ID.
             if let advertisedID = advertisingData.id {
                 updateID(advertisedID)
             }
@@ -314,7 +315,7 @@ extension GrillGauge {
     }
     
     private func updateID(_ id: UInt8?) {
-        guard self.id != id else { return }
+        guard let id, self.id != id else { return }
         self.id = id
     }
 

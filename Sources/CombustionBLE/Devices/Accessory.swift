@@ -67,7 +67,7 @@ public protocol Accessory {
 
 public extension Accessory {
     
-    public var firmareVersionPublisher: AnyPublisher<String?, Never> {
+    var firmareVersionPublisher: AnyPublisher<String?, Never> {
         parentSubject
             .flatMap { parent in
                 parent?.$firmareVersion.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
@@ -75,7 +75,7 @@ public extension Accessory {
             .eraseToAnyPublisher()
     }
     
-    public var hardwareRevisionPublisher: AnyPublisher<String?, Never> {
+    var hardwareRevisionPublisher: AnyPublisher<String?, Never> {
         parentSubject
             .flatMap { parent in
                 parent?.$hardwareRevision.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
@@ -83,7 +83,7 @@ public extension Accessory {
             .eraseToAnyPublisher()
     }
     
-    public var skuPublisher: AnyPublisher<String?, Never> {
+    var skuPublisher: AnyPublisher<String?, Never> {
         parentSubject
             .flatMap { parent in
                 parent?.$sku.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()
@@ -91,7 +91,7 @@ public extension Accessory {
             .eraseToAnyPublisher()
     }
     
-    public var manufacturingLotPublisher: AnyPublisher<String?, Never> {
+    var manufacturingLotPublisher: AnyPublisher<String?, Never> {
         parentSubject
             .flatMap { parent in
                 parent?.$manufacturingLot.eraseToAnyPublisher() ?? Just(nil).eraseToAnyPublisher()

@@ -28,6 +28,8 @@ import Foundation
 class GaugeAdvertisingData: NodeAdvertisingData {
     
     private enum Constants {
+        // Legacy packets may omit preferences and ID; do not require the current 24-byte layout.
+        static let MINIMUM_LENGTH = 21
         // Locations of data in advertising packets
         static let VENDOR_ID_RANGE = 0..<2
         static let PRODUCT_TYPE_RANGE = 2..<3
@@ -42,7 +44,7 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         static let COMBUSTION_VENDOR_ID = 0x09C7
     }
     
-    // Zero is ambiguous with the reserved byte on older firmware; status confirms ID 1.
+    // Gauge IDs are zero-based; zero is displayed as ID 1, including on older firmware.
     let id: UInt8?
     var temperatures: GaugeTemperature
     var status: GaugeDetails
@@ -62,8 +64,9 @@ class GaugeAdvertisingData: NodeAdvertisingData {
     }
     
     static func populate(fromData data: Data?) -> (any AdvertisingData)? {
-        guard let data = data else { return nil }
-        guard data.count >= Constants.HI_LO_STATUS_ALARM_RANGE.upperBound else { return nil }
+        guard let packet = data, packet.count >= Constants.MINIMUM_LENGTH else { return nil }
+        // Field offsets are relative to the packet, even when the caller supplies a Data slice.
+        let data = Data(packet)
         
         // Vendor ID
         let rawVendorId = data.subdata(in: Constants.VENDOR_ID_RANGE)
@@ -90,7 +93,7 @@ class GaugeAdvertisingData: NodeAdvertisingData {
                                     temperature: temperatures,
                                     status: status,
                                     highLowAlarmStatus: hiLoAlarmStatus,
-                                    id: data.count > Constants.ID_INDEX && data[Constants.ID_INDEX] != 0 ? data[Constants.ID_INDEX] : nil)
+                                    id: data.count > Constants.ID_INDEX ? data[Constants.ID_INDEX] : nil)
     }
 }
 

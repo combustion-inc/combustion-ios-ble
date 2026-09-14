@@ -27,6 +27,10 @@ SOFTWARE.
 import Foundation
 
 class NodeSetGaugeIDRequest: NodeRequest {
+    private enum Constants {
+        static let NODE_SERIAL_NUM_LENGTH = 10
+    }
+
     let serialNumber: String
     let id: UInt8
 
@@ -34,8 +38,8 @@ class NodeSetGaugeIDRequest: NodeRequest {
         self.serialNumber = serialNumber
         self.id = id
 
-        var serialBytes = Array(serialNumber.utf8.prefix(10))
-        serialBytes += Array(repeating: 0, count: 10 - serialBytes.count)
+        var serialBytes = Array(serialNumber.utf8.prefix(Constants.NODE_SERIAL_NUM_LENGTH))
+        serialBytes += Array(repeating: 0, count: Constants.NODE_SERIAL_NUM_LENGTH - serialBytes.count)
         var payload = Data(serialBytes)
         payload.append(id)
         super.init(outgoingPayload: payload, type: .setGaugeID)

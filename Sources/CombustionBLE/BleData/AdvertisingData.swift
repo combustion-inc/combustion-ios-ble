@@ -50,26 +50,18 @@ class NodeAdvertisingData: AdvertisingData {
         static let PREFERENCES_RANGE = 13..<14
 
         static let COMBUSTION_VENDOR_ID: UInt16 = 0x09C7
-        static let MINIMUM_DATA_LENGTH = 13
+        // Older advertisements may omit preferences; identity is still usable.
+        static let REQUIRED_FIELDS_LENGTH = SERIAL_RANGE.upperBound
     }
 
     typealias SerialNumberType = String
 
     var serialNumber: String
     var type: ProductType
+    
+    // overriden in subclasses
     var highRadioPower: Bool {
-        switch self {
-        case let advertising as BoosterAdvertisingData:
-            advertising.preferences.highRadioPower
-        case let advertising as DisplayAdvertisingData:
-            advertising.preferences.highRadioPower
-        case let advertising as EngineAdvertisingData:
-            advertising.preferences.highRadioPower
-        case let advertising as GaugeAdvertisingData:
-            advertising.preferences.highRadioPower
-        default:
-            false
-        }
+        false
     }
 
     init(type: ProductType, serialNumber: String) {
@@ -102,11 +94,11 @@ class NodeAdvertisingData: AdvertisingData {
     static func deviceInfoFields(fromData data: Data?,
                                  expectedType: ProductType) -> (serialNumber: String, preferencesByte: UInt8?)? {
         guard let data else { return nil }
-        guard data.count >= Constants.MINIMUM_DATA_LENGTH else { return nil }
+        guard data.count >= Constants.REQUIRED_FIELDS_LENGTH else { return nil }
 
-        let vendorID = data.subdata(in: Constants.VENDOR_ID_RANGE).withUnsafeBytes {
-            $0.load(as: UInt16.self)
-        }
+        // Manufacturer data is little-endian and need not be UInt16-aligned.
+        let vendorBytes = data.subdata(in: Constants.VENDOR_ID_RANGE)
+        let vendorID = UInt16(vendorBytes[0]) | (UInt16(vendorBytes[1]) << 8)
         guard vendorID == Constants.COMBUSTION_VENDOR_ID else { return nil }
         guard data[Constants.PRODUCT_TYPE_RANGE.lowerBound] == expectedType.rawValue else { return nil }
 

@@ -1442,20 +1442,17 @@ extension DeviceManager : BleManagerDelegate {
             
             connectionManager.receivedDeviceAdvertising(meatNetNode)
         case .charger, .display:
-            let meatNetNode: MeatNetNode
-
+            // Device-info packets update discovery and proximity only. Repeated
+            // probe advertisements retain the existing MeatNet/DFU connection policy.
             if let node = devices[identifier.uuidString] as? MeatNetNode {
                 node.updateWithAdvertising(advertising, isConnectable: isConnectable, RSSI: rssi)
-                meatNetNode = node
             } else {
-                meatNetNode = MeatNetNode(advertising,
-                                          isConnectable: isConnectable,
-                                          RSSI: rssi,
-                                          identifier: identifier)
+                let meatNetNode = MeatNetNode(advertising,
+                                              isConnectable: isConnectable,
+                                              RSSI: rssi,
+                                              identifier: identifier)
                 addDevice(device: meatNetNode)
             }
-
-            connectionManager.receivedDeviceAdvertising(meatNetNode)
         case .unknown:
             print("Found device with unknown type")
         }

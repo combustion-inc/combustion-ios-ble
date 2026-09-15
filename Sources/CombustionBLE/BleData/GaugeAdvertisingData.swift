@@ -39,14 +39,17 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         static let PREFERENCES_RANGE = 21..<22
         
         static let COMBUSTION_VENDOR_ID: UInt16 = 0x09C7
-        static let MINIMUM_DATA_LENGTH = 21
-        static let DEVICE_INFO_LENGTH = 25
+        static let REQUIRED_FIELDS_LENGTH = HI_LO_STATUS_ALARM_RANGE.upperBound
     }
     
     var temperatures: GaugeTemperature
     var status: GaugeDetails
     var highLowAlarmStatus: HighLowAlarmStatus
     var preferences: GaugePreferences
+
+    override var highRadioPower: Bool {
+        preferences.highRadioPower
+    }
     
     init(type: ProductType,
          serialNumber: String,
@@ -63,7 +66,7 @@ class GaugeAdvertisingData: NodeAdvertisingData {
     
     static func populate(fromData data: Data?) -> (any AdvertisingData)? {
         guard let data = data else { return nil }
-        guard data.count >= Constants.MINIMUM_DATA_LENGTH else { return nil }
+        guard data.count >= Constants.REQUIRED_FIELDS_LENGTH else { return nil }
         
         // Vendor ID
         let rawVendorId = data.subdata(in: Constants.VENDOR_ID_RANGE)
@@ -85,9 +88,9 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         let hiLoAlarmData = data.subdata(in: Constants.HI_LO_STATUS_ALARM_RANGE)
         let hiLoAlarmStatus = HighLowAlarmStatus.fromData(hiLoAlarmData)
 
-        // Shorter packets used this location as a reserved byte. Only interpret
-        // it as preferences when the complete device info packet is present.
-        let preferences = data.count >= Constants.DEVICE_INFO_LENGTH
+        // Legacy firmware zero-initialized this reserved byte. Read it when
+        // present, independently of trailing fields or shared firmware padding.
+        let preferences = data.count >= Constants.PREFERENCES_RANGE.upperBound
             ? GaugePreferences.fromByte(data[Constants.PREFERENCES_RANGE.lowerBound])
             : .defaultValues()
         

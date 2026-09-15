@@ -37,7 +37,8 @@ class EngineAdvertisingData: NodeAdvertisingData {
         static let PREFERENCES_RANGE = 16..<17
 
         static let COMBUSTION_VENDOR_ID: UInt16 = 0x09C7
-        static let MINIMUM_DATA_LENGTH = 16
+        // Preserve advertisements that contain status but omit preferences.
+        static let REQUIRED_FIELDS_LENGTH = STATUS_FLAGS_RANGE.upperBound
     }
 
     /// Current temperature set point (in Celsius)
@@ -46,6 +47,10 @@ class EngineAdvertisingData: NodeAdvertisingData {
     var statusFlags: EngineStatusFlags
     /// Engine advertising preferences.
     var preferences: EnginePreferences
+
+    override var highRadioPower: Bool {
+        preferences.highRadioPower
+    }
 
     init(type: ProductType,
          serialNumber: String,
@@ -60,7 +65,7 @@ class EngineAdvertisingData: NodeAdvertisingData {
 
     static func populate(fromData data: Data?) -> (any AdvertisingData)? {
         guard let data = data else { return nil }
-        guard data.count >= Constants.MINIMUM_DATA_LENGTH else { return nil }
+        guard data.count >= Constants.REQUIRED_FIELDS_LENGTH else { return nil }
 
         // Vendor ID
         let rawVendorId = data.subdata(in: Constants.VENDOR_ID_RANGE)

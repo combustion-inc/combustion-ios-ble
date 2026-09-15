@@ -28,6 +28,10 @@ import Foundation
 class BoosterAdvertisingData: NodeAdvertisingData {
     var preferences: BoosterPreferences
 
+    override var highRadioPower: Bool {
+        preferences.highRadioPower
+    }
+
     init(serialNumber: String,
          preferences: BoosterPreferences = .defaultValues()) {
         self.preferences = preferences

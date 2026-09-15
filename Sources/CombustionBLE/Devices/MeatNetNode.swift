@@ -105,17 +105,9 @@ public class MeatNetNode: Device {
     }
     
     func updateWithAdvertising(_ advertising: any AdvertisingData, isConnectable: Bool, RSSI: NSNumber) {
-        if let nodeAdvertising = advertising as? NodeAdvertisingData {
-            if serialNumberString != nodeAdvertising.serialNumber {
-                serialNumberString = nodeAdvertising.serialNumber
-            }
-            if dfuType != nodeAdvertising.type {
-                dfuType = nodeAdvertising.type
-            }
-
-            if highRadioPower != nodeAdvertising.highRadioPower {
-                highRadioPower = nodeAdvertising.highRadioPower
-            }
+        if let nodeAdvertising = advertising as? NodeAdvertisingData,
+           highRadioPower != nodeAdvertising.highRadioPower {
+            highRadioPower = nodeAdvertising.highRadioPower
         }
 
         // Always update device RSSI and isConnectable flag after radio power so

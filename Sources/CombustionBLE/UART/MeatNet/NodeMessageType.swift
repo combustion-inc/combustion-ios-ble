@@ -55,6 +55,7 @@ public enum NodeMessageType: Hashable, CaseIterable {
     case syncThermometerList
     case resetSession
     
+    case setGaugeID
     case gaugeStatus
     case setHighLowAlarm
     case setProbeHighLowAlarm
@@ -93,6 +94,7 @@ public enum NodeMessageType: Hashable, CaseIterable {
             .syncThermometerList,
             .resetSession,
             .gaugeStatus,
+            .setGaugeID,
             .setHighLowAlarm,
             .setProbeHighLowAlarm,
             .silenceAlarms,
@@ -115,8 +117,6 @@ extension NodeMessageType {
         case .configureFoodSafe: 0x07
         case .resetFoodSafe: 0x08
         case .setPowerMode: 0x09
-        case .gaugeLog: 0x62
-        case .engineLog: 0x63
         case .getFeatureFlags: 0x30
         case .connected: 0x40
         case .disconnected: 0x41
@@ -130,9 +130,12 @@ extension NodeMessageType {
         case .heartbeat: 0x49
         case .associateNode: 0x4A
         case .syncThermometerList: 0x4B
-        case .resetSession: 0x0A
         case .gaugeStatus: 0x60
         case .setHighLowAlarm: 0x61
+        case .gaugeLog: 0x62
+        case .setGaugeID: 0x63
+        case .engineLog: 0x64
+        case .resetSession: 0x0A
         case .setProbeHighLowAlarm: 0x0B
         case .silenceAlarms: 0x0C
         case .engineStatus: 0x70

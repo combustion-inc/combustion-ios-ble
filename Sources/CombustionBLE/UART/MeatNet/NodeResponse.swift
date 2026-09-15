@@ -136,6 +136,8 @@ extension NodeResponse {
             return NodeGaugeReadLogsResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .engineLog:
             return NodeEngineReadLogsResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .setGaugeID:
+            return NodeSetGaugeIDResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .setID:
             return NodeSetIDResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .setColor:

@@ -28,6 +28,8 @@ import Foundation
 class GaugeAdvertisingData: NodeAdvertisingData {
     
     private enum Constants {
+        // Legacy packets may omit preferences and ID; do not require the current 24-byte layout.
+        static let MINIMUM_LENGTH = 21
         // Locations of data in advertising packets
         static let VENDOR_ID_RANGE = 0..<2
         static let PRODUCT_TYPE_RANGE = 2..<3
@@ -36,10 +38,14 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         static let DEVICE_STATUS_RANGE = 15..<16
         static let RESERVED_RANGE = 16..<17
         static let HI_LO_STATUS_ALARM_RANGE = 17..<21
+        // Byte 21 contains gauge preferences.
+        static let ID_INDEX = 22
         
         static let COMBUSTION_VENDOR_ID = 0x09C7
     }
     
+    // Gauge IDs are zero-based; zero is displayed as ID 1, including on older firmware.
+    let id: UInt8?
     var temperatures: GaugeTemperature
     var status: GaugeDetails
     var highLowAlarmStatus: HighLowAlarmStatus
@@ -48,7 +54,9 @@ class GaugeAdvertisingData: NodeAdvertisingData {
          serialNumber: String,
          temperature: GaugeTemperature,
          status: GaugeDetails,
-         highLowAlarmStatus: HighLowAlarmStatus) {
+         highLowAlarmStatus: HighLowAlarmStatus,
+         id: UInt8? = nil) {
+        self.id = id
         self.temperatures = temperature
         self.status = status
         self.highLowAlarmStatus = highLowAlarmStatus
@@ -56,8 +64,9 @@ class GaugeAdvertisingData: NodeAdvertisingData {
     }
     
     static func populate(fromData data: Data?) -> (any AdvertisingData)? {
-        guard let data = data else { return nil }
-        guard data.count >= 14 else { return nil }
+        guard let packet = data, packet.count >= Constants.MINIMUM_LENGTH else { return nil }
+        // Field offsets are relative to the packet, even when the caller supplies a Data slice.
+        let data = Data(packet)
         
         // Vendor ID
         let rawVendorId = data.subdata(in: Constants.VENDOR_ID_RANGE)
@@ -83,7 +92,8 @@ class GaugeAdvertisingData: NodeAdvertisingData {
                                     serialNumber: serialNumberString,
                                     temperature: temperatures,
                                     status: status,
-                                    highLowAlarmStatus: hiLoAlarmStatus)
+                                    highLowAlarmStatus: hiLoAlarmStatus,
+                                    id: data.count > Constants.ID_INDEX ? data[Constants.ID_INDEX] : nil)
     }
 }
 

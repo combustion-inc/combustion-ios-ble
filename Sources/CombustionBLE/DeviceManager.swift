@@ -489,6 +489,27 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
                                                         completionHandler: completionHandler)
     }
     
+    /// Sets the Gauge ID (zero-based, 0–255) using cancellable MeatNet retries.
+    @discardableResult
+    public func setGaugeIDCommand(_ gauge: GrillGauge,
+                                  id: UInt8,
+                                  completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
+        let serialNumber = gauge.serialNumberString
+        let request = NodeSetGaugeIDRequest(serialNumber: serialNumber, id: id)
+        return commandCoordinator.addNodeCommandHandler(request: request,
+                                                        send: { [weak self, weak gauge] in
+            guard let self, let gauge else { return }
+            // Resolve the route on every attempt, including gauges discovered only through MeatNet.
+            if let node = gauge.parent as? MeatNetNode,
+               self.shouldSendMessageDirectlyTo(device: node) {
+                BleManager.shared.sendRequestToNodes([node], request: request)
+            } else {
+                let nodes = self.getNodesConnectedToDevice(identifier: serialNumber)
+                BleManager.shared.sendRequestToNodes(nodes, request: request)
+            }
+        }, completionHandler: completionHandler)
+    }
+
     /// Set Probe Color on specified device.
     /// - parameter device: Device to set Color on
     /// - parameter ProbeColor: New Probe color
@@ -1672,7 +1693,7 @@ extension DeviceManager : BleManagerDelegate {
                let device = findDeviceBySerialNumber(serialNumber: featureFlagsResponse.nodeSerialNumber) as? MeatNetNode {
                 device.updateFeatureFlags(featureFlagsResponse.flags)
             }
-        case .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm, .setProbeHighLowAlarm, .silenceAlarms, .setEngineControlDevice, .setEngineTargetTemperature:
+        case .setGaugeID, .setID, .setColor, .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm, .setProbeHighLowAlarm, .silenceAlarms, .setEngineControlDevice, .setEngineTargetTemperature:
             commandCoordinator.callNodeCommandHandler(response: response)
         case .custom(_):
             deviceResponseHandler?.handleResponse(identifier: identifier, response: response)

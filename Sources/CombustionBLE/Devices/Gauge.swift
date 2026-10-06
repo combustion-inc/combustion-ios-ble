@@ -43,6 +43,9 @@ public class GrillGauge: Accessory {
         return serialNumber
     }
     
+    /// Gauge ID, zero-based (0–255); defaults to zero (displayed as ID 1).
+    @Published public internal(set) var id: UInt8
+
     @Published public internal(set) var currentTemperature: GaugeTemperature?
     
     /// Current session information
@@ -104,6 +107,7 @@ public class GrillGauge: Accessory {
     
     init(parent: MeatNetNode, advertising: any AdvertisingData) {
         self.serialNumber = advertising.serialNumberString
+        self.id = (advertising as? GaugeAdvertisingData)?.id ?? 0 // default to 0 for legacy firmware. 
         
         setParent(parent)
         updateWithAdvertising(advertising)
@@ -111,6 +115,7 @@ public class GrillGauge: Accessory {
     
     init(parent: MeatNetNode? = nil, status: GaugeStatus, hopCount: HopCount?) {
         self.serialNumber = status.serialNumber
+        self.id = status.id ?? 0
         
         setParent(parent)
         updateDeviceStatus(deviceStatus: status, hopCount: hopCount)
@@ -137,6 +142,10 @@ public class GrillGauge: Accessory {
         updateLastUpdateTime()
         
         if let parent = parent, parent.connectionState != .connected && !deviceManager.isDeviceConnectedToMeatnet(parent) {
+            // A packet without the ID field must not erase a previously learned ID.
+            if let advertisedID = advertisingData.id {
+                updateID(advertisedID)
+            }
             updateTemperatures(temperature: advertisingData.temperatures)
             updateHighLowAlarms(advertisingData.highLowAlarmStatus)
             updateIsSensorAttached(advertisingData.status.sensorPresent)
@@ -154,6 +163,7 @@ public class GrillGauge: Accessory {
         var updated : Bool = false
         
         if shouldUpdateNormalMode(hopCount: hopCount) {
+            updateID(deviceStatus.id)
             // Update sequence number range
             sequenceNumberRange = deviceStatus.minSequenceNumber...deviceStatus.maxSequenceNumber
             
@@ -304,6 +314,11 @@ extension GrillGauge {
         static let MINIMUM_LAST_UPDATE_CHANGE = 1.0
     }
     
+    private func updateID(_ id: UInt8?) {
+        guard let id, self.id != id else { return }
+        self.id = id
+    }
+
     private func updateTemperatures(temperature: GaugeTemperature) {
         self.currentTemperature = temperature
     }

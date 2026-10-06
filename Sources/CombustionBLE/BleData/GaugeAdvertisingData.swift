@@ -37,11 +37,15 @@ class GaugeAdvertisingData: NodeAdvertisingData {
         static let RESERVED_RANGE = 16..<17
         static let HI_LO_STATUS_ALARM_RANGE = 17..<21
         static let PREFERENCES_RANGE = 21..<22
+        static let ID_INDEX = 22
         
         static let COMBUSTION_VENDOR_ID: UInt16 = 0x09C7
+        // Legacy packets may omit preferences and ID; do not require the current 24-byte layout.
         static let REQUIRED_FIELDS_LENGTH = HI_LO_STATUS_ALARM_RANGE.upperBound
     }
     
+    // Gauge IDs are zero-based; zero is displayed as ID 1, including on older firmware.
+    let id: UInt8?
     var temperatures: GaugeTemperature
     var status: GaugeDetails
     var highLowAlarmStatus: HighLowAlarmStatus
@@ -56,7 +60,9 @@ class GaugeAdvertisingData: NodeAdvertisingData {
          temperature: GaugeTemperature,
          status: GaugeDetails,
          highLowAlarmStatus: HighLowAlarmStatus,
+         id: UInt8? = nil,
          preferences: GaugePreferences = .defaultValues()) {
+        self.id = id
         self.temperatures = temperature
         self.status = status
         self.highLowAlarmStatus = highLowAlarmStatus
@@ -65,8 +71,9 @@ class GaugeAdvertisingData: NodeAdvertisingData {
     }
     
     static func populate(fromData data: Data?) -> (any AdvertisingData)? {
-        guard let data = data else { return nil }
-        guard data.count >= Constants.REQUIRED_FIELDS_LENGTH else { return nil }
+        guard let packet = data, packet.count >= Constants.REQUIRED_FIELDS_LENGTH else { return nil }
+        // Field offsets are relative to the packet, even when the caller supplies a Data slice.
+        let data = Data(packet)
         
         // Vendor ID
         let rawVendorId = data.subdata(in: Constants.VENDOR_ID_RANGE)
@@ -99,6 +106,7 @@ class GaugeAdvertisingData: NodeAdvertisingData {
                                     temperature: temperatures,
                                     status: status,
                                     highLowAlarmStatus: hiLoAlarmStatus,
+                                    id: data.count > Constants.ID_INDEX ? data[Constants.ID_INDEX] : nil,
                                     preferences: preferences)
     }
 }

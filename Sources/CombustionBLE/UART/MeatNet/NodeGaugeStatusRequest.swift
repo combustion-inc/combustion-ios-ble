@@ -39,12 +39,17 @@ class NodeGaugeStatusRequest: NodeRequest {
 
     
     init?(data: Data, requestId: UInt32, payloadLength: Int) {
+        guard payloadLength >= Constants.PAYLOAD_LENGTH,
+              data.count >= NodeRequest.HEADER_LENGTH + payloadLength else { return nil }
+        let data = Data(data.prefix(NodeRequest.HEADER_LENGTH + payloadLength))
         let sequenceByteIndex = NodeRequest.HEADER_LENGTH
         
         let serialNumberRaw = data.subdata(in: sequenceByteIndex..<(sequenceByteIndex + Constants.SERIAL_NUMBER_LENGTH))
         self.serialNumber = String(decoding: serialNumberRaw, as: UTF8.self).trimmingCharacters(in: CharacterSet(["\0"]))
                 
-        if let gaugeStatus = GaugeStatus(fromData: data) {
+        // The receive buffer may contain another message after this payload.
+        let statusData = data.prefix(NodeRequest.HEADER_LENGTH + payloadLength)
+        if let gaugeStatus = GaugeStatus(fromData: statusData) {
             self.gaugeStatus = gaugeStatus
         }
         

@@ -186,7 +186,7 @@ extension NodeRequest {
             return NodeReadProximityLinkingRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
         case .syncLinkTable:
             return NodeSyncLinkTableRequest.fromRaw(data: data, requestId: requestId, payloadLength: Int(payloadLength))
-        case .syncThermometerList, .connected, .disconnected, .log, .associateNode,
+        case .setGaugeID, .syncThermometerList, .connected, .disconnected, .log, .associateNode,
                 .probeModelInformation, .probeFirmwareRevision, .probeHardwareRevision, .sessionInfo, .getFeatureFlags:
             // In case these are packed with other messages, we need to return something to ensure the other messages don't
             // get dropped, even though we don't need to parse these messages currently.

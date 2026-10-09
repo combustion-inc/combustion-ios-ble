@@ -155,9 +155,6 @@ open class Probe : Device {
     
     private var cancellables: Set<AnyCancellable> = []
     
-    /// Timer for periodically requesting session information
-    private var sessionRequestTimer = Timer()
-   
     init(_ advertising: ProbeAdvertisingData, isConnectable: Bool?, RSSI: NSNumber?, identifier: UUID?) {
         serialNumber = advertising.serialNumber
         id = advertising.modeId.id
@@ -173,11 +170,6 @@ open class Probe : Device {
                 self.predictionInfo = predictionInfo
             }
             .store(in: &cancellables)
-        
-        // Start timer to re-request session information every 5 seconds
-        sessionRequestTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true, block: { [weak self] _ in
-            self?.requestSessionInformation()
-        })
     }
     
     override func updateConnectionState(_ state: ConnectionState) {
@@ -286,7 +278,7 @@ extension Probe {
     
     /// Requests any missing data.
     private func requestMissingData() {
-        if sessionInformation == nil {
+        if sessionInformation == nil, isConnectedForSessionRequest {
             deviceManager.readSessionInfo(probe: self)
         }
         
@@ -310,12 +302,23 @@ extension Probe {
     func updateProbeStatus(deviceStatus: ProbeStatus, hopCount: HopCount? = nil) {
         // Ignore status messages that have a sequence count lower than any previously
         // received status messages
-        guard !isOldStatusUpdate(deviceStatus) else { return }
+        guard !isOldStatusUpdate(deviceStatus) else {
+            // Older firmware cannot report a reset session in status. A sequence rollback
+            // may indicate a reset, so refresh session information before the next status.
+            if deviceStatus.sessionInformation == nil, isConnectedForSessionRequest {
+                deviceManager.readSessionInfo(probe: self)
+            }
+            return
+        }
                    
         var updated : Bool = false
         
         if deviceStatus.modeId.mode == .normal {
             if shouldUpdateNormalMode(hopCount: hopCount) {
+                if let sessionInformation = deviceStatus.sessionInformation {
+                    updateWithSessionInformation(sessionInformation)
+                }
+
                 // Update ID, Color, Battery status
                 updateIdColorBattery(probeId: deviceStatus.modeId.id,
                                      probeColor: deviceStatus.modeId.color,
@@ -360,6 +363,9 @@ extension Probe {
                                         probeBatteryStatus: deviceStatus.batteryStatusVirtualSensors.batteryStatus,
                                         hopCount: hopCount)
             if updated {
+                if let sessionInformation = deviceStatus.sessionInformation {
+                    updateWithSessionInformation(sessionInformation)
+                }
                 // Also update sequence numbers if Instant Read was updated
                 sequenceNumberRange = deviceStatus.minSequenceNumber...deviceStatus.maxSequenceNumber
             }
@@ -401,10 +407,12 @@ extension Probe {
     }
     
     public func updateWithSessionInformation(_ sessionInfo: SessionInformation) {
-        if(sessionInformation?.sessionID != sessionInfo.sessionID) {
-            // Recent probe status when session ID changes
+        guard sessionInfo.sessionID != 0, sessionInfo.samplePeriod > 0 else { return }
+        if sessionInformation?.sessionID != sessionInfo.sessionID {
+            // Reset probe status when session ID changes
             mostRecentStatus.value = nil
-            
+        }
+        if sessionInformation != sessionInfo {
             sessionInformation = sessionInfo
         }
     }
@@ -470,6 +478,10 @@ extension Probe {
     /// Determins whether the device status has sequence number less than current maximum
     /// - param deviceStatus: Device status to check
     private func isOldStatusUpdate(_ deviceStatus: ProbeStatus) -> Bool {
+        if let sessionInformation = deviceStatus.sessionInformation,
+           sessionInformation.sessionID != self.sessionInformation?.sessionID {
+            return false
+        }
         if let currentTemperatureLog = getCurrentTemperatureLog(), let max = currentTemperatureLog.dataPoints.last {
             return deviceStatus.maxSequenceNumber < max.sequenceNum
         }
@@ -587,8 +599,8 @@ extension Probe {
                                                   ambientTemperature: ambient)
     }
     
-    private func requestSessionInformation() {
-        deviceManager.readSessionInfo(probe: self)
+    private var isConnectedForSessionRequest: Bool {
+        connectionState == .connected || deviceManager.isDeviceConnectedToMeatnet(self)
     }
 }
 

@@ -64,6 +64,18 @@ public struct ProbeStatus: DeviceStatus {
     
     /// Low alarm status for each alarm (T1, T2, T3, T4, T5, T6, T7, T8, Core, Surface, Ambient)
     public let lowAlarms: [AlarmStatus]?
+
+    /// Current session ID, absent on older firmware or when the source has no session data.
+    public let sessionID: UInt32?
+
+    /// Number of milliseconds between logs, absent on older firmware.
+    public let samplePeriod: UInt16?
+
+    public var sessionInformation: SessionInformation? {
+        guard let sessionID, sessionID != 0,
+              let samplePeriod, samplePeriod > 0 else { return nil }
+        return SessionInformation(sessionID: sessionID, samplePeriod: samplePeriod)
+    }
     
     public init(minSequenceNumber: UInt32,
                 maxSequenceNumber: UInt32,
@@ -76,7 +88,9 @@ public struct ProbeStatus: DeviceStatus {
                 overheatingSensors: OverheatingSensors,
                 preferences: ThermometerPreferences,
                 highAlarms: [AlarmStatus]?,
-                lowAlarms: [AlarmStatus]?) {
+                lowAlarms: [AlarmStatus]?,
+                sessionID: UInt32? = nil,
+                samplePeriod: UInt16? = nil) {
         self.minSequenceNumber = minSequenceNumber
         self.maxSequenceNumber = maxSequenceNumber
         self.temperatures = temperatures
@@ -89,6 +103,8 @@ public struct ProbeStatus: DeviceStatus {
         self.thermometerPreferences = preferences
         self.highAlarms = highAlarms
         self.lowAlarms = lowAlarms
+        self.sessionID = sessionID == 0 ? nil : sessionID
+        self.samplePeriod = samplePeriod == 0 ? nil : samplePeriod
     }
 }
 
@@ -108,9 +124,11 @@ extension ProbeStatus {
         static let PREFERENCES_BYTE_RANGE = 49..<50
         static let HIGH_ALARM_BYTE_RANGE = 50..<72
         static let LOW_ALARM_BYTE_RANGE = 72..<94
+        static let SESSION_ID_RANGE = 94..<98
+        static let SAMPLE_PERIOD_RANGE = 98..<100
     }
     
-    init?(fromData data: Data, overheatRange: Range<Int> = Constants.OVERHEAT_BYTE_RANGE, preferencesRange: Range<Int> = Constants.PREFERENCES_BYTE_RANGE, highAlarmRange: Range<Int> = Constants.HIGH_ALARM_BYTE_RANGE, lowAlarmRange: Range<Int> = Constants.LOW_ALARM_BYTE_RANGE) {
+    init?(fromData data: Data, overheatRange: Range<Int> = Constants.OVERHEAT_BYTE_RANGE, preferencesRange: Range<Int> = Constants.PREFERENCES_BYTE_RANGE, highAlarmRange: Range<Int> = Constants.HIGH_ALARM_BYTE_RANGE, lowAlarmRange: Range<Int> = Constants.LOW_ALARM_BYTE_RANGE, sessionIDRange: Range<Int> = Constants.SESSION_ID_RANGE, samplePeriodRange: Range<Int> = Constants.SAMPLE_PERIOD_RANGE) {
         guard data.count >= Constants.PREDICTION_STATUS_RANGE.endIndex else { return nil }
         
         let minRaw = data.subdata(in: Constants.MIN_SEQ_RANGE)
@@ -200,6 +218,24 @@ extension ProbeStatus {
         }
         else {
             lowAlarms = nil
+        }
+
+        if data.count >= sessionIDRange.endIndex {
+            let raw = data.subdata(in: sessionIDRange)
+            let value = raw.withUnsafeBytes { UInt32(littleEndian: $0.loadUnaligned(as: UInt32.self)) }
+            sessionID = value == 0 ? nil : value
+        }
+        else {
+            sessionID = nil
+        }
+
+        if data.count >= samplePeriodRange.endIndex {
+            let raw = data.subdata(in: samplePeriodRange)
+            let value = raw.withUnsafeBytes { UInt16(littleEndian: $0.loadUnaligned(as: UInt16.self)) }
+            samplePeriod = value == 0 ? nil : value
+        }
+        else {
+            samplePeriod = nil
         }
     }
 }

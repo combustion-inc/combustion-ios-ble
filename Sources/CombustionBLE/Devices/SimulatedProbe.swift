@@ -110,7 +110,9 @@ public class SimulatedProbe: Probe {
                                       overheatingSensors: OverheatingSensors(sensorIndexes: []),
                                       preferences: .init(powerMode: .normal),
                                       highAlarms: [],
-                                      lowAlarms: [])
+                                      lowAlarms: [],
+                                      sessionID: sessionInformation?.sessionID,
+                                      samplePeriod: sessionInformation?.samplePeriod)
         
         updateProbeStatus(deviceStatus: probeStatus)
     }

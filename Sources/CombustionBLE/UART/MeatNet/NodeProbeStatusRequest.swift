@@ -62,7 +62,7 @@ class NodeProbeStatusRequest: NodeRequest {
         // the message.
         probeStatusRaw = data.subdata(in: (sequenceByteIndex + Constants.SERIAL_NUMBER_LENGTH)..<payloadEnd)
 
-        // Probe status will be 30 bytes or 48 or 99 bytes, depending on the firmware version of node
+        // The network information byte stays in place as newer firmware appends status fields.
         if payloadLength >= Constants.MIN_PAYLOAD_LENGTH {
             hopCountRaw = data.subdata(in: (sequenceByteIndex + 52)..<(sequenceByteIndex + 53))
         }
@@ -74,7 +74,9 @@ class NodeProbeStatusRequest: NodeRequest {
                                 overheatRange: 49..<50,
                                 preferencesRange: 50..<51,
                                 highAlarmRange: 51..<73,
-                                lowAlarmRange: 73..<95) {
+                                lowAlarmRange: 73..<95,
+                                sessionIDRange: 95..<99,
+                                samplePeriodRange: 99..<101) {
             self.probeStatus = ps
         }
         

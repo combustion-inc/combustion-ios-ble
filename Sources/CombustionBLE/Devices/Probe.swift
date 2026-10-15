@@ -402,8 +402,10 @@ extension Probe {
         // Update time of most recent update of any type
         setLastUpdateTime()
         
-        // Publish most recent status
-        mostRecentStatus.value = deviceStatus
+        // Publish only statuses accepted by the hop-priority checks above.
+        if updated {
+            mostRecentStatus.value = deviceStatus
+        }
     }
     
     public func updateWithSessionInformation(_ sessionInfo: SessionInformation) {

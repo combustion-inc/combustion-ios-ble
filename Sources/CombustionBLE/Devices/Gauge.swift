@@ -216,8 +216,10 @@ public class GrillGauge: Accessory {
         // Update whether status notifications are stale
         updateStatusNotificationsStale()
         
-        // Publish most recent status
-        mostRecentStatus.value = deviceStatus
+        // Publish only statuses accepted by the hop-priority checks above.
+        if updated {
+            mostRecentStatus.value = deviceStatus
+        }
         
         updateLastUpdateTime()
     }

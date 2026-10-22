@@ -60,19 +60,6 @@ public struct NodeLinkingTableEntry: Equatable, Sendable {
     }
 }
 
-extension NodeLinkingTableEntry {
-    var diagnosticDescription: String {
-        let serial: String
-        switch serialNumber {
-        case .probe(let value):
-            serial = String(format: "%08X", value)
-        case .node(let value), .legacyMACAddress(let value):
-            serial = value
-        }
-        return "\(productType.rawValue):\(serial):timestamp=\(timestamp):legacy=\(isLegacy)"
-    }
-}
-
 enum NodeLinkingWire {
     static let productSerialLength = 12
     static let nodeSerialLength = 10

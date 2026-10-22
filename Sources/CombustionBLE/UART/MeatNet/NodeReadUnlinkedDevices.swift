@@ -68,23 +68,14 @@ public final class NodeReadUnlinkedDevicesResponse: NodeLinkingTablePageResponse
                         requestId: UInt32,
                         responseId: UInt32,
                         payloadLength: Int) -> NodeReadUnlinkedDevicesResponse? {
-        let responseLength = min(data.count, NodeResponse.HEADER_LENGTH + payloadLength)
-        let rawPayload = data.prefix(responseLength).hexString
         guard payloadLength >= Constants.MINIMUM_PAYLOAD_LENGTH else {
-            print("DEVIN: bleLinkingTable event=decodeRejected table=unlinked requestID=\(requestId) responseID=\(responseId) success=\(success) reason=payloadTooShort payloadLength=\(payloadLength) raw=\(rawPayload)")
             return nil
         }
         guard let payload = NodeLinkingWire.parsePagePayload(data: data,
                                                              payloadLength: payloadLength,
                                                              permitsLegacyEntries: false) else {
-            print("DEVIN: bleLinkingTable event=decodeRejected table=unlinked requestID=\(requestId) responseID=\(responseId) success=\(success) reason=invalidPagePayload payloadLength=\(payloadLength) raw=\(rawPayload)")
             return nil
         }
-
-        let entrySummary = payload.entries.isEmpty
-            ? "none"
-            : payload.entries.map(\.diagnosticDescription).joined(separator: ",")
-        print("DEVIN: bleLinkingTable event=decoded table=unlinked requestID=\(requestId) responseID=\(responseId) success=\(success) page=\(payload.page) totalPages=\(payload.totalPages) totalCount=\(payload.totalCount) pageCount=\(payload.entries.count) entries=\(entrySummary) raw=\(rawPayload)")
 
         return NodeReadUnlinkedDevicesResponse(payload: payload,
                                                success: success,

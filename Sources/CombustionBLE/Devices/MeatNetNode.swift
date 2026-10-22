@@ -164,13 +164,6 @@ public class MeatNetNode: Device {
     @MainActor
     func updateUnlinkedDevices(_ entries: [NodeLinkingTableEntry]) {
         guard unlinkedDevices != entries else { return }
-        let previousSummary = unlinkedDevices.map {
-            $0.isEmpty ? "none" : $0.map(\.diagnosticDescription).joined(separator: ",")
-        } ?? "unknown"
-        let nextSummary = entries.isEmpty
-            ? "none"
-            : entries.map(\.diagnosticDescription).joined(separator: ",")
-        print("DEVIN: bleLinkingTable event=published table=unlinked ownerSerial=\(serialNumberString ?? "unknown") ownerType=\(dfuType.rawValue) previous=\(previousSummary) next=\(nextSummary)")
         unlinkedDevices = entries
     }
     

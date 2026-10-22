@@ -1419,22 +1419,10 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
                   let device else { return }
 
             if self.shouldSendMessageDirectlyTo(device: device) {
-                if request.messageType == .readLinkedDevices || request.messageType == .readUnlinkedDevices {
-                    print("DEVIN: bleLinkingTable event=transportSend table=\(request.messageType) ownerSerial=\(device.serialNumberString ?? "unknown") requestID=\(request.requestId) route=direct destinationSerials=\(device.serialNumberString ?? "unknown") destinationIdentifiers=\(device.uniqueIdentifier)")
-                }
                 BleManager.shared.sendRequestToNodes([device], request: request)
             }
             else {
                 let nodesConnectedToDevice = self.getNodesConnectedToDevice(identifier: device.uniqueIdentifier)
-                if request.messageType == .readLinkedDevices || request.messageType == .readUnlinkedDevices {
-                    let destinationSerials = nodesConnectedToDevice
-                        .map { $0.serialNumberString ?? "unknown" }
-                        .joined(separator: ",")
-                    let destinationIdentifiers = nodesConnectedToDevice
-                        .map(\.uniqueIdentifier)
-                        .joined(separator: ",")
-                    print("DEVIN: bleLinkingTable event=transportSend table=\(request.messageType) ownerSerial=\(device.serialNumberString ?? "unknown") requestID=\(request.requestId) route=forwarded destinationSerials=\(destinationSerials.isEmpty ? "none" : destinationSerials) destinationIdentifiers=\(destinationIdentifiers.isEmpty ? "none" : destinationIdentifiers)")
-                }
                 BleManager.shared.sendRequestToNodes(nodesConnectedToDevice, request: request)
             }
         },
@@ -1995,11 +1983,6 @@ extension DeviceManager : BleManagerDelegate {
         case .readLinkedDevices, .readUnlinkedDevices:
             if let linkingTableResponse = response as? NodeLinkingTablePageResponse,
                linkingTableResponse.success {
-                let entrySummary = linkingTableResponse.entries.isEmpty
-                    ? "none"
-                    : linkingTableResponse.entries.map(\.diagnosticDescription).joined(separator: ",")
-                let responseNode = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode
-                print("DEVIN: bleLinkingTable event=responseHandled table=\(linkingTableResponse.messageType) sourceSerial=\(responseNode?.serialNumberString ?? "unknown") sourceType=\(responseNode?.dfuType.rawValue ?? ProductType.unknown.rawValue) peripheralIdentifier=\(identifier.uuidString) requestID=\(linkingTableResponse.requestId) responseID=\(linkingTableResponse.responseId) page=\(linkingTableResponse.page) totalPages=\(linkingTableResponse.totalPages) totalCount=\(linkingTableResponse.totalCount) pageCount=\(linkingTableResponse.entries.count) entries=\(entrySummary)")
                 storeLinkingTableResponse(linkingTableResponse)
             }
             commandCoordinator.callNodeCommandHandler(response: response)

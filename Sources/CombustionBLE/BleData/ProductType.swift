@@ -27,7 +27,7 @@ SOFTWARE.
 @available(*, unavailable, renamed: "ProductType")
 public enum DFUDeviceType {}
 
-public enum ProductType: UInt8, Codable {
+public enum ProductType: UInt8, Codable, Sendable {
     case unknown = 0x00
     case probe = 0x01
     case meatNetNode = 0x02

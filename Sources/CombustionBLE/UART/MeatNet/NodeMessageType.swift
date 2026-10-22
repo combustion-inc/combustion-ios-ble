@@ -65,6 +65,16 @@ public enum NodeMessageType: Hashable, CaseIterable {
     case setEngineTargetTemperature
     case setEngineControlDevice
 
+    case readLinkedDevices
+    case readUnlinkedDevices
+    case linkDevice
+    case unlinkDevice
+    case deviceLinked
+    case deviceUnlinked
+    case setProximityLinking
+    case readProximityLinking
+    case syncLinkTable
+
     case custom(address: UInt8)
     
     public static var allCases: [NodeMessageType] {
@@ -100,7 +110,16 @@ public enum NodeMessageType: Hashable, CaseIterable {
             .silenceAlarms,
             .engineStatus,
             .setEngineTargetTemperature,
-            .setEngineControlDevice]
+            .setEngineControlDevice,
+            .readLinkedDevices,
+            .readUnlinkedDevices,
+            .linkDevice,
+            .unlinkDevice,
+            .deviceLinked,
+            .deviceUnlinked,
+            .setProximityLinking,
+            .readProximityLinking,
+            .syncLinkTable]
     }
 }
 
@@ -141,6 +160,15 @@ extension NodeMessageType {
         case .engineStatus: 0x70
         case .setEngineTargetTemperature: 0x71
         case .setEngineControlDevice: 0x72
+        case .readLinkedDevices: 0x73
+        case .readUnlinkedDevices: 0x74
+        case .linkDevice: 0x75
+        case .unlinkDevice: 0x76
+        case .deviceLinked: 0x77
+        case .deviceUnlinked: 0x78
+        case .setProximityLinking: 0x79
+        case .readProximityLinking: 0x7A
+        case .syncLinkTable: 0x7B
         case .custom(let value):
             value
         }

@@ -172,7 +172,21 @@ extension NodeResponse {
             return NodeSetEngineTargetTemperatureResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
         case .setEngineControlDevice:
             return NodeSetEngineControlDeviceResponse(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
-        case .custom(let address):
+        case .readLinkedDevices:
+            return NodeReadLinkedDevicesResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .readUnlinkedDevices:
+            return NodeReadUnlinkedDevicesResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .linkDevice:
+            return NodeLinkDeviceResponse.fromRaw(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .unlinkDevice:
+            return NodeUnlinkDeviceResponse.fromRaw(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .setProximityLinking:
+            return NodeSetProximityLinkingResponse.fromRaw(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .readProximityLinking:
+            return NodeReadProximityLinkingResponse.fromRaw(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .syncLinkTable:
+            return NodeSyncLinkTableResponse.fromRaw(success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength))
+        case .custom:
             return NodeCustomResponse(data: data, success: success, requestId: requestId, responseId: responseId, payloadLength: Int(payloadLength), messageType: messageType)
 //        case .readOverTemperature:
 //            return NodeReadOverTemperatureResponse(data: data, success: success, payloadLength: Int(payloadLength))

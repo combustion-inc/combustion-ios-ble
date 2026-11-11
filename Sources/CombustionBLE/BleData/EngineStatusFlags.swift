@@ -35,12 +35,31 @@ public struct EngineStatusFlags: Codable, Equatable {
     public let lidOpen: Bool
     /// True if fan is running at fixed speed (vs. a setpoint)
     public let fixedSpeed: Bool
+    /// True when a connected gauge reports that it has no sensor attached.
+    /// This flag is meaningful only when the attached control device is a Gauge
+    /// and `controlDeviceConnected` is true.
+    public let controlDeviceSensorMissing: Bool
 
-    public init(appMode: Bool, controlDeviceConnected: Bool, lidOpen: Bool, fixedSpeed: Bool) {
+    public init(appMode: Bool, controlDeviceConnected: Bool, lidOpen: Bool, fixedSpeed: Bool,
+                controlDeviceSensorMissing: Bool = false) {
         self.appMode = appMode
         self.controlDeviceConnected = controlDeviceConnected
         self.lidOpen = lidOpen
         self.fixedSpeed = fixedSpeed
+        self.controlDeviceSensorMissing = controlDeviceSensorMissing
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case appMode, controlDeviceConnected, lidOpen, fixedSpeed, controlDeviceSensorMissing
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        appMode = try container.decode(Bool.self, forKey: .appMode)
+        controlDeviceConnected = try container.decode(Bool.self, forKey: .controlDeviceConnected)
+        lidOpen = try container.decode(Bool.self, forKey: .lidOpen)
+        fixedSpeed = try container.decode(Bool.self, forKey: .fixedSpeed)
+        controlDeviceSensorMissing = try container.decodeIfPresent(Bool.self, forKey: .controlDeviceSensorMissing) ?? false
     }
 }
 
@@ -51,11 +70,13 @@ extension EngineStatusFlags {
         let controlDeviceConnected = ((byte >> 1) & 1) != 0
         let lidOpen = ((byte >> 2) & 1) != 0
         let fixedSpeed = ((byte >> 3) & 1) != 0
+        let controlDeviceSensorMissing = ((byte >> 4) & 1) != 0
 
         return .init(appMode: appMode,
                      controlDeviceConnected: controlDeviceConnected,
                      lidOpen: lidOpen,
-                     fixedSpeed: fixedSpeed)
+                     fixedSpeed: fixedSpeed,
+                     controlDeviceSensorMissing: controlDeviceSensorMissing)
     }
 
     static func defaultValues() -> EngineStatusFlags {

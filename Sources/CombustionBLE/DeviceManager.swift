@@ -65,6 +65,32 @@ public protocol MeatNetActionDelegate: AnyObject {
     func silenceAlarms(global: Bool, productType: ProductType?, probeSerialNumber: String?, nodeSerialNumber: String?)
 }
 
+enum LinkingTableKind: Hashable, Sendable {
+    case linked
+    case unlinked
+
+    var messageType: NodeMessageType {
+        switch self {
+        case .linked: .readLinkedDevices
+        case .unlinked: .readUnlinkedDevices
+        }
+    }
+
+    func makeRequest(page: UInt8) -> NodeRequest {
+        switch self {
+        case .linked: NodeReadLinkedDevicesRequest(page: page)
+        case .unlinked: NodeReadUnlinkedDevicesRequest(page: page)
+        }
+    }
+
+    var diagnosticName: String {
+        switch self {
+        case .linked: "linked"
+        case .unlinked: "unlinked"
+        }
+    }
+}
+
 /// Singleton that provides list of detected Devices
 /// (either via Bluetooth or from a list in the Cloud)
 open class DeviceManager : DeviceManagerProtocol, ObservableObject {
@@ -100,6 +126,12 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     
     /// Handler for messages from Probe
     private let commandCoordinator = CommandCoordinator()
+
+    /// Successful page responses waiting for their command completion callbacks.
+    /// Entries are published atomically on a node; opt-in progress callbacks receive validated prefixes.
+    private let linkingTableResponseLock = NSLock()
+    private var pendingLinkingTableRequestIds: Set<UInt32> = []
+    private var linkingTablePageResponses: [UInt32: NodeLinkingTablePageResponse] = [:]
     
     /// Connection manager to handle BLE connection logic
     private let connectionManager = ConnectionManager()
@@ -1080,6 +1112,168 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
 
         return sendNodeRequestWithCommandHandler(device, request: request, completionHandler: completionHandler)
     }
+
+    /// Fetches the complete table of devices linked to a MeatNet Node.
+    ///
+    /// - parameter node: Node whose linking table should be read.
+    /// - parameter completionHandler: Called with success only after every page has been fetched and published,
+    ///   or failure if any page cannot be fetched or fails validation.
+    /// - parameter progressHandler: Optional main-actor callback after each validated page.
+    ///   Progress is provisional until `isComplete`; the previous complete table remains intact on failure.
+    /// - returns: A handle that cancels the complete paginated read from any thread.
+    @MainActor
+    @discardableResult
+    public func readLinkedDevicesCommand(_ node: MeatNetNode,
+                                         progressHandler: NodeLinkingTableProgressHandler? = nil,
+                                         completionHandler: @escaping CommandCompletionHandler) -> CommandHandle {
+        fetchLinkingTableCommand(node, kind: .linked, progressHandler: progressHandler,
+                                 completionHandler: completionHandler)
+    }
+
+    /// Fetches the complete table of devices explicitly unlinked from a MeatNet Node.
+    ///
+    /// - parameter node: Node whose unlinking table should be read.
+    /// - parameter completionHandler: Called with success only after every page has been fetched and published,
+    ///   or failure if any page cannot be fetched or fails validation.
+    /// - parameter progressHandler: Optional main-actor callback after each validated page.
+    ///   Progress is provisional until `isComplete`; the previous complete table remains intact on failure.
+    /// - returns: A handle that cancels the complete paginated read from any thread.
+    @MainActor
+    @discardableResult
+    public func readUnlinkedDevicesCommand(_ node: MeatNetNode,
+                                         progressHandler: NodeLinkingTableProgressHandler? = nil,
+                                         completionHandler: @escaping CommandCompletionHandler) -> CommandHandle {
+        fetchLinkingTableCommand(node, kind: .unlinked, progressHandler: progressHandler,
+                                 completionHandler: completionHandler)
+    }
+
+    /// Links a Predictive Thermometer to a MeatNet Node.
+    ///
+    /// - parameter node: Node whose linking table should be changed.
+    /// - parameter probeSerialNumber: Serial number of the Predictive Thermometer to link.
+    /// - parameter timestamp: Unix timestamp for the link operation, or zero if unavailable.
+    /// - parameter completionHandler: Called when the Node acknowledges the command or it fails.
+    /// - returns: A handle that can cancel the pending command.
+    @discardableResult
+    public func linkDeviceCommand(_ node: MeatNetNode,
+                                  probeSerialNumber: UInt32,
+                                  timestamp: UInt32 = 0,
+                                  completionHandler: @escaping CommandCompletionHandler) -> CommandHandle {
+        let request = NodeLinkDeviceRequest(probeSerialNumber: probeSerialNumber,
+                                            timestamp: timestamp)
+        return sendNodeRequestWithCommandHandler(node,
+                                                 request: request,
+                                                 completionHandler: completionHandler)
+    }
+
+    /// Links a Node product to a MeatNet Node.
+    ///
+    /// - parameter node: Node whose linking table should be changed.
+    /// - parameter productType: Product type associated with the serial number.
+    /// - parameter nodeSerialNumber: Ten-byte serial number of the device to link.
+    /// - parameter timestamp: Unix timestamp for the link operation, or zero if unavailable.
+    /// - parameter completionHandler: Called when the Node acknowledges the command or it fails.
+    /// - returns: A handle that can cancel the pending command, or nil for an invalid product/serial combination.
+    @discardableResult
+    public func linkDeviceCommand(_ node: MeatNetNode,
+                                  productType: ProductType,
+                                  nodeSerialNumber: String,
+                                  timestamp: UInt32 = 0,
+                                  completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
+        guard let request = NodeLinkDeviceRequest(productType: productType,
+                                                  nodeSerialNumber: nodeSerialNumber,
+                                                  timestamp: timestamp) else {
+            completionHandler(.failure)
+            return nil
+        }
+
+        return sendNodeRequestWithCommandHandler(node,
+                                                 request: request,
+                                                 completionHandler: completionHandler)
+    }
+
+    /// Unlinks a Predictive Thermometer from a MeatNet Node.
+    ///
+    /// - parameter node: Node whose linking table should be changed.
+    /// - parameter probeSerialNumber: Serial number of the Predictive Thermometer to unlink.
+    /// - parameter timestamp: Unix timestamp for the unlink operation, or zero if unavailable.
+    /// - parameter completionHandler: Called when the Node acknowledges the command or it fails.
+    /// - returns: A handle that can cancel the pending command.
+    @discardableResult
+    public func unlinkDeviceCommand(_ node: MeatNetNode,
+                                    probeSerialNumber: UInt32,
+                                    timestamp: UInt32 = 0,
+                                    completionHandler: @escaping CommandCompletionHandler) -> CommandHandle {
+        let request = NodeUnlinkDeviceRequest(probeSerialNumber: probeSerialNumber,
+                                              timestamp: timestamp)
+        return sendNodeRequestWithCommandHandler(node,
+                                                 request: request,
+                                                 completionHandler: completionHandler)
+    }
+
+    /// Unlinks a Node product from a MeatNet Node.
+    ///
+    /// - parameter node: Node whose linking table should be changed.
+    /// - parameter productType: Product type associated with the serial number.
+    /// - parameter nodeSerialNumber: Ten-byte serial number of the device to unlink.
+    /// - parameter timestamp: Unix timestamp for the unlink operation, or zero if unavailable.
+    /// - parameter completionHandler: Called when the Node acknowledges the command or it fails.
+    /// - returns: A handle that can cancel the pending command, or nil for an invalid product/serial combination.
+    @discardableResult
+    public func unlinkDeviceCommand(_ node: MeatNetNode,
+                                    productType: ProductType,
+                                    nodeSerialNumber: String,
+                                    timestamp: UInt32 = 0,
+                                    completionHandler: @escaping CommandCompletionHandler) -> CommandHandle? {
+        guard let request = NodeUnlinkDeviceRequest(productType: productType,
+                                                    nodeSerialNumber: nodeSerialNumber,
+                                                    timestamp: timestamp) else {
+            completionHandler(.failure)
+            return nil
+        }
+
+        return sendNodeRequestWithCommandHandler(node,
+                                                 request: request,
+                                                 completionHandler: completionHandler)
+    }
+
+    /// Enables or disables proximity-based automatic linking on a MeatNet Node.
+    ///
+    /// - parameter node: Node whose automatic-linking setting should be changed.
+    /// - parameter enabled: Whether proximity-based automatic linking should be enabled.
+    /// - parameter completionHandler: Called when the Node acknowledges the command or it fails.
+    /// - returns: A handle that can cancel the pending command.
+    @discardableResult
+    public func setProximityLinkingCommand(_ node: MeatNetNode,
+                                           enabled: Bool,
+                                           completionHandler: @escaping CommandCompletionHandler) -> CommandHandle {
+        let request = NodeSetProximityLinkingRequest(enabled: enabled)
+        return sendNodeRequestWithCommandHandler(node,
+                                                 request: request,
+                                                 completionHandler: { [weak node] result in
+            if result == .success {
+                node?.updateProximityLinkingEnabled(enabled)
+            }
+            completionHandler(result)
+        })
+    }
+
+    /// Reads the proximity-based automatic-linking state from a MeatNet Node.
+    ///
+    /// The response updates ``MeatNetNode/proximityLinkingEnabled`` before this
+    /// completion handler is called.
+    ///
+    /// - parameter node: Node whose automatic-linking setting should be read.
+    /// - parameter completionHandler: Called when the Node responds or the read fails.
+    /// - returns: A handle that can cancel the pending read.
+    @discardableResult
+    public func readProximityLinkingCommand(_ node: MeatNetNode,
+                                            completionHandler: @escaping CommandCompletionHandler) -> CommandHandle {
+        let request = NodeReadProximityLinkingRequest()
+        return sendNodeRequestWithCommandHandler(node,
+                                                 request: request,
+                                                 completionHandler: completionHandler)
+    }
     
     /// Set the DFU file to be used on devices with failed software upgrade.
     /// A failed upgrade will occur if the user kills the application in the middle of
@@ -1133,6 +1327,82 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
                                                           retriesEnabled: retriesEnabled,
                                                           completionHandler: completionHandler)
     }
+
+    @MainActor
+    @discardableResult
+    private func fetchLinkingTableCommand(_ node: MeatNetNode,
+                                          kind: LinkingTableKind,
+                                          progressHandler: NodeLinkingTableProgressHandler?,
+                                          completionHandler: @escaping CommandCompletionHandler) -> CommandHandle {
+        // Per-node, per-table ownership also protects against overlapping reads from different screens.
+        let previous = node.linkingTableReads[kind]
+        let operationID = UUID()
+        let operation = LinkingTableReadOperation(
+            id: operationID,
+            sendPage: { [self, weak node] page, completion in
+                let request = kind.makeRequest(page: page)
+                registerLinkingTableRequest(request)
+                guard let node else {
+                    completion(.cancelled)
+                    return .init(requestID: request.requestId, command: EmptyLinkingTableCommandHandle())
+                }
+                let command = sendNodeRequestWithCommandHandler(node, request: request, completionHandler: completion)
+                return .init(requestID: request.requestId, command: command)
+            },
+            takePage: { [self] requestID in
+                guard let response = takeLinkingTableResponse(requestId: requestID),
+                      response.messageType == kind.messageType else { return nil }
+                return .init(page: response.page, totalPages: response.totalPages,
+                             totalCount: response.totalCount, entries: response.entries)
+            },
+            discardPage: { [self] in discardLinkingTableResponse(requestId: $0) },
+            isCurrent: { [weak node] in node?.linkingTableReads[kind]?.id == operationID },
+            publishComplete: { [weak node] entries in
+                switch kind {
+                case .linked: node?.updateLinkedDevices(entries)
+                case .unlinked: node?.updateUnlinkedDevices(entries)
+                }
+            },
+            progressHandler: progressHandler,
+            didFinish: { [weak node] in
+                if node?.linkingTableReads[kind]?.id == operationID { node?.linkingTableReads[kind] = nil }
+            },
+            completionHandler: completionHandler
+        )
+        node.linkingTableReads[kind] = operation
+        previous?.cancel()
+        return operation.start()
+    }
+
+    private func registerLinkingTableRequest(_ request: NodeRequest) {
+        linkingTableResponseLock.lock()
+        pendingLinkingTableRequestIds.insert(request.requestId)
+        linkingTablePageResponses.removeValue(forKey: request.requestId)
+        linkingTableResponseLock.unlock()
+    }
+
+    private func storeLinkingTableResponse(_ response: NodeLinkingTablePageResponse) {
+        linkingTableResponseLock.lock()
+        if pendingLinkingTableRequestIds.contains(response.requestId) {
+            linkingTablePageResponses[response.requestId] = response
+        }
+        linkingTableResponseLock.unlock()
+    }
+
+    private func takeLinkingTableResponse(requestId: UInt32) -> NodeLinkingTablePageResponse? {
+        linkingTableResponseLock.lock()
+        pendingLinkingTableRequestIds.remove(requestId)
+        let response = linkingTablePageResponses.removeValue(forKey: requestId)
+        linkingTableResponseLock.unlock()
+        return response
+    }
+
+    private func discardLinkingTableResponse(requestId: UInt32) {
+        linkingTableResponseLock.lock()
+        pendingLinkingTableRequestIds.remove(requestId)
+        linkingTablePageResponses.removeValue(forKey: requestId)
+        linkingTableResponseLock.unlock()
+    }
     
     public func sendNodeRequest(node: MeatNetNode,
                                            request: NodeRequest) {
@@ -1158,6 +1428,7 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         },
                                                      completionHandler: completionHandler)
     }
+
 }
 
 extension DeviceManager : BleManagerDelegate {
@@ -1707,6 +1978,21 @@ extension DeviceManager : BleManagerDelegate {
             }
         case .setGaugeID, .setID, .setColor, .setPrediction, .configureFoodSafe, .resetFoodSafe, .setPowerMode, .resetSession, .setHighLowAlarm, .setProbeHighLowAlarm, .silenceAlarms, .setEngineControlDevice, .setEngineTargetTemperature:
             commandCoordinator.callNodeCommandHandler(response: response)
+        case .linkDevice, .unlinkDevice, .setProximityLinking:
+            commandCoordinator.callNodeCommandHandler(response: response)
+        case .readLinkedDevices, .readUnlinkedDevices:
+            if let linkingTableResponse = response as? NodeLinkingTablePageResponse,
+               linkingTableResponse.success {
+                storeLinkingTableResponse(linkingTableResponse)
+            }
+            commandCoordinator.callNodeCommandHandler(response: response)
+        case .readProximityLinking:
+            if let proximityResponse = response as? NodeReadProximityLinkingResponse,
+               proximityResponse.success,
+               let node = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode {
+                node.updateProximityLinkingEnabled(proximityResponse.enabled)
+            }
+            commandCoordinator.callNodeCommandHandler(response: response)
         case .custom(_):
             deviceResponseHandler?.handleResponse(identifier: identifier, response: response)
         default: break
@@ -1784,11 +2070,12 @@ extension DeviceManager : BleManagerDelegate {
                                                  probeSerialNumber: silenceAlarmRequest.probeSerialNumber,
                                                  nodeSerialNumber: silenceAlarmRequest.nodeSerialNumber)
         }
-        else if let heartBeatRequest = request as? NodeHeartbeatRequest {
-            // TODO handle heartBeatRequest
+        else if let heartbeatRequest = request as? NodeHeartbeatRequest,
+                let node = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode {
+            node.updateHeartbeat(heartbeatRequest)
         }
-        else if let request = request as? NodeCustomRequest {
-            deviceResponseHandler?.handleRequest(identifier: identifier, request: request)
+        else if let customRequest = request as? NodeCustomRequest {
+            deviceResponseHandler?.handleRequest(identifier: identifier, request: customRequest)
         }
     }
     

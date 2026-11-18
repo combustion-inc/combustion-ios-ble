@@ -24,7 +24,7 @@ SOFTWARE.
 
 import Foundation
 
-public enum CommandResult {
+public enum CommandResult: Sendable {
     case success
     case failure
     case cancelled

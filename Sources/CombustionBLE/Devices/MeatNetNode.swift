@@ -48,7 +48,24 @@ public class MeatNetNode: Device {
     
     /// Accessory
     @Published public internal(set) var accessory: (any Accessory)?
+
+    /// Most recent inbound-connection heartbeat received from this Node.
+    @Published public internal(set) var inboundHeartbeat: NodeHeartbeatRequest?
+
+    /// Most recent outbound-connection heartbeat received from this Node.
+    @Published public internal(set) var outboundHeartbeat: NodeHeartbeatRequest?
+
+    /// Whether proximity-based automatic linking is enabled, or nil if it has not been read yet.
+    @Published public internal(set) var proximityLinkingEnabled: Bool?
+
+    /// Complete linked-device table, or nil until it has been fetched successfully.
+    @MainActor @Published public internal(set) var linkedDevices: [NodeLinkingTableEntry]?
+
+    /// Complete explicitly-unlinked-device table, or nil until it has been fetched successfully.
+    @MainActor @Published public internal(set) var unlinkedDevices: [NodeLinkingTableEntry]?
     
+    @MainActor var linkingTableReads: [LinkingTableKind: LinkingTableReadOperation] = [:]
+
     /// Meatnet node name
     public var name: String {
         let serialNumber = serialNumberString ?? ""
@@ -123,6 +140,31 @@ public class MeatNetNode: Device {
         accessory?.updateDeviceStatus(deviceStatus: deviceStatus, hopCount: hopCount)
         updateMissingInfoIfRequired()
         updateLastUpdateTime()
+    }
+
+    func updateHeartbeat(_ heartbeat: NodeHeartbeatRequest) {
+        if heartbeat.inbound {
+            inboundHeartbeat = heartbeat
+        } else {
+            outboundHeartbeat = heartbeat
+        }
+    }
+
+    func updateProximityLinkingEnabled(_ enabled: Bool) {
+        guard proximityLinkingEnabled != enabled else { return }
+        proximityLinkingEnabled = enabled
+    }
+
+    @MainActor
+    func updateLinkedDevices(_ entries: [NodeLinkingTableEntry]) {
+        guard linkedDevices != entries else { return }
+        linkedDevices = entries
+    }
+
+    @MainActor
+    func updateUnlinkedDevices(_ entries: [NodeLinkingTableEntry]) {
+        guard unlinkedDevices != entries else { return }
+        unlinkedDevices = entries
     }
     
     func dataReceivedFromDevice(_ device: (any Accessory)?) {

@@ -132,6 +132,9 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
     private let linkingTableResponseLock = NSLock()
     private var pendingLinkingTableRequestIds: Set<UInt32> = []
     private var linkingTablePageResponses: [UInt32: NodeLinkingTablePageResponse] = [:]
+
+    /// Smoothed RSSI for the peer links MeatNet Nodes report in heartbeats.
+    private let meatNetLinkRSSI = MeatNetLinkRSSITracker()
     
     /// Connection manager to handle BLE connection logic
     private let connectionManager = ConnectionManager()
@@ -347,6 +350,16 @@ open class DeviceManager : DeviceManagerProtocol, ObservableObject {
         } else {
             return []
         }
+    }
+
+    /// Smoothed RSSI (dBm) for a peer link reported in a MeatNet heartbeat, averaged across
+    /// heartbeats with the same span as `Device.rssiEWMA`.
+    /// - parameter detail: Peer entry from the heartbeat's `connectionDetails`.
+    /// - parameter heartbeat: Heartbeat that reported the peer.
+    /// - returns: Smoothed RSSI, or `nil` if the link has no recent reading.
+    public func meatNetLinkRSSI(for detail: NodeHeartbeatRequest.ConnectionDetail,
+                                reportedBy heartbeat: NodeHeartbeatRequest) -> Float? {
+        meatNetLinkRSSI.smoothedRSSI(for: detail, reportedBy: heartbeat)
     }
     
     /// Returns the nearest probe.
@@ -2070,9 +2083,12 @@ extension DeviceManager : BleManagerDelegate {
                                                  probeSerialNumber: silenceAlarmRequest.probeSerialNumber,
                                                  nodeSerialNumber: silenceAlarmRequest.nodeSerialNumber)
         }
-        else if let heartbeatRequest = request as? NodeHeartbeatRequest,
-                let node = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode {
-            node.updateHeartbeat(heartbeatRequest)
+        else if let heartbeatRequest = request as? NodeHeartbeatRequest {
+            // Update link averages before publishing so heartbeat subscribers read current values.
+            meatNetLinkRSSI.record(heartbeatRequest)
+            if let node = findDeviceByBleIdentifier(bleIdentifier: identifier) as? MeatNetNode {
+                node.updateHeartbeat(heartbeatRequest)
+            }
         }
         else if let customRequest = request as? NodeCustomRequest {
             deviceResponseHandler?.handleRequest(identifier: identifier, request: customRequest)
